@@ -4,7 +4,6 @@
     <string name="a24_intro">Get Hermes reminders, scheduled jobs and alerts on this phone. You need the hermes-android plugin on your server and your own Firebase project. Hermes can guide you through it.</string>
     <string name="a24_active">Active</string>
     <string name="a24_send_test">Send test</string>
-    <string name="a24_test_sent">Test sent: %1$s</string>
     <string name="a24_step_server">Server plugin</string>
     <string name="a24_step_firebase">Your Firebase project (phone)</string>
     <string name="a24_step_key">Server key</string>
@@ -49,4 +48,12 @@
     <string name="a24_prompt_install">Install the Hermes Android plugin from %1$s and set up notifications for my Android phone. Follow its hermes-android:setup skill.</string>
     <string name="a24_prompt_api_server">Set up Android notifications: the hermes-android plugin says the API server is not reachable from my phone. Follow the hermes-android:setup skill.</string>
     <string name="a24_prompt_configure">Configure the hermes-android plugin so I can pair my Android phone (run hermes_android_configure and restart the gateway when I confirm).</string>
+    <string name="a24_fcm_failed">Firebase rejected this phone\'s registration. The usual cause is the API key in your project: in Google Cloud Console → APIs &amp; Services → Credentials, open the Android key (auto created by Firebase) and set Application restrictions to None, or to Android apps including %1$s with this app\'s signing certificate. A website (HTTP referrer) restriction blocks the app. Then pair again.</string>
+    <string name="a24_test_auth">FCM refused the server key. The service-account key and google-services.json must come from the same Firebase project, with Cloud Messaging API (V1) enabled.</string>
+    <string name="a24_test_permanent">FCM says this phone\'s registration is no longer valid. Revoke and pair again.</string>
+    <string name="a24_test_transient">FCM did not answer in time. Try again in a moment.</string>
+    <plurals name="a24_test_ok">
+        <item quantity="one">Test delivered to %d phone. It should appear in a few seconds.</item>
+        <item quantity="other">Test delivered to %d phones. They should appear in a few seconds.</item>
+    </plurals>
 </resources>

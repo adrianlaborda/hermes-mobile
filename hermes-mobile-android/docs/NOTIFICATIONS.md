@@ -45,6 +45,15 @@ Then tap **Send test**. Each Hermes profile is paired separately.
 > **Never attach the server key in a chat.** Chat attachments are expanded into the model's prompt, so the key would
 > reach your model provider. Use the **Upload server key** button.
 
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| **"Firebase rejected this phone's registration"** (the log shows `API_KEY_HTTP_REFERRER_BLOCKED` or another API-key 403) | Open Google Cloud Console → **APIs & Services → Credentials → Android key (auto created by Firebase)**. Set **Application restrictions** to *None*, or to *Android apps* with this package and the SHA-1 of the APK's signing certificate. A *Websites* restriction always blocks Android apps. Then pair again. |
+| Test answers `auth` | The server key and `google-services.json` come from different Firebase projects, or *Cloud Messaging API (V1)* is disabled. |
+| Step 1 never turns ready | Ask Hermes. It runs `hermes_android_status` and explains what is missing. |
+| Nothing arrives although the test says delivered | Check Android notification settings and battery restrictions for the app. |
+
 ## How it works
 
 - **The plugin's endpoint.** The phone reaches the plugin through the official Hermes API server (default port 8642),

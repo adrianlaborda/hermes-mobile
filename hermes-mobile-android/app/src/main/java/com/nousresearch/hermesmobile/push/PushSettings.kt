@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -60,13 +61,8 @@ fun PushSettings(
     val res = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     var selectedEvent by remember { mutableStateOf<JSONObject?>(null) }
-    DisposableEffect(context) {
-        val window = (context as? android.app.Activity)?.window
-        val secureFlag = android.view.WindowManager.LayoutParams.FLAG_SECURE
-        val alreadySecure = ((window?.attributes?.flags ?: 0) and secureFlag) != 0
-        window?.addFlags(secureFlag)
-        onDispose { if (!alreadySecure) window?.clearFlags(secureFlag) }
-    }
+    // Drawn outside the main Scaffold: system back must close this screen, not the app.
+    androidx.activity.compose.BackHandler(onBack = onBack)
     selectedEvent?.let { event ->
         AlertDialog(onDismissRequest = { selectedEvent = null }, title = { Text(event.optString("title", "Hermes")) },
             text = { Box(Modifier.heightIn(max = 500.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
@@ -124,7 +120,11 @@ fun PushSettings(
         check(FirebaseRuntime.ensureInitialized(context)) { res.getString(R.string.a24_firebase_missing) }
         val fcm = FirebaseMessaging.getInstance()
         fcm.isAutoInitEnabled = true
-        val token = com.google.android.gms.tasks.Tasks.await(fcm.token, 30, TimeUnit.SECONDS)
+        val token = try { com.google.android.gms.tasks.Tasks.await(fcm.token, 30, TimeUnit.SECONDS) }
+            catch (e: Exception) {
+                // FCM only says "FCM Registration failed"; the usual cause is the project's API key restriction.
+                throw IllegalStateException(res.getString(R.string.a24_fcm_failed, context.packageName), e)
+            }
         val reply = PushClient.call(candidate, "device.register", JSONObject().put("label", Build.MODEL.take(80))
             .put("push", JSONObject().put("type", "fcm").put("token", token)))
         store.save(candidate.copy(device = reply.getString("device_id"), deviceSecret = reply.getString("device_secret")))
@@ -153,7 +153,14 @@ fun PushSettings(
         }
     }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Edge-to-edge window and no Scaffold here: pad for the status/navigation bars and the keyboard ourselves.
+    // A Surface (not just a background) so untinted text gets the theme's content color.
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    LazyColumn(
+        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         item {
             HermesTopBar(stringResource(R.string.push_title), "${config?.displayLabel.orEmpty()} · $profile", leading = {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
@@ -172,7 +179,9 @@ fun PushSettings(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(enabled = !busy, onClick = { action {
                             val reply = PushSetup.commandReply(runCommand(PushSetup.TEST_COMMAND, ""))
-                            info = res.getString(R.string.a24_test_sent, reply.optJSONObject("outcomes")?.toString().orEmpty())
+                            val outcomes = PushSetup.testOutcomes(reply)
+                            if (outcomes.failed.isEmpty()) info = res.getQuantityString(R.plurals.a24_test_ok, outcomes.ok, outcomes.ok)
+                            else error = testFailure(res, outcomes.failed.first())
                         } }) { Text(stringResource(R.string.a24_send_test)) }
                         OutlinedButton(enabled = !busy, onClick = { PushDelivery.schedule(context); events = store.events().asReversed() }) {
                             Text(stringResource(R.string.refresh))
@@ -205,9 +214,9 @@ fun PushSettings(
             item {
                 val clipboard = LocalClipboardManager.current
                 SetupStep(2, stringResource(R.string.a24_step_firebase), done = firebase != null) {
-                    Text(stringResource(R.string.a24_firebase_help), style = MaterialTheme.typography.bodySmall,
+                    if (firebase == null) Text(stringResource(R.string.a24_firebase_help), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.hermes.field, border = BorderStroke(1.dp, MaterialTheme.hermes.line)) {
+                    if (firebase == null) Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.hermes.field, border = BorderStroke(1.dp, MaterialTheme.hermes.line)) {
                         Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(context.packageName, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall.copy(fontFamily = HermesMono))
                             IconButton(onClick = { clipboard.setText(AnnotatedString(context.packageName)); info = res.getString(R.string.a24_copied) }) {
@@ -229,7 +238,7 @@ fun PushSettings(
             item {
                 val keyOk = pairing?.keyState == "ok"
                 SetupStep(3, stringResource(R.string.a24_step_key), done = keyOk) {
-                    Text(stringResource(R.string.a24_key_help), style = MaterialTheme.typography.bodySmall,
+                    if (!keyOk) Text(stringResource(R.string.a24_key_help), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (keyOk) {
                         val project = pairing?.keyProject.orEmpty()
@@ -297,6 +306,7 @@ fun PushSettings(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -338,6 +348,15 @@ private fun PermissionButton(permission: androidx.activity.result.ActivityResult
 @Composable
 private fun ManualPairing(config: GatewayConfig?, profile: String, busy: Boolean, allowed: Boolean, onRegister: (PushAccount) -> Unit) {
     var open by remember { mutableStateOf(false) }
+    // Only the manual form shows a secret: keep it out of screenshots and the recents preview.
+    val context = LocalContext.current
+    if (open) DisposableEffect(Unit) {
+        val window = (context as? android.app.Activity)?.window
+        val secureFlag = android.view.WindowManager.LayoutParams.FLAG_SECURE
+        val alreadySecure = ((window?.attributes?.flags ?: 0) and secureFlag) != 0
+        window?.addFlags(secureFlag)
+        onDispose { if (!alreadySecure) window?.clearFlags(secureFlag) }
+    }
     var base by remember(config, profile) { mutableStateOf(config?.baseUrl?.let(PushClient::suggestedBase).orEmpty()) }
     var secret by remember(config, profile) { mutableStateOf("") }
     Column(Modifier.padding(horizontal = 16.dp)) {
@@ -375,6 +394,12 @@ private fun java.io.InputStream.readNBytesCompat(limit: Int): ByteArray {
         out.write(buffer, 0, read)
     }
     return out.toByteArray()
+}
+
+private fun testFailure(res: android.content.res.Resources, outcome: String): String = when (outcome) {
+    "auth" -> res.getString(R.string.a24_test_auth)
+    "permanent" -> res.getString(R.string.a24_test_permanent)
+    else -> res.getString(R.string.a24_test_transient)
 }
 
 private fun firebaseError(res: android.content.res.Resources, code: String?, packageName: String): String = when (code) {

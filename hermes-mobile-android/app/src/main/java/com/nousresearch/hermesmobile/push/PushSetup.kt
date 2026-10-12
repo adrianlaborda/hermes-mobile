@@ -60,6 +60,18 @@ object PushSetup {
         gatewayBaseUrl.trim().toHttpUrlOrNull()?.newBuilder()?.port(pairing.port)?.encodedPath("/")
             ?.build()?.toString()?.trimEnd('/').orEmpty()
 
+    data class TestOutcomes(val ok: Int, val failed: List<String>)
+
+    /** `/android-test` answers {"outcomes": {device: "success"|"auth"|"permanent"|"transient"|...}} or an error. */
+    fun testOutcomes(reply: JSONObject): TestOutcomes {
+        val outcomes = reply.optJSONObject("outcomes")
+        if (outcomes == null || outcomes.length() == 0) {
+            throw IllegalStateException(reply.optString("error").ifBlank { "no_devices" })
+        }
+        val values = outcomes.keys().asSequence().map { outcomes.optString(it) }.toList()
+        return TestOutcomes(values.count { it == "success" }, values.filter { it != "success" })
+    }
+
     /** A `/android-credentials` / `/android-test` reply: {"ok": true, ...} or {"ok": false, "error": "..."}. */
     fun commandReply(output: String): JSONObject {
         val o = runCatching { JSONObject(output.trim()) }.getOrNull() ?: throw IllegalStateException(output.take(200))

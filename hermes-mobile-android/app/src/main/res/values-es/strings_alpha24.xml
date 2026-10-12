@@ -4,7 +4,6 @@
     <string name="a24_intro">Recibe en este móvil los recordatorios, tareas programadas y avisos de Hermes. Necesitas el plugin hermes-android en tu servidor y tu propio proyecto de Firebase. Hermes puede guiarte.</string>
     <string name="a24_active">Activo</string>
     <string name="a24_send_test">Enviar prueba</string>
-    <string name="a24_test_sent">Prueba enviada: %1$s</string>
     <string name="a24_step_server">Plugin del servidor</string>
     <string name="a24_step_firebase">Tu proyecto de Firebase (móvil)</string>
     <string name="a24_step_key">Clave del servidor</string>
@@ -49,4 +48,13 @@
     <string name="a24_prompt_install">Instala el plugin Hermes Android desde %1$s y configura las notificaciones de mi móvil Android. Sigue su skill hermes-android:setup.</string>
     <string name="a24_prompt_api_server">Configura las notificaciones de Android: el plugin hermes-android dice que mi móvil no llega al servidor API. Sigue la skill hermes-android:setup.</string>
     <string name="a24_prompt_configure">Configura el plugin hermes-android para que pueda emparejar mi móvil Android (ejecuta hermes_android_configure y reinicia el gateway cuando te lo confirme).</string>
+    <string name="a24_fcm_failed">Firebase rechazó el registro de este móvil. La causa habitual es la clave de API de tu proyecto: en Google Cloud Console → APIs y servicios → Credenciales, abre la «Android key (auto created by Firebase)» y pon «Restricciones de aplicaciones» en Ninguna, o en Apps de Android incluyendo %1$s con el certificado de firma de esta app. Una restricción de sitios web (HTTP referrer) bloquea la app. Después vuelve a emparejar.</string>
+    <string name="a24_test_auth">FCM rechazó la clave del servidor. La clave de cuenta de servicio y google-services.json deben ser del mismo proyecto de Firebase, con Cloud Messaging API (V1) habilitada.</string>
+    <string name="a24_test_permanent">FCM dice que el registro de este móvil ya no es válido. Revoca y vuelve a emparejar.</string>
+    <string name="a24_test_transient">FCM no respondió a tiempo. Inténtalo de nuevo en un momento.</string>
+    <plurals name="a24_test_ok">
+        <item quantity="one">Prueba entregada a %d móvil. Debería aparecer en unos segundos.</item>
+        <item quantity="many">Prueba entregada a %d móviles. Deberían aparecer en unos segundos.</item>
+        <item quantity="other">Prueba entregada a %d móviles. Deberían aparecer en unos segundos.</item>
+    </plurals>
 </resources>
