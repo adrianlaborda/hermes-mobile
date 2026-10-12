@@ -1973,8 +1973,34 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
      */
     suspend fun pluginCommand(profile: String, name: String, arg: String = ""): String {
         val repo = repository ?: throw IllegalStateException(string(R.string.a23_not_connected))
-        val session = uiState.activeChat?.takeIf { it.profile == profile }?.runtimeSessionId.orEmpty()
-        return repo.dispatchCommand(session, profile, name, arg).output
+        if (pluginSessionsRepo !== repo) { pluginSessions.clear(); pluginSessionsRepo = repo }
+        val active = uiState.activeChat?.takeIf { it.profile == profile }?.runtimeSessionId
+        val runtime = active ?: pluginSessions[profile] ?: profileRuntimeSession(repo, profile)
+        return try {
+            repo.dispatchCommand(runtime.orEmpty(), profile, name, arg).output
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) {
+            // A cached runtime session may have been reaped by the gateway: bind a fresh one once.
+            if (active != null || runtime == null) throw e
+            pluginSessions.remove(profile)
+            repo.dispatchCommand(profileRuntimeSession(repo, profile).orEmpty(), profile, name, arg).output
+        }
+    }
+
+    private val pluginSessions = mutableMapOf<String, String>()
+    private var pluginSessionsRepo: HermesRepository? = null
+
+    /**
+     * A runtime session bound to [profile], so profile-scoped plugin commands answer for it without the user
+     * opening a chat there: resumes that profile's most recent conversation (no new chat is created).
+     */
+    private suspend fun profileRuntimeSession(repo: HermesRepository, profile: String): String? {
+        val stored = uiState.sessions.firstOrNull { it.profile == profile }
+            ?: runCatching { repo.rest.sessionsPage(profile, limit = 1, offset = 0, includeArchived = true).sessions.firstOrNull() }.getOrNull()
+            ?: return null
+        val runtime = runCatching { repo.resumeSession(stored.id, profile, stored.title, stored.source).runtimeSessionId }.getOrNull()
+        if (runtime != null) pluginSessions[profile] = runtime
+        return runtime
     }
 
     fun newWorkspaceChat(profile: String, title: String, cwd: String?, draft: String = "") {

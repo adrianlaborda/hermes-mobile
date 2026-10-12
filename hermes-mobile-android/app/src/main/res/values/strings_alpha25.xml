@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a25_paired">Paired</string>
+    <string name="a25_lockscreen">Show content on the lock screen</string>
+    <string name="a25_lockscreen_on">Title and text are visible without unlocking.</string>
+    <string name="a25_lockscreen_off">The lock screen only says that something arrived; unlock to read it.</string>
+    <string name="a25_privacy_note">Only an anonymous ID travels through Google\'s servers (FCM). The phone fetches the content directly from your Hermes server.</string>
+    <string name="a25_reminder_title">Hermes reminder</string>
+    <string name="a25_approval_title">Approval needed</string>
+    <string name="a25_approval_body">An action needs your approval. Open Hermes to review it.</string>
+    <string name="a25_test_body">Notifications work. This is a test from your Hermes server.</string>
+    <string name="a25_turn_ready">Your response is ready.</string>
+    <string name="a25_turn_failed">The task failed or needs your attention.</string>
+</resources>

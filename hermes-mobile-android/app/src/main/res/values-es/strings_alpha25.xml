@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a25_paired">Emparejado</string>
+    <string name="a25_lockscreen">Mostrar el contenido en la pantalla de bloqueo</string>
+    <string name="a25_lockscreen_on">El título y el texto se ven sin desbloquear.</string>
+    <string name="a25_lockscreen_off">La pantalla de bloqueo solo avisa de que hay algo nuevo; desbloquea para leerlo.</string>
+    <string name="a25_privacy_note">Por los servidores de Google (FCM) solo viaja un identificador anónimo. El móvil descarga el contenido directamente de tu servidor Hermes.</string>
+    <string name="a25_reminder_title">Recordatorio de Hermes</string>
+    <string name="a25_approval_title">Aprobación pendiente</string>
+    <string name="a25_approval_body">Una acción necesita tu aprobación. Abre Hermes para revisarla.</string>
+    <string name="a25_test_body">Las notificaciones funcionan. Esto es una prueba de tu servidor Hermes.</string>
+    <string name="a25_turn_ready">Tu respuesta está lista.</string>
+    <string name="a25_turn_failed">La tarea ha fallado o necesita tu atención.</string>
+</resources>

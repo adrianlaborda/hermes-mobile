@@ -29,19 +29,64 @@ object PushDelivery {
     fun configured(context: Context) = FirebaseRuntime.configured(context)
     fun permitted(context: Context) = NotificationManagerCompat.from(context).areNotificationsEnabled() &&
         (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-    fun show(context: Context, eventId: String, content: String? = null): Boolean {
+    private const val PREFS = "hermes_push_prefs"
+    private const val LOCKSCREEN_CONTENT = "lockscreen_content"
+
+    /** The user's choice: show the event's content on the lock screen (default) or only a generic notice there. */
+    fun lockscreenContent(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(LOCKSCREEN_CONTENT, true)
+
+    fun setLockscreenContent(context: Context, show: Boolean) =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(LOCKSCREEN_CONTENT, show).apply()
+
+    /** Title and text for an event fetched from the inbox, localizing the plugin's generic notices. */
+    fun presentation(context: Context, event: JSONObject): Pair<String, String> {
+        val type = event.optString("event_type")
+        val title = event.optString("title").ifBlank { "Hermes" }
+        val body = event.optString("body")
+        return when (type) {
+            "approval_required" -> context.getString(R.string.a25_approval_title) to context.getString(R.string.a25_approval_body)
+            "test" -> "Hermes" to context.getString(R.string.a25_test_body)
+            "reminder" -> (if (title == "Hermes reminder") context.getString(R.string.a25_reminder_title) else title) to body
+            "turn_failed" -> title to body.replace("The task failed or needs your attention.", context.getString(R.string.a25_turn_failed)).trim()
+            "turn_completed" -> title to (if (body == "Your response is ready.") context.getString(R.string.a25_turn_ready) else body)
+            else -> title to body
+        }
+    }
+
+    /**
+     * Posts (or updates, same tag) the notice for [eventId]. Without [event] — the push only carries the ID and the
+     * content could not be fetched yet — it is generic. With it, the real title and text appear in the shade, and
+     * on the lock screen too unless the user turned that off. Returns false when nothing was posted.
+     */
+    fun show(context: Context, eventId: String, event: JSONObject? = null): Boolean {
         if (!permitted(context)) return false
+        // The user is looking at that very chat: the answer is already on screen.
+        val session = event?.optString("session_id").orEmpty()
+        if (session.isNotBlank() && AppPresence.isShowing(session)) return false
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL, context.getString(R.string.push_channel), NotificationManager.IMPORTANCE_DEFAULT))
         if (nm.getNotificationChannel(CHANNEL).importance == NotificationManager.IMPORTANCE_NONE) return false
         val intent = Intent(context, MainActivity::class.java).setAction("hermes.notification")
             .putExtra("event_id", eventId).setData(android.net.Uri.parse("hermes-notification:$eventId"))
         val tap = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val notification = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_hermes)
-            .setContentTitle("Hermes").setContentText(content ?: context.getString(R.string.push_generic))
+        val generic = context.getString(R.string.push_generic)
+        val publicVersion = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_hermes)
+            .setContentTitle("Hermes").setContentText(generic).build()
+        val builder = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_hermes)
             .setContentIntent(tap).setAutoCancel(true).setOnlyAlertOnce(true)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).build()
-        nm.notify(eventId, 0, notification)
+        if (event == null) {
+            builder.setContentTitle("Hermes").setContentText(generic).setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+        } else {
+            val (title, text) = presentation(context, event)
+            builder.setContentTitle(title).setContentText(text.ifBlank { generic })
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text.ifBlank { generic }))
+                .setWhen((event.optDouble("created_at", 0.0) * 1000).toLong().takeIf { it > 0 } ?: System.currentTimeMillis())
+                .setShowWhen(true)
+                .setVisibility(if (lockscreenContent(context)) NotificationCompat.VISIBILITY_PUBLIC else NotificationCompat.VISIBILITY_PRIVATE)
+                .setPublicVersion(publicVersion)
+        }
+        nm.notify(eventId, 0, builder.build())
         return true
     }
     fun schedule(context: Context, eventId: String? = null) {
@@ -62,11 +107,18 @@ class HermesMessagingService : FirebaseMessagingService() {
         val device = message.data["device_id"] ?: return
         val validConnections = GatewayConfigStore(this).snapshot().connections.map { it.id }.toSet()
         val account = runCatching { PushStore(this).accounts().firstOrNull { it.device == device && it.connection in validConnections } }.getOrNull() ?: return
+        // FCM only carried the ID: fetch the content from the user's server now (briefly; it may need a VPN).
+        val event = runCatching { PushClient.call(account, "event.get", JSONObject().put("event_id", id), fast = true) }.getOrNull()
+        if (event != null && event.optString("state") !in setOf("expired", "acked")) {
+            PushStore(this).received(account, event)
+            PushDelivery.show(this, id, event)
+            runCatching { PushClient.call(account, "event.ack", JSONObject().put("event_id", id), fast = true) }
+            return
+        }
         // Persist only the known owner before notifying. An offline tap must open
         // that profile's inbox, even when private event details are still deferred.
         PushStore(this).received(account, JSONObject().put("event_id", id).put("title", "Hermes")
             .put("body", getString(R.string.push_generic)).put("state", "pending"), overwrite = false)
-        // Display immediately; fetching private details may require the user's VPN.
         PushDelivery.show(this, id)
         PushDelivery.schedule(this, id)
     }
@@ -92,8 +144,9 @@ class PushSyncWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 for (event in events) {
                     if (event.optString("state") in setOf("expired", "acked") || event.optDouble("expires_at") * 1000 <= System.currentTimeMillis()) continue
                     store.received(account, event)
-                    // Privacy default: no transcript content on the lock screen.
-                    if (PushDelivery.show(context, event.getString("event_id"))) {
+                    // Replaces the generic notice (same tag) with the real content.
+                    val shown = PushDelivery.show(context, event.getString("event_id"), event)
+                    if (shown || event.optString("session_id").let { it.isNotBlank() && AppPresence.isShowing(it) }) {
                         PushClient.call(account, "event.ack", JSONObject().put("event_id", event.getString("event_id")))
                     }
                 }
@@ -103,4 +156,11 @@ class PushSyncWorker(context: Context, params: WorkerParameters) : CoroutineWork
         }
         if (retry && runAttemptCount < 5) Result.retry() else Result.success()
     }
+}
+
+/** Which chat is on screen, so a turn notice for it is not posted while the user reads that very answer. */
+object AppPresence {
+    @Volatile var foreground: Boolean = false
+    @Volatile var openSessionId: String? = null
+    fun isShowing(sessionId: String): Boolean = foreground && openSessionId == sessionId
 }

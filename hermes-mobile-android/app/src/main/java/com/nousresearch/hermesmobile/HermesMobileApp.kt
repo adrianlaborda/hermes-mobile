@@ -37,11 +37,17 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
         val scope = androidx.compose.runtime.rememberCoroutineScope()
         val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
         LaunchedEffect(vm.notificationInboxRequested) { if (vm.notificationInboxRequested) { showPush = true; vm.notificationInboxRequested = false } }
+        // Lets the push service skip a turn notice for the chat the user is reading right now.
+        val openChat = if (s.section == MainSection.CHAT) s.activeChat?.storedSessionId else null
+        DisposableEffect(openChat) {
+            com.nousresearch.hermesmobile.push.AppPresence.openSessionId = openChat
+            onDispose { com.nousresearch.hermesmobile.push.AppPresence.openSessionId = null }
+        }
         if (showPush) {
-            com.nousresearch.hermesmobile.push.PushSettings(s.savedConfig, s.selectedProfile,
+            com.nousresearch.hermesmobile.push.PushSettings(s.savedConfig, s.selectedProfile, s.profiles.map { it.name },
                 onBack = { showPush = false }, onOpen = { event -> showPush = false; vm.openNotification(event) },
-                onAskHermes = { prompt -> showPush = false; vm.askHermes(prompt) },
-                runCommand = { name, arg -> vm.pluginCommand(s.selectedProfile, name, arg) })
+                onAskHermes = { profile, prompt -> showPush = false; vm.askHermes(prompt, profile) },
+                runCommand = { profile, name, arg -> vm.pluginCommand(profile, name, arg) })
             return@HermesTheme
         }
         val uriHandler = LocalUriHandler.current

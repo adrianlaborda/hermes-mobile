@@ -1,3 +1,7 @@
+# Hermes Mobile · 0.2.0-alpha25
+
+**Notifications with real content, your lock-screen choice, and every profile.** FCM still carries only an opaque ID. When the push arrives, the app fetches the event from your server within a few seconds and shows its real title and text, for example the chat title and an excerpt of the answer. If the server is unreachable, it posts a generic notice and replaces it once the content arrives. A switch in **Notifications** decides whether that content shows on the lock screen (on by default; off keeps a generic public version). A turn notice for the chat you are reading is skipped. The Notifications screen gains a profile picker: each profile pairs separately, and the app binds plugin commands to that profile's most recent conversation without creating new chats. Generic server texts are localized. Requires the `hermes-android` plugin 0.5.0, which adds chat titles and answer excerpts, `notify_turns` and per-profile setup from chat. Version code 31.
+
 # Hermes Mobile · 0.2.0-alpha24
 
 **Bring-your-own-Firebase notifications with guided setup.** The APK no longer needs Firebase identifiers at build time: users import their own project's `google-services.json` in **Notifications**, and Firebase starts with it at runtime. The Notifications screen is now a step-by-step setup:

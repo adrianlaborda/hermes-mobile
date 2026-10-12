@@ -84,7 +84,10 @@ object PushClient {
         return url.newBuilder().addPathSegments("p").addPathSegment(profile)
             .addPathSegments("api/platforms/hermes_android/events").build().toString()
     }
-    fun call(account: PushAccount, type: String, data: JSONObject = JSONObject()): JSONObject {
+    /** For the FCM callback, which only has seconds: a reachable server answers well within this. */
+    private val fastHttp by lazy { http.newBuilder().connectTimeout(4, TimeUnit.SECONDS).callTimeout(7, TimeUnit.SECONDS).build() }
+
+    fun call(account: PushAccount, type: String, data: JSONObject = JSONObject(), fast: Boolean = false): JSONObject {
         require(account.secret.length >= 32)
         // Stored URLs are rechecked before forwarding a secret; redirects are never followed.
         require(transportAllowed(account.endpoint.toHttpUrl()))
@@ -92,7 +95,7 @@ object PushClient {
         if (account.device.isNotEmpty()) payload.put("device_id", account.device).put("device_secret", account.deviceSecret)
         val req = Request.Builder().url(account.endpoint).header("Authorization", "Bearer ${account.secret}")
             .post(payload.toString().toRequestBody("application/json".toMediaType())).build()
-        http.newCall(req).execute().use { response ->
+        (if (fast) fastHttp else http).newCall(req).execute().use { response ->
             if (!response.isSuccessful) throw PushRpcException("HTTP ${response.code}")
             val body = response.body ?: throw PushRpcException("empty_response")
             val source = body.source()

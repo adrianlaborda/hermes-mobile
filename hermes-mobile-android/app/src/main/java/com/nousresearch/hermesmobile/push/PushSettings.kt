@@ -51,12 +51,15 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun PushSettings(
     config: GatewayConfig?,
-    profile: String,
+    initialProfile: String,
+    profiles: List<String>,
     onBack: () -> Unit,
     onOpen: (JSONObject) -> Unit,
-    onAskHermes: (String) -> Unit,
-    runCommand: suspend (name: String, arg: String) -> String
+    onAskHermes: (profile: String, prompt: String) -> Unit,
+    runCommand: suspend (profile: String, name: String, arg: String) -> String
 ) {
+    // Each Hermes profile pairs separately; switching here does not change the app's selected profile.
+    var profile by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(initialProfile) }
     val context = LocalContext.current
     val res = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
@@ -100,7 +103,7 @@ fun PushSettings(
     suspend fun probe(): ServerPairing? {
         checking = true
         try {
-            val reply = PushSetup.parsePairing(runCommand(PushSetup.PAIR_COMMAND, ""))
+            val reply = PushSetup.parsePairing(runCommand(profile, PushSetup.PAIR_COMMAND, ""))
             pairing = reply
             server = PushSetup.state(reply, profile)
             return reply
@@ -147,7 +150,7 @@ fun PushSettings(
                 res.getString(if (parsed?.has("project_info") == true) R.string.a24_key_is_app_config else R.string.a24_key_invalid)
             }
             val encoded = Base64.getEncoder().encodeToString(text.toByteArray(Charsets.UTF_8))
-            val reply = PushSetup.commandReply(runCommand(PushSetup.CREDENTIALS_COMMAND, encoded))
+            val reply = PushSetup.commandReply(runCommand(profile, PushSetup.CREDENTIALS_COMMAND, encoded))
             info = res.getString(R.string.a24_key_installed, reply.optString("project_id"))
             probe()
         }
@@ -166,6 +169,17 @@ fun PushSettings(
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
             })
         }
+        if (profiles.size > 1) item {
+            androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(profiles) { name ->
+                    val paired = accounts.any { it.connection == config?.id && it.profile == name }
+                    FilterChip(selected = name == profile, onClick = { profile = name; error = null; info = null },
+                        label = { Text(name) },
+                        leadingIcon = if (paired) ({ Icon(Icons.Default.Check, stringResource(R.string.a25_paired), Modifier.size(16.dp)) }) else null)
+                }
+            }
+        }
         if (account != null) {
             item {
                 PushCard {
@@ -178,7 +192,7 @@ fun PushSettings(
                     if (!allowed) PermissionButton(permission, context)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(enabled = !busy, onClick = { action {
-                            val reply = PushSetup.commandReply(runCommand(PushSetup.TEST_COMMAND, ""))
+                            val reply = PushSetup.commandReply(runCommand(profile, PushSetup.TEST_COMMAND, ""))
                             val outcomes = PushSetup.testOutcomes(reply)
                             if (outcomes.failed.isEmpty()) info = res.getQuantityString(R.plurals.a24_test_ok, outcomes.ok, outcomes.ok)
                             else error = testFailure(res, outcomes.failed.first())
@@ -192,6 +206,21 @@ fun PushSettings(
                     }
                 }
             }
+            item {
+                var lockscreen by remember { mutableStateOf(PushDelivery.lockscreenContent(context)) }
+                PushCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(stringResource(R.string.a25_lockscreen), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(if (lockscreen) R.string.a25_lockscreen_on else R.string.a25_lockscreen_off),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Switch(checked = lockscreen, onCheckedChange = { lockscreen = it; PushDelivery.setLockscreenContent(context, it) })
+                    }
+                    Text(stringResource(R.string.a25_privacy_note), style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
         } else {
             item {
                 Text(stringResource(R.string.a24_intro), Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodyMedium,
@@ -203,7 +232,7 @@ fun PushSettings(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         askPrompt(res, server)?.let { prompt ->
-                            FilledTonalButton(onClick = { onAskHermes(prompt) }) { Text(stringResource(R.string.a24_ask_hermes)) }
+                            FilledTonalButton(onClick = { onAskHermes(profile, prompt) }) { Text(stringResource(R.string.a24_ask_hermes)) }
                         }
                         OutlinedButton(enabled = !checking && !busy && config != null, onClick = { scope.launch { error = null; probe() } }) {
                             Text(stringResource(R.string.a24_check_again))
@@ -299,8 +328,9 @@ fun PushSettings(
             val linked = !event.isNull("session_id") && event.optString("session_id").isNotBlank()
             OutlinedCard(onClick = { if (linked) onOpen(event) else selectedEvent = event }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(event.optString("title", "Hermes"), style = MaterialTheme.typography.titleSmall)
-                    Text(event.optString("body"), maxLines = 8)
+                    val (title, body) = PushDelivery.presentation(context, event)
+                    Text(title, style = MaterialTheme.typography.titleSmall)
+                    Text(body, maxLines = 8)
                     if (linked) Text(stringResource(R.string.push_open_chat), color = MaterialTheme.colorScheme.primary)
                 }
             }

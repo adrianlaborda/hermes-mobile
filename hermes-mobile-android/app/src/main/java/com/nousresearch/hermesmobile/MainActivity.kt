@@ -57,7 +57,7 @@ class MainActivity : ComponentActivity() {
         if (event != null) vm.openNotification(event)
         else { vm.notificationInboxRequested = true; com.nousresearch.hermesmobile.push.PushDelivery.schedule(this, id) }
     }
-    override fun onStart() { super.onStart(); foreground = true; update(false); com.nousresearch.hermesmobile.push.PushDelivery.schedule(this) }
-    override fun onStop() { foreground = false; update(false); super.onStop() }
+    override fun onStart() { super.onStart(); foreground = true; com.nousresearch.hermesmobile.push.AppPresence.foreground = true; update(false); com.nousresearch.hermesmobile.push.PushDelivery.schedule(this) }
+    override fun onStop() { foreground = false; com.nousresearch.hermesmobile.push.AppPresence.foreground = false; update(false); super.onStop() }
     override fun onDestroy() { connectivity.unregisterNetworkCallback(callback); super.onDestroy() }
 }
