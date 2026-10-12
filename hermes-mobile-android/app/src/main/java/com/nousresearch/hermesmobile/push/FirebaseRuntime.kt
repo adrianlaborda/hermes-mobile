@@ -74,6 +74,25 @@ object FirebaseRuntime {
         return parsed
     }
 
+    /**
+     * The FCM token, recovering from a remembered failure: after a rejected registration (for example a
+     * misconfigured API key that the user has since fixed) the SDK keeps the errored installation and
+     * "won't retry". Deleting the installation once forces a clean registration. Blocking; call off the main thread.
+     */
+    fun fcmToken(timeoutSeconds: Long = 30): String {
+        val messaging = com.google.firebase.messaging.FirebaseMessaging.getInstance()
+        return try {
+            com.google.android.gms.tasks.Tasks.await(messaging.token, timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (first: Exception) {
+            runCatching {
+                com.google.android.gms.tasks.Tasks.await(
+                    com.google.firebase.installations.FirebaseInstallations.getInstance().delete(),
+                    timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS)
+            }
+            com.google.android.gms.tasks.Tasks.await(messaging.token, timeoutSeconds, java.util.concurrent.TimeUnit.SECONDS)
+        }
+    }
+
     /** Idempotent; safe from Application.onCreate, workers and the messaging service. */
     fun ensureInitialized(context: Context): Boolean = synchronized(this) {
         if (FirebaseApp.getApps(context).any { it.name == FirebaseApp.DEFAULT_APP_NAME }) return true

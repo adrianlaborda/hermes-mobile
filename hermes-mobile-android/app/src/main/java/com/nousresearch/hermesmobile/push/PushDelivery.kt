@@ -80,7 +80,7 @@ class PushSyncWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val configs = GatewayConfigStore(context).snapshot().connections.map { it.id }.toSet()
         val token = runCatching {
             check(FirebaseRuntime.ensureInitialized(context))
-            com.google.android.gms.tasks.Tasks.await(FirebaseMessaging.getInstance().token, 15, TimeUnit.SECONDS)
+            FirebaseRuntime.fcmToken(15)
         }.getOrNull()
         for (account in store.accounts().filter { it.connection in configs }) {
             try {

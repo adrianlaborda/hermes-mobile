@@ -120,7 +120,7 @@ fun PushSettings(
         check(FirebaseRuntime.ensureInitialized(context)) { res.getString(R.string.a24_firebase_missing) }
         val fcm = FirebaseMessaging.getInstance()
         fcm.isAutoInitEnabled = true
-        val token = try { com.google.android.gms.tasks.Tasks.await(fcm.token, 30, TimeUnit.SECONDS) }
+        val token = try { FirebaseRuntime.fcmToken() }
             catch (e: Exception) {
                 // FCM only says "FCM Registration failed"; the usual cause is the project's API key restriction.
                 throw IllegalStateException(res.getString(R.string.a24_fcm_failed, context.packageName), e)
