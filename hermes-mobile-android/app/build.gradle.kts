@@ -23,8 +23,24 @@ android {
         vectorDrawables.useSupportLibrary = true
     }
 
+    // Release signing stays outside the repo: the keystore path comes from ~/.gradle/gradle.properties
+    // (hermes.signing.storeFile) and its password from HERMES_SIGNING_PASSWORD (scripts/build-release.sh
+    // reads it from the macOS Keychain). Without them the release APK is built unsigned, as in CI.
+    val signingStore = providers.gradleProperty("hermes.signing.storeFile").orNull
+    val signingPassword = providers.environmentVariable("HERMES_SIGNING_PASSWORD").orNull
+    if (signingStore != null && signingPassword != null) {
+        signingConfigs.create("release") {
+            storeFile = file(signingStore)
+            storeType = "PKCS12"
+            storePassword = signingPassword
+            keyAlias = providers.gradleProperty("hermes.signing.keyAlias").orElse("hermes-mobile").get()
+            keyPassword = signingPassword
+        }
+    }
+
     buildTypes {
         release {
+            signingConfigs.findByName("release")?.let { signingConfig = it }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
