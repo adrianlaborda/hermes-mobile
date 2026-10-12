@@ -1271,12 +1271,20 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             uiState = uiState.copy(modelOptionsLoading = true)
             val choices = async { runCatching { repo.sessionModelOptions(chat.profile) }.getOrDefault(emptyList()) }
             val usage = async { runCatching { repo.sessionUsage(runtimeId, chat.profile) }.getOrNull() }
+            // Mid-turn the live session.usage ticks carry the ring; an estimate would only lag behind them.
+            val breakdown = async {
+                if (chat.running) null else runCatching { repo.contextBreakdown(runtimeId, chat.profile) }.getOrNull()
+            }
             val resolvedChoices = choices.await()
-            val resolvedUsage = usage.await()
+            val resolvedBreakdown = breakdown.await()
+            val resolvedUsage = (usage.await() ?: resolvedBreakdown?.let { SessionUsage() })?.withContextFrom(resolvedBreakdown)
             if (uiState.activeChat?.runtimeSessionId == runtimeId && repository === repo) {
+                val previous = uiState.sessionUsage
                 uiState = uiState.copy(
                     sessionModelChoices = resolvedChoices,
-                    sessionUsage = resolvedUsage,
+                    sessionUsage = if (resolvedUsage != null && resolvedUsage.contextLimit == 0L && previous != null && previous.contextLimit > 0L) {
+                        resolvedUsage.copy(contextUsed = previous.contextUsed, contextLimit = previous.contextLimit, contextEstimated = previous.contextEstimated)
+                    } else resolvedUsage ?: previous,
                     modelOptionsLoading = false
                 )
             }
@@ -2016,6 +2024,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         resetStream(chat.streamingText)
                         uiState = uiState.copy(
                             activeChat = chat.copy(streamingText = ""),
+                            sessionUsage = null,
                             loading = false,
                             tools = emptyList(),
                             selectedProfile = profile,
@@ -2106,6 +2115,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     resetStream(chat.streamingText)
                     uiState = uiState.copy(
                         activeChat = chat.copy(streamingText = ""),
+                        sessionUsage = null,
                         loading = false,
                         tools = emptyList(),
                         selectedProfile = session.profile,
@@ -2140,6 +2150,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         resetStream(chat.streamingText)
                         uiState = uiState.copy(
                             activeChat = chat.copy(title = profile.label, streamingText = ""),
+                            sessionUsage = null,
                             loading = false,
                             tools = emptyList(),
                             loadingOlderMessages = false
@@ -2190,6 +2201,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     resetStream(chat.streamingText)
                     uiState = uiState.copy(
                         activeChat = chat.copy(streamingText = ""),
+                        sessionUsage = null,
                         loading = false,
                         tools = emptyList(),
                         selectedProfile = session.profile

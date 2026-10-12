@@ -53,6 +53,21 @@ class SessionContextTest {
     }
 
     @Test
+    fun breakdownFillsTheRingOfAResumedChat() {
+        // A resumed chat: the gateway has measured nothing in this process yet, so session.usage has no window.
+        val usage = SessionUsage.from(JSONObject("""{"calls":0,"input":0,"output":0,"total":0}"""))
+        assertNull(usage.contextPercent)
+        val estimate = ContextBreakdown.from(JSONObject("""{"context_used":45000,"context_max":200000,"context_estimated":true}"""))
+        val filled = usage.withContextFrom(estimate)
+        assertEquals(22, filled.contextPercent)
+        assertTrue(filled.contextEstimated)
+        // A lazy session (no agent built yet) answers a zero window: keep what we had.
+        val lazy = ContextBreakdown.from(JSONObject("""{"context_used":0,"context_max":0}"""))
+        assertEquals(usage, usage.withContextFrom(lazy))
+        assertEquals(usage, usage.withContextFrom(null))
+    }
+
+    @Test
     fun pressureBands() {
         assertEquals(ContextPressure.UNKNOWN, ContextPressure.of(null))
         assertEquals(ContextPressure.LOW, ContextPressure.of(59))

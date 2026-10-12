@@ -29,6 +29,15 @@ data class SessionUsage(
     /** Whether the snapshot measured anything worth showing. */
     val hasTraffic: Boolean get() = calls > 0 || totalTokens > 0 || inputTokens > 0 || outputTokens > 0
 
+    /**
+     * The gateway only measures occupancy once a turn has run in its process, so a resumed chat reports
+     * no window. Between turns `session.context_breakdown` answers anyway (measured when it can, else
+     * estimated from prompt + tools + transcript) and, like Desktop's gauge, it wins when it has a window.
+     */
+    fun withContextFrom(breakdown: ContextBreakdown?): SessionUsage =
+        if (breakdown == null || breakdown.max <= 0L) this
+        else copy(contextUsed = breakdown.used, contextLimit = breakdown.max, contextEstimated = breakdown.estimated)
+
     companion object {
         fun from(o: JSONObject): SessionUsage {
             fun long(vararg names: String): Long {
