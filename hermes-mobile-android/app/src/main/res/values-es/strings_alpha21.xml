@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a21_back">Atrás</string>
+    <string name="a21_working">Trabajando…</string>
+    <string name="a21_switch_session">Cambiar de conversación</string>
+    <string name="a21_files">Archivos y artefactos</string>
+    <string name="a21_jump_latest">Ir al último mensaje</string>
+    <plurals name="a21_new_messages">
+        <item quantity="one">%d nuevo</item>
+        <item quantity="many">%d nuevos</item>
+        <item quantity="other">%d nuevos</item>
+    </plurals>
+    <string name="a21_intro_title">¿En qué puede ayudarte Hermes?</string>
+    <string name="a21_suggest_plan">Planifica mi día</string>
+    <string name="a21_suggest_explain">Explícame un concepto de forma sencilla</string>
+    <string name="a21_suggest_summarize">Resume un documento</string>
+    <string name="a21_suggest_research">Investiga un tema</string>
+    <string name="a21_context_used">Contexto usado: %d%%</string>
+    <string name="a21_recent">Recientes</string>
+    <string name="a21_agent">Agente</string>
+    <string name="a21_gateway">Gateway</string>
+    <string name="a21_settings">Ajustes</string>
+    <string name="a21_untitled">Conversación sin título</string>
+    <string name="a21_menu">Menú</string>
+    <string name="a21_pinned">Fijadas</string>
+    <string name="a21_today">Hoy</string>
+    <string name="a21_yesterday">Ayer</string>
+    <string name="a21_week">Últimos 7 días</string>
+    <string name="a21_older">Anteriores</string>
+</resources>

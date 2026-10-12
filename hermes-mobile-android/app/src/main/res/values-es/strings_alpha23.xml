@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a23_context_window">Ventana de contexto</string>
+    <string name="a23_tokens">%1$s tokens</string>
+    <string name="a23_of_max">de %1$s máx.</string>
+    <string name="a23_free">%1$s libres</string>
+    <string name="a23_estimated">Estimado</string>
+    <string name="a23_live">En vivo</string>
+    <string name="a23_breakdown">Desglose</string>
+    <string name="a23_session_usage">Uso de la sesión</string>
+    <string name="a23_input">Entrada</string>
+    <string name="a23_output">Salida</string>
+    <string name="a23_reasoning">Razonamiento</string>
+    <string name="a23_calls">Llamadas a la API</string>
+    <string name="a23_cache">Aciertos de caché</string>
+    <string name="a23_speed">Velocidad</string>
+    <string name="a23_latency">Latencia</string>
+    <string name="a23_compressions">Compactaciones</string>
+    <string name="a23_subagents">Subagentes</string>
+    <string name="a23_tps">%1$s tok/s</string>
+    <string name="a23_seconds">%1$s s</string>
+    <string name="a23_compress_explainer">Compactar resume los turnos antiguos para liberar contexto. La compactación automática también se ejecuta cuando la ventana se llena.</string>
+    <string name="a23_hint_low">El contexto solo está al %1$d %% — aún no hace falta compactar.</string>
+    <string name="a23_hint_medium">El contexto está al %1$d %% — conviene compactar pronto para mantener la calidad.</string>
+    <string name="a23_hint_high">El contexto está al %1$d %% — compacta ya antes de que se desborde.</string>
+    <string name="a23_compress_running">Espera a que termine el turno actual para compactar.</string>
+    <string name="a23_compress_now">Compactar ahora</string>
+    <string name="a23_close">Cerrar</string>
+    <string name="a23_session">Sesión</string>
+    <string name="a23_title">Título</string>
+    <string name="a23_session_id">ID de sesión</string>
+    <string name="a23_profile">Perfil</string>
+    <string name="a23_source">Origen</string>
+    <string name="a23_loading_commands">Cargando comandos…</string>
+    <string name="a23_no_commands">Ningún comando coincide con %1$s</string>
+</resources>

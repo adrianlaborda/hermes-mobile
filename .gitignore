@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Local tooling caches
+.atl/
+
+# Delivery artifacts (release zips / APKs / checksums are produced by CI)
+/hermes-mobile-v0.2.0-alpha14-bundle/
+/*.zip
+/*.apk
+/*.sha256
+/SHA256SUMS*.txt
