@@ -1389,20 +1389,21 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         append(':').append(chat.storedSessionId)
     }
 
-    private fun loadChatEnhancements(chat: ActiveChat) {
+    private fun loadChatEnhancements(chat: ActiveChat, draft: String = "") {
         val key = composerKey(chat)
         val runtime = chat.runtimeSessionId
         viewModelScope.launch {
             val saved = withContext(Dispatchers.IO) { composerStore.load(key) }
             if (uiState.activeChat?.runtimeSessionId != runtime) return@launch
             uiState = uiState.copy(
-                chatDraft = saved.draft,
+                chatDraft = draft.ifBlank { saved.draft },
                 composerAttachments = saved.attachments,
                 queuedPrompts = saved.queue,
                 reasoningText = "",
                 liveStatuses = emptyList(),
                 artifactSuggestions = emptyList()
             )
+            if (draft.isNotBlank()) persistComposerSoon()
             refreshSessionMeta()
         }
     }
@@ -2034,8 +2035,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                             selectedProfile = profile,
                             loadingOlderMessages = false
                         )
-                        loadChatEnhancements(chat)
-                        if (draft.isNotBlank()) setChatDraft(draft)
+                        // The prefilled request wins over the (empty) saved composer of the brand-new chat.
+                        loadChatEnhancements(chat, draft)
                     }
                 }
                 .onFailure {

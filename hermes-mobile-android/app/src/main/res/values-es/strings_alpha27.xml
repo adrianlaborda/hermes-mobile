@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a27_enable_here">Activar para este perfil</string>
+    <string name="a27_enabled">Activado para %1$s. Pulsa Emparejar con este servidor para terminar.</string>
+    <string name="a27_enabled_paired">Activado para %1$s y este móvil ya está emparejado. Envía una prueba para comprobarlo.</string>
+    <string name="a27_enabled_restart">Activado para %1$s, pero este gateway necesita reiniciarse para ponerlo en marcha (hermes gateway restart). Después, comprueba de nuevo y empareja.</string>
+</resources>

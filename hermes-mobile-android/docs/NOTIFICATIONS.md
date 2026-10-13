@@ -47,13 +47,19 @@ Then tap **Send test**.
 Hermes isolates profiles: each one enables its own plugins and has its own pairing secret, inbox and scheduled jobs.
 So each profile has to enable the plugin before it can notify the phone, and pairs separately. You install it once.
 
-1. In **Notifications**, pick the profile at the top. If another profile already runs the plugin, the screen says
-   so and offers **Ask Hermes in default**, or whichever profile has it.
-2. Hermes shows the plan and applies it when you confirm:
-   - it links the same install into the profile;
-   - it creates that profile's secret;
-   - it points it at the same Firebase key, so there is nothing to upload.
-3. After the gateway restart, tap **Check again**, then **Pair with this server**.
+Pick the profile at the top of **Notifications**. If another profile already runs the plugin, tap **Enable for this
+profile**. The app asks that profile to:
+
+- link the same install into this profile;
+- create this profile's own secret;
+- point it at the same Firebase key, so there is nothing to upload;
+- bring it up live.
+
+Then the app pairs the phone. With `gateway.multiplex_profiles` (the default for several profiles), only that profile
+restarts inside the gateway, and the others and their channels keep running. Otherwise the app asks you to restart
+the gateway.
+
+You can also ask Hermes in chat: *"enable Android notifications for the work profile"*.
 
 > **Never attach the server key in a chat.** Chat attachments are expanded into the model's prompt, so the key would
 > reach your model provider. Use the **Upload server key** button.

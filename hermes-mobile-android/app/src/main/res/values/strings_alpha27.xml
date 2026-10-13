@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a27_enable_here">Enable for this profile</string>
+    <string name="a27_enabled">Enabled for %1$s. Tap Pair with this server to finish.</string>
+    <string name="a27_enabled_paired">Enabled for %1$s and this phone is paired. Send a test to check.</string>
+    <string name="a27_enabled_restart">Enabled for %1$s, but this gateway needs a restart to start it (hermes gateway restart). Then check again and pair.</string>
+</resources>

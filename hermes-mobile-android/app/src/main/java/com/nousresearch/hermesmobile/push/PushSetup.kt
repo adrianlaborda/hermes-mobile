@@ -13,7 +13,9 @@ data class ServerPairing(
     val problem: String,
     val keyState: String,
     val keyProject: String,
-    val pluginVersion: String
+    val pluginVersion: String,
+    /** False when another profile answered for this one and it has not enabled the plugin yet. */
+    val pluginEnabled: Boolean = true
 )
 
 /**
@@ -26,6 +28,7 @@ object PushSetup {
     const val PAIR_COMMAND = "android-pair"
     const val CREDENTIALS_COMMAND = "android-credentials"
     const val TEST_COMMAND = "android-test"
+    const val ENABLE_COMMAND = "android-enable"
     const val MAX_KEY_BYTES = 64 * 1024
 
     fun parsePairing(output: String): ServerPairing {
@@ -42,11 +45,15 @@ object PushSetup {
             problem = o.optString("problem"),
             keyState = key.optString("state", "missing"),
             keyProject = key.optString("project_id"),
-            pluginVersion = o.optString("plugin_version")
+            pluginVersion = o.optString("plugin_version"),
+            pluginEnabled = o.optBoolean("plugin_enabled", true)
         )
     }
 
-    /** The other profiles to ask whether the plugin is installed on this server, the launch profile first. */
+    /**
+     * The other profiles to ask, the launch profile first. Since plugin 0.5.1 they answer `/android-pair <profile>`
+     * and `/android-test <profile>` for [current], which also covers a profile with no app conversation.
+     */
     fun hostCandidates(profiles: List<String>, current: String): List<String> =
         profiles.filter { it != current }.sortedBy { if (it == "default") 0 else 1 }
 

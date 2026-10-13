@@ -87,7 +87,8 @@ fun PushSettings(
     var pairing by remember(config, profile) { mutableStateOf<ServerPairing?>(null) }
     var server by remember(config, profile) { mutableStateOf(ServerState.UNKNOWN) }
     var checking by remember(config, profile) { mutableStateOf(false) }
-    // Another profile of this server that already runs the plugin (it can enable this one from chat).
+    // Another profile of this server that runs the plugin: it answers for this one and can enable it here.
+    var hostName by remember(config, profile) { mutableStateOf<String?>(null) }
     var host by remember(config, profile) { mutableStateOf<ServerPairing?>(null) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed = it }
 
@@ -105,30 +106,62 @@ fun PushSettings(
     suspend fun probe(): ServerPairing? {
         checking = true
         try {
-            val reply = PushSetup.parsePairing(runCommand(profile, PushSetup.PAIR_COMMAND, ""))
-            pairing = reply
-            host = null
-            server = PushSetup.state(reply, profile)
-            return reply
-        } catch (e: CancellationException) { throw e }
-        catch (e: Exception) {
-            pairing = null
-            // The gateway rejects an unknown command: the plugin is not installed (or not loaded yet).
-            server = if ((e.message ?: "").contains("not a quick/plugin", ignoreCase = true) ||
-                e.message == "not_a_pairing_reply") ServerState.PLUGIN_MISSING else ServerState.UNKNOWN
-            if (server == ServerState.UNKNOWN) error = e.message
-            if (server == ServerState.PLUGIN_MISSING) {
-                // Profiles are isolated: the plugin may be installed and running in another one.
-                host = PushSetup.hostCandidates(profiles, profile).firstNotNullOfOrNull { other ->
-                    try { PushSetup.parsePairing(runCommand(other, PushSetup.PAIR_COMMAND, "")).let { it.copy(profile = it.profile.ifBlank { other }) } }
-                    catch (ce: CancellationException) { throw ce }
-                    catch (_: Exception) { null }
-                }
-                if (host != null) server = ServerState.PLUGIN_NOT_ENABLED
+            var failure: Exception? = null
+            // Name the profile: plugin commands may run under the gateway's launch profile whatever chat sends
+            // them, and since 0.5.1 `/android-pair <profile>` answers for the named one.
+            val own = try { PushSetup.parsePairing(runCommand(profile, PushSetup.PAIR_COMMAND, profile)) }
+                catch (e: CancellationException) { throw e }
+                catch (e: Exception) { failure = e; null }
+            if (own != null && own.pluginEnabled && (own.profile.isBlank() || own.profile == profile)) {
+                pairing = own; host = null; hostName = null
+                server = PushSetup.state(own, profile)
+                return own
             }
+            // Profiles are isolated, and this one may not run the plugin or have an app conversation to run
+            // commands in: a profile that runs it answers for this one.
+            for (other in PushSetup.hostCandidates(profiles, profile)) {
+                val reply = try { PushSetup.parsePairing(runCommand(other, PushSetup.PAIR_COMMAND, profile)) }
+                    catch (e: CancellationException) { throw e }
+                    catch (_: Exception) { continue }
+                hostName = other
+                if (reply.profile == profile && reply.pluginEnabled) {
+                    pairing = reply; host = null
+                    server = PushSetup.state(reply, profile)
+                    return reply
+                }
+                // Not enabled there (a plugin older than 0.5.1 answers for itself instead: same verdict).
+                pairing = null; host = reply
+                server = ServerState.PLUGIN_NOT_ENABLED
+                return null
+            }
+            pairing = null; host = null; hostName = null
+            // The gateway rejects an unknown command: the plugin is not installed (or not loaded yet).
+            val message = failure?.message.orEmpty()
+            server = if (message.contains("not a quick/plugin", ignoreCase = true) || message == "not_a_pairing_reply")
+                ServerState.PLUGIN_MISSING else ServerState.UNKNOWN
+            if (server == ServerState.UNKNOWN) error = failure?.message
             return null
         } finally { checking = false }
     }
+
+    /** Runs `/android-test` for this profile, through a profile that runs the plugin when this one cannot. */
+    suspend fun testCommand(): String {
+        val first = try {
+            val reply = runCommand(profile, PushSetup.TEST_COMMAND, profile)
+            val answered = runCatching { JSONObject(reply).optString("profile") }.getOrDefault("")
+            if (answered.isBlank() || answered == profile) return reply
+            IllegalStateException(res.getString(R.string.a24_server_wrong_profile, answered, profile))
+        } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { e }
+        for (other in PushSetup.hostCandidates(profiles, profile)) {
+            val reply = try { runCommand(other, PushSetup.TEST_COMMAND, profile) }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { continue }
+            if (runCatching { JSONObject(reply).optString("profile") }.getOrNull() == profile) return reply
+        }
+        throw first
+    }
+
     LaunchedEffect(config?.id, profile, account == null) { if (config != null && account == null) probe() }
 
     suspend fun register(candidate: PushAccount) = withContext(Dispatchers.IO) {
@@ -144,6 +177,36 @@ fun PushSettings(
             .put("push", JSONObject().put("type", "fcm").put("token", token)))
         store.save(candidate.copy(device = reply.getString("device_id"), deviceSecret = reply.getString("device_secret")))
         PushDelivery.schedule(context)
+    }
+
+    /** Registers this phone with the profile; [attempts] > 1 waits for a profile whose channel is still starting. */
+    suspend fun pairNow(fresh: ServerPairing, attempts: Int = 1) {
+        val selected = config ?: return
+        check(PushSetup.state(fresh, profile) == ServerState.READY) { serverText(res, server, fresh, hostName, profile, false) }
+        val base = PushSetup.apiBase(selected.baseUrl, fresh)
+        repeat(attempts) { attempt ->
+            try {
+                register(PushAccount(selected.id, profile, PushClient.endpoint(base, profile), fresh.secret))
+                return
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { if (attempt == attempts - 1) throw e }
+            kotlinx.coroutines.delay(2_000)
+        }
+    }
+
+    /** One tap: a profile that runs the plugin enables it here (live, no gateway restart) and the phone pairs. */
+    suspend fun enableHere() {
+        val via = hostName ?: error(res.getString(R.string.a24_server_unknown))
+        val reply = PushSetup.commandReply(runCommand(via, PushSetup.ENABLE_COMMAND, profile))
+        val fresh = probe()
+        when {
+            reply.optBoolean("restart_required") -> info = res.getString(R.string.a27_enabled_restart, profile)
+            fresh != null && server == ServerState.READY && firebase != null && allowed -> {
+                pairNow(fresh, attempts = 5)
+                info = res.getString(R.string.a27_enabled_paired, profile)
+            }
+            else -> info = res.getString(R.string.a27_enabled, profile)
+        }
     }
 
     val importConfig = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -204,7 +267,7 @@ fun PushSettings(
                     if (!allowed) PermissionButton(permission, context)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(enabled = !busy, onClick = { action {
-                            val reply = PushSetup.commandReply(runCommand(profile, PushSetup.TEST_COMMAND, ""))
+                            val reply = PushSetup.commandReply(testCommand())
                             val outcomes = PushSetup.testOutcomes(reply)
                             if (outcomes.failed.isEmpty()) info = res.getQuantityString(R.plurals.a24_test_ok, outcomes.ok, outcomes.ok)
                             else error = testFailure(res, outcomes.failed.first())
@@ -240,15 +303,16 @@ fun PushSettings(
             }
             item {
                 SetupStep(1, stringResource(R.string.a24_step_server), done = server == ServerState.READY) {
-                    Text(serverText(res, server, pairing ?: host, profile, checking), style = MaterialTheme.typography.bodySmall,
+                    Text(serverText(res, server, pairing ?: host, hostName, profile, checking), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        askPrompt(res, server, profile)?.let { prompt ->
-                            // Enabling another profile is done by a profile that already has the plugin's tools.
-                            val askProfile = host?.profile?.takeIf { server == ServerState.PLUGIN_NOT_ENABLED && it.isNotBlank() }
-                            FilledTonalButton(onClick = { onAskHermes(askProfile ?: profile, prompt) }) {
-                                Text(if (askProfile != null) stringResource(R.string.a26_ask_in, askProfile) else stringResource(R.string.a24_ask_hermes))
+                        if (server == ServerState.PLUGIN_NOT_ENABLED && hostName != null) {
+                            Button(enabled = !busy && !checking, onClick = { action { enableHere() } }) {
+                                Text(stringResource(R.string.a27_enable_here))
                             }
+                        }
+                        askPrompt(res, server)?.let { prompt ->
+                            FilledTonalButton(onClick = { onAskHermes(profile, prompt) }) { Text(stringResource(R.string.a24_ask_hermes)) }
                         }
                         OutlinedButton(enabled = !checking && !busy && config != null, onClick = { scope.launch { error = null; probe() } }) {
                             Text(stringResource(R.string.a24_check_again))
@@ -285,7 +349,7 @@ fun PushSettings(
                 SetupStep(3, stringResource(R.string.a24_step_key), done = keyOk) {
                     val shared = host?.takeIf { server == ServerState.PLUGIN_NOT_ENABLED }
                     if (shared != null) Text(
-                        if (shared.keyState == "ok") stringResource(R.string.a26_key_shared, shared.profile, shared.keyProject)
+                        if (shared.keyState == "ok") stringResource(R.string.a26_key_shared, hostName.orEmpty(), shared.keyProject)
                         else stringResource(R.string.a26_key_shared_none),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     else if (!keyOk) Text(stringResource(R.string.a24_key_help), style = MaterialTheme.typography.bodySmall,
@@ -315,12 +379,9 @@ fun PushSettings(
                     Button(
                         enabled = !busy && config != null && server == ServerState.READY && firebase != null && allowed,
                         onClick = {
-                            val selected = config ?: return@Button
                             action {
                                 val fresh = probe() ?: error(res.getString(R.string.a24_server_unknown))
-                                check(PushSetup.state(fresh, profile) == ServerState.READY) { serverText(res, server, fresh, profile, false) }
-                                val base = PushSetup.apiBase(selected.baseUrl, fresh)
-                                register(PushAccount(selected.id, profile, PushClient.endpoint(base, profile), fresh.secret))
+                                pairNow(fresh)
                                 info = res.getString(R.string.a24_paired)
                             }
                         },
@@ -460,12 +521,12 @@ private fun firebaseError(res: android.content.res.Resources, code: String?, pac
     else -> res.getString(R.string.a24_config_invalid)
 }
 
-private fun serverText(res: android.content.res.Resources, state: ServerState, pairing: ServerPairing?, profile: String, checking: Boolean): String = when {
+private fun serverText(res: android.content.res.Resources, state: ServerState, pairing: ServerPairing?, host: String?, profile: String, checking: Boolean): String = when {
     checking -> res.getString(R.string.a24_server_checking)
     else -> when (state) {
         ServerState.READY -> res.getString(R.string.a24_server_ready, pairing?.pluginVersion.orEmpty())
         ServerState.PLUGIN_MISSING -> res.getString(R.string.a24_server_plugin_missing)
-        ServerState.PLUGIN_NOT_ENABLED -> res.getString(R.string.a26_server_not_enabled, pairing?.profile.orEmpty(), profile)
+        ServerState.PLUGIN_NOT_ENABLED -> res.getString(R.string.a26_server_not_enabled, host.orEmpty(), profile)
         ServerState.API_SERVER_OFF -> res.getString(R.string.a24_server_api_off)
         ServerState.API_SERVER_LOOPBACK -> res.getString(R.string.a24_server_api_loopback)
         ServerState.SECRET_MISSING -> res.getString(R.string.a24_server_secret_missing)
@@ -475,9 +536,8 @@ private fun serverText(res: android.content.res.Resources, state: ServerState, p
 }
 
 /** The request the user can send to Hermes for each server-side gap (prefilled, never auto-sent). */
-private fun askPrompt(res: android.content.res.Resources, state: ServerState, profile: String): String? = when (state) {
+private fun askPrompt(res: android.content.res.Resources, state: ServerState): String? = when (state) {
     ServerState.PLUGIN_MISSING -> res.getString(R.string.a24_prompt_install, PLUGIN_REPO_URL)
-    ServerState.PLUGIN_NOT_ENABLED -> res.getString(R.string.a26_prompt_enable, profile)
     ServerState.API_SERVER_OFF, ServerState.API_SERVER_LOOPBACK -> res.getString(R.string.a24_prompt_api_server)
     ServerState.SECRET_MISSING -> res.getString(R.string.a24_prompt_configure)
     else -> null

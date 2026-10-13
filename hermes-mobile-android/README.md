@@ -1,3 +1,13 @@
+# Hermes Mobile · 0.2.0-alpha28
+
+**One tap enables a profile.** On a profile that has not enabled the `hermes-android` plugin, **Notifications → Enable for this profile** runs `/android-enable <profile>` in a profile that already has it. That enables the plugin there with the same install and server key, brings it up live (no full gateway restart: only that profile restarts inside the multiplexing gateway), and pairs the phone.
+
+Pairing and the test go through `/android-pair <profile>` and `/android-test <profile>`, so a profile with no app conversation can be paired too, and the answer is always the named profile's. Plugin commands run under the gateway's launch profile whichever chat sends them.
+
+**Ask Hermes** prefills its request again: the new chat's empty saved composer used to wipe it.
+
+Requires `hermes-android` 0.5.1. Version code 34.
+
 # Hermes Mobile · 0.2.0-alpha27
 
 **Notifications for every profile, explained.** Hermes isolates profiles, so each one has to enable the `hermes-android` plugin before it can notify the phone. The Notifications screen no longer reports such a profile as "plugin not installed":
