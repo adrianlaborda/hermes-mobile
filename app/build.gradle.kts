@@ -86,9 +86,9 @@ dependencies {
 
     implementation("com.squareup.okhttp3:okhttp:5.5.0")
 
-    implementation("org.commonmark:commonmark:0.30.0")
-    implementation("org.commonmark:commonmark-ext-gfm-tables:0.30.0")
-    implementation("org.commonmark:commonmark-ext-gfm-strikethrough:0.30.0")
+    implementation("org.commonmark:commonmark:0.30.1")
+    implementation("org.commonmark:commonmark-ext-gfm-tables:0.30.1")
+    implementation("org.commonmark:commonmark-ext-gfm-strikethrough:0.30.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
