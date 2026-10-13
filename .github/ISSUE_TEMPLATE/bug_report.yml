@@ -25,7 +25,7 @@ body:
     id: app
     attributes:
       label: App version
-      description: Android Settings → Apps → Hermes Mobile shows it at the bottom, or use the release you installed.
+      description: Settings → About in the app (tap it to copy). Older builds show it in Android Settings → Apps → Hermes Mobile.
       placeholder: 0.3.0-beta.1
     validations:
       required: true

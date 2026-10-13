@@ -9,6 +9,11 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Added
+
+- **Settings → About** shows the app version, which you can tap to copy. It also links to what's new, problem reports,
+  the source code and the open-source licenses.
+
 ## [0.3.0-beta.1] - 2026-10-13
 
 First public release.

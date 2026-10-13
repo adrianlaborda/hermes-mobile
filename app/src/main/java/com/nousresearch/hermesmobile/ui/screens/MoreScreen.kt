@@ -1,6 +1,13 @@
 package com.nousresearch.hermesmobile.ui.screens
 
+import com.nousresearch.hermesmobile.BuildConfig
 import com.nousresearch.hermesmobile.R
+import android.content.ClipData
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalUriHandler
+import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -148,6 +155,8 @@ fun MoreScreen(
                 )
             }
         }
+
+        item { AboutSection() }
     }
 
     confirmForget?.let { connection ->
@@ -161,6 +170,44 @@ fun MoreScreen(
             dismissButton = { TextButton(onClick = { confirmForget = null }) { Text(stringResource(R.string.ui_19766ed6cc)) } }
         )
     }
+}
+
+const val APP_REPO_URL = "https://github.com/adrianlaborda/hermes-mobile"
+
+/** Which build this is, plus where to read changes, find the source and report problems. */
+@Composable
+private fun AboutSection() {
+    val uri = LocalUriHandler.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val version = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+    SectionLabel(stringResource(R.string.about_title))
+    FlatRow(
+        title = "Hermes Mobile",
+        description = stringResource(R.string.about_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+        leading = { HermesBrandMark(size = 24) },
+        trailing = { Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp)) },
+        // Android 13+ confirms the copy itself.
+        onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Hermes Mobile", version))) } }
+    )
+    FlatRow(stringResource(R.string.about_changes), leading = { Icon(Icons.Default.NewReleases, null) },
+        trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(18.dp)) },
+        onClick = { uri.openUri("$APP_REPO_URL/releases") })
+    FlatRow(stringResource(R.string.about_report), leading = { Icon(Icons.Default.BugReport, null) },
+        trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(18.dp)) },
+        onClick = { uri.openUri("$APP_REPO_URL/issues/new/choose") })
+    FlatRow(stringResource(R.string.about_source), leading = { Icon(Icons.Default.Code, null) },
+        trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(18.dp)) },
+        onClick = { uri.openUri(APP_REPO_URL) })
+    FlatRow(stringResource(R.string.about_licenses), leading = { Icon(Icons.Default.Gavel, null) },
+        trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(18.dp)) },
+        onClick = { uri.openUri("$APP_REPO_URL/blob/main/THIRD_PARTY_NOTICES.md") })
+    Text(
+        stringResource(R.string.about_unofficial),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp)
+    )
 }
 
 private fun authLabel(config: GatewayConfig?): String = when (config?.authMode) {
