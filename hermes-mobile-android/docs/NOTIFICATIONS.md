@@ -40,7 +40,20 @@ At <https://console.firebase.google.com>:
 | 4. Permission | Android's notification permission. |
 | **Pair with this server** | The app fetches the API server's port and the pairing secret over the same authenticated connection, then registers the phone. You never copy a secret. |
 
-Then tap **Send test**. Each Hermes profile is paired separately.
+Then tap **Send test**.
+
+### More profiles
+
+Hermes isolates profiles: each one enables its own plugins and has its own pairing secret, inbox and scheduled jobs.
+So each profile has to enable the plugin before it can notify the phone, and pairs separately. You install it once.
+
+1. In **Notifications**, pick the profile at the top. If another profile already runs the plugin, the screen says
+   so and offers **Ask Hermes in default**, or whichever profile has it.
+2. Hermes shows the plan and applies it when you confirm:
+   - it links the same install into the profile;
+   - it creates that profile's secret;
+   - it points it at the same Firebase key, so there is nothing to upload.
+3. After the gateway restart, tap **Check again**, then **Pair with this server**.
 
 > **Never attach the server key in a chat.** Chat attachments are expanded into the model's prompt, so the key would
 > reach your model provider. Use the **Upload server key** button.

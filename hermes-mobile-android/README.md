@@ -1,3 +1,17 @@
+# Hermes Mobile · 0.2.0-alpha27
+
+**Notifications for every profile, explained.** Hermes isolates profiles, so each one has to enable the `hermes-android` plugin before it can notify the phone. The Notifications screen no longer reports such a profile as "plugin not installed":
+- It now asks the server's other profiles, and when one already runs the plugin it explains that the plugin is installed but not enabled for this profile.
+- **Ask Hermes in default** opens a chat in that profile with the request to enable it. That profile has the plugin's tools.
+- Step 3 says the profile will use the same server key, with nothing to upload.
+
+Plugin commands now bind only to app, Desktop or terminal conversations of a profile, never to Telegram or cron sessions, where the plugin rightly refuses to answer. Requires `hermes-android` 0.5.1:
+- it links the plugin into each profile instead of copying it, so one install and one update serve all of them;
+- it shares the Firebase key file;
+- it treats the app's own conversations as a non-messaging surface.
+
+Version code 33.
+
 # Hermes Mobile · 0.2.0-alpha26
 
 **The context ring fills for reopened chats.** The gateway measures context occupancy only after a turn has run in its process, so a chat reopened from the list, or any chat after a gateway restart, reported no window and the composer ring stayed at "–" until the next answer. Between turns the app now also asks `session.context_breakdown` (measured when available, otherwise estimated from prompt, tools and transcript), as Desktop's gauge does. During a turn the live `session.usage` ticks still drive the ring. Usage is cleared when you switch chats, so a ring never shows another chat's figure. A session whose agent the gateway has not built yet still shows "–" until its first turn. Unit-tested. Not yet checked on a device. Version code 32.

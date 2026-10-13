@@ -87,6 +87,8 @@ fun PushSettings(
     var pairing by remember(config, profile) { mutableStateOf<ServerPairing?>(null) }
     var server by remember(config, profile) { mutableStateOf(ServerState.UNKNOWN) }
     var checking by remember(config, profile) { mutableStateOf(false) }
+    // Another profile of this server that already runs the plugin (it can enable this one from chat).
+    var host by remember(config, profile) { mutableStateOf<ServerPairing?>(null) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed = it }
 
     fun action(block: suspend () -> Unit) {
@@ -105,6 +107,7 @@ fun PushSettings(
         try {
             val reply = PushSetup.parsePairing(runCommand(profile, PushSetup.PAIR_COMMAND, ""))
             pairing = reply
+            host = null
             server = PushSetup.state(reply, profile)
             return reply
         } catch (e: CancellationException) { throw e }
@@ -114,6 +117,15 @@ fun PushSettings(
             server = if ((e.message ?: "").contains("not a quick/plugin", ignoreCase = true) ||
                 e.message == "not_a_pairing_reply") ServerState.PLUGIN_MISSING else ServerState.UNKNOWN
             if (server == ServerState.UNKNOWN) error = e.message
+            if (server == ServerState.PLUGIN_MISSING) {
+                // Profiles are isolated: the plugin may be installed and running in another one.
+                host = PushSetup.hostCandidates(profiles, profile).firstNotNullOfOrNull { other ->
+                    try { PushSetup.parsePairing(runCommand(other, PushSetup.PAIR_COMMAND, "")).let { it.copy(profile = it.profile.ifBlank { other }) } }
+                    catch (ce: CancellationException) { throw ce }
+                    catch (_: Exception) { null }
+                }
+                if (host != null) server = ServerState.PLUGIN_NOT_ENABLED
+            }
             return null
         } finally { checking = false }
     }
@@ -228,11 +240,15 @@ fun PushSettings(
             }
             item {
                 SetupStep(1, stringResource(R.string.a24_step_server), done = server == ServerState.READY) {
-                    Text(serverText(res, server, pairing, profile, checking), style = MaterialTheme.typography.bodySmall,
+                    Text(serverText(res, server, pairing ?: host, profile, checking), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        askPrompt(res, server)?.let { prompt ->
-                            FilledTonalButton(onClick = { onAskHermes(profile, prompt) }) { Text(stringResource(R.string.a24_ask_hermes)) }
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        askPrompt(res, server, profile)?.let { prompt ->
+                            // Enabling another profile is done by a profile that already has the plugin's tools.
+                            val askProfile = host?.profile?.takeIf { server == ServerState.PLUGIN_NOT_ENABLED && it.isNotBlank() }
+                            FilledTonalButton(onClick = { onAskHermes(askProfile ?: profile, prompt) }) {
+                                Text(if (askProfile != null) stringResource(R.string.a26_ask_in, askProfile) else stringResource(R.string.a24_ask_hermes))
+                            }
                         }
                         OutlinedButton(enabled = !checking && !busy && config != null, onClick = { scope.launch { error = null; probe() } }) {
                             Text(stringResource(R.string.a24_check_again))
@@ -267,7 +283,12 @@ fun PushSettings(
             item {
                 val keyOk = pairing?.keyState == "ok"
                 SetupStep(3, stringResource(R.string.a24_step_key), done = keyOk) {
-                    if (!keyOk) Text(stringResource(R.string.a24_key_help), style = MaterialTheme.typography.bodySmall,
+                    val shared = host?.takeIf { server == ServerState.PLUGIN_NOT_ENABLED }
+                    if (shared != null) Text(
+                        if (shared.keyState == "ok") stringResource(R.string.a26_key_shared, shared.profile, shared.keyProject)
+                        else stringResource(R.string.a26_key_shared_none),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else if (!keyOk) Text(stringResource(R.string.a24_key_help), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (keyOk) {
                         val project = pairing?.keyProject.orEmpty()
@@ -277,7 +298,7 @@ fun PushSettings(
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                         }
                     }
-                    OutlinedButton(enabled = !busy && server != ServerState.PLUGIN_MISSING && server != ServerState.UNKNOWN,
+                    if (shared == null) OutlinedButton(enabled = !busy && server != ServerState.PLUGIN_MISSING && server != ServerState.UNKNOWN,
                         onClick = { uploadKey.launch(arrayOf("application/json", "text/plain", "application/octet-stream", "*/*")) }) {
                         Text(stringResource(if (keyOk) R.string.a24_replace_key else R.string.a24_upload_key))
                     }
@@ -444,6 +465,7 @@ private fun serverText(res: android.content.res.Resources, state: ServerState, p
     else -> when (state) {
         ServerState.READY -> res.getString(R.string.a24_server_ready, pairing?.pluginVersion.orEmpty())
         ServerState.PLUGIN_MISSING -> res.getString(R.string.a24_server_plugin_missing)
+        ServerState.PLUGIN_NOT_ENABLED -> res.getString(R.string.a26_server_not_enabled, pairing?.profile.orEmpty(), profile)
         ServerState.API_SERVER_OFF -> res.getString(R.string.a24_server_api_off)
         ServerState.API_SERVER_LOOPBACK -> res.getString(R.string.a24_server_api_loopback)
         ServerState.SECRET_MISSING -> res.getString(R.string.a24_server_secret_missing)
@@ -453,8 +475,9 @@ private fun serverText(res: android.content.res.Resources, state: ServerState, p
 }
 
 /** The request the user can send to Hermes for each server-side gap (prefilled, never auto-sent). */
-private fun askPrompt(res: android.content.res.Resources, state: ServerState): String? = when (state) {
+private fun askPrompt(res: android.content.res.Resources, state: ServerState, profile: String): String? = when (state) {
     ServerState.PLUGIN_MISSING -> res.getString(R.string.a24_prompt_install, PLUGIN_REPO_URL)
+    ServerState.PLUGIN_NOT_ENABLED -> res.getString(R.string.a26_prompt_enable, profile)
     ServerState.API_SERVER_OFF, ServerState.API_SERVER_LOOPBACK -> res.getString(R.string.a24_prompt_api_server)
     ServerState.SECRET_MISSING -> res.getString(R.string.a24_prompt_configure)
     else -> null

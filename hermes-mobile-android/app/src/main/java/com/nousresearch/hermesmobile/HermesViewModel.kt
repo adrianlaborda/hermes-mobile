@@ -1995,6 +1995,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
+    private val PLUGIN_COMMAND_SURFACES = setOf("", "mobile", "desktop", "tui", "cli", "api_server", "local")
     private val pluginSessions = mutableMapOf<String, String>()
     private var pluginSessionsRepo: HermesRepository? = null
 
@@ -2003,8 +2004,11 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
      * opening a chat there: resumes that profile's most recent conversation (no new chat is created).
      */
     private suspend fun profileRuntimeSession(repo: HermesRepository, profile: String): String? {
-        val stored = uiState.sessions.firstOrNull { it.profile == profile }
-            ?: runCatching { repo.rest.sessionsPage(profile, limit = 1, offset = 0, includeArchived = true).sessions.firstOrNull() }.getOrNull()
+        // Only an app/Desktop/terminal conversation: plugins refuse secret-bearing commands in messaging
+        // channels (Telegram…, cron deliveries), where the reply would be posted to a chat.
+        fun usable(source: String) = source.trim().lowercase() in PLUGIN_COMMAND_SURFACES
+        val stored = uiState.sessions.firstOrNull { it.profile == profile && usable(it.source) }
+            ?: runCatching { repo.rest.sessionsPage(profile, limit = 20, offset = 0, includeArchived = true).sessions.firstOrNull { usable(it.source) } }.getOrNull()
             ?: return null
         val runtime = runCatching { repo.resumeSession(stored.id, profile, stored.title, stored.source).runtimeSessionId }.getOrNull()
         if (runtime != null) pluginSessions[profile] = runtime

@@ -53,4 +53,10 @@ class PushSetupTest {
         assertEquals(ServerState.SECRET_MISSING, PushSetup.state(ready.copy(ready = false, secret = ""), "default"))
         assertThrows(IllegalArgumentException::class.java) { PushSetup.parsePairing("Unknown command") }
     }
+
+    @Test
+    fun hostCandidatesAskTheLaunchProfileFirst() {
+        assertEquals(listOf("default", "work"), PushSetup.hostCandidates(listOf("seo", "work", "default"), "seo"))
+        assertEquals(listOf("seo"), PushSetup.hostCandidates(listOf("default", "seo"), "default"))
+    }
 }

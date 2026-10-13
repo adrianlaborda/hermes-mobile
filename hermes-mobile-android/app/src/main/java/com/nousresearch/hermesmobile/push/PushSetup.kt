@@ -16,8 +16,11 @@ data class ServerPairing(
     val pluginVersion: String
 )
 
-/** Where the server stands, as the Notifications wizard shows it. */
-enum class ServerState { UNKNOWN, PLUGIN_MISSING, API_SERVER_OFF, API_SERVER_LOOPBACK, SECRET_MISSING, WRONG_PROFILE, READY }
+/**
+ * Where the server stands, as the Notifications wizard shows it. PLUGIN_NOT_ENABLED: Hermes isolates
+ * profiles, and another profile of this server has the plugin while this one has not turned it on.
+ */
+enum class ServerState { UNKNOWN, PLUGIN_MISSING, PLUGIN_NOT_ENABLED, API_SERVER_OFF, API_SERVER_LOOPBACK, SECRET_MISSING, WRONG_PROFILE, READY }
 
 object PushSetup {
     const val PAIR_COMMAND = "android-pair"
@@ -42,6 +45,10 @@ object PushSetup {
             pluginVersion = o.optString("plugin_version")
         )
     }
+
+    /** The other profiles to ask whether the plugin is installed on this server, the launch profile first. */
+    fun hostCandidates(profiles: List<String>, current: String): List<String> =
+        profiles.filter { it != current }.sortedBy { if (it == "default") 0 else 1 }
 
     fun state(pairing: ServerPairing?, expectedProfile: String): ServerState = when {
         pairing == null -> ServerState.UNKNOWN

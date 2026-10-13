@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a26_server_not_enabled">El plugin hermes-android está instalado en este servidor (perfil %1$s), pero no activado para %2$s. Los perfiles de Hermes están aislados y cada uno lo activa por separado. Pídeselo a Hermes en %1$s: lo activa para este perfil con la misma instalación y la misma clave del servidor.</string>
+    <string name="a26_prompt_enable">Activa las notificaciones de Hermes Android para el perfil %1$s. Enséñame el plan con hermes_android_enable_profile y aplícalo cuando te lo confirme.</string>
+    <string name="a26_ask_in">Pedírselo a Hermes en %1$s</string>
+    <string name="a26_key_shared">Al activarlo, este perfil usará la misma clave del servidor que %1$s (proyecto %2$s). No hay que subir nada.</string>
+    <string name="a26_key_shared_none">Cuando el plugin esté activado para este perfil, sube aquí la clave del servidor.</string>
+</resources>

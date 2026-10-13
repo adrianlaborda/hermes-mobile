@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a26_server_not_enabled">The hermes-android plugin is installed on this server (profile %1$s) but not enabled for %2$s. Hermes profiles are isolated, so each one turns it on separately. Ask Hermes in %1$s: it enables it for this profile, reusing the same install and server key.</string>
+    <string name="a26_prompt_enable">Enable Hermes Android notifications for the profile %1$s. Show me the plan with hermes_android_enable_profile, and apply it when I confirm.</string>
+    <string name="a26_ask_in">Ask Hermes in %1$s</string>
+    <string name="a26_key_shared">Once enabled, this profile uses the same server key as %1$s (project %2$s). There is nothing to upload.</string>
+    <string name="a26_key_shared_none">Once the plugin is enabled for this profile, upload the server key here.</string>
+</resources>
