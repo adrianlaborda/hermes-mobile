@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Notifications server plugin
+    url: https://github.com/adrianlaborda/hermes-android-plugin/issues
+    about: Problems in the hermes-android server plugin itself.
+  - name: Hermes Agent
+    url: https://github.com/NousResearch/hermes-agent/issues
+    about: Problems in the Hermes Agent server, not in this app.

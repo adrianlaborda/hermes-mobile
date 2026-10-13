@@ -2,7 +2,7 @@
 
 ## What this is
 
-Android client (Kotlin + Jetpack Compose) for Hermes agent gateways — mirrors the Hermes Desktop/web UI from `NousResearch/hermes-agent`, adapted to mobile. Single Gradle module in `hermes-mobile-android/`; the git root is this directory, so **all Gradle/adb commands run from inside `hermes-mobile-android/`**.
+Android client (Kotlin + Jetpack Compose) for Hermes agent gateways — mirrors the Hermes Desktop/web UI from `NousResearch/hermes-agent`, adapted to mobile. Single Gradle module (`app/`) at the repository root; run Gradle/adb commands from here.
 
 ## Commands
 
@@ -14,10 +14,14 @@ This machine has no global `ANDROID_HOME`; prefix Gradle calls with `ANDROID_HOM
 - **Source contract check (CI runs it before build):** `python3 scripts/verify_source.py` — run locally when touching strings/resources or feature-presence checks.
 - Install on a device: `adb -s <serial> install -r app/build/outputs/apk/debug/app-debug.apk`
 
-## Versioning
+## Versioning and releases
 
+- [SemVer](https://semver.org) with dot-separated pre-release identifiers: `0.3.0-beta.1`, `0.3.0-beta.2`, `0.3.0`. Never `beta2`: it sorts wrongly.
 - `versionCode` / `versionName` in `app/build.gradle.kts`. Bump **both** for any deliverable update: `adb install -r` silently fails to replace an older install unless `versionCode` increases.
-- Each alpha ships with a scoped report in the module root (`UX_ALPHA*.md`, `VALIDATION_ALPHA*.md`, `REVIEW_ALPHA*.md`) and release notes prepended to `README.md`.
+- User-visible changes go under `## [Unreleased]` in `CHANGELOG.md` (Keep a Changelog). A release moves them under a `## [X.Y.Z] - date` heading.
+- Releasing is pushing a tag `vX.Y.Z` that matches `versionName`. `.github/workflows/release.yml` checks the match, signs with the keystore from the repo secrets, attests the APK and publishes the GitHub release with notes from `scripts/release_notes.py`.
+- Local signed builds: `scripts/build-release.sh` (keystore path in `~/.gradle/gradle.properties`, password in the macOS Keychain).
+- Commits carry no AI co-author trailers.
 
 ## Strings / i18n
 

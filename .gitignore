@@ -1,12 +1,32 @@
-# macOS
+# Gradle / Kotlin / Android Studio
+.gradle/
+.kotlin/
+build/
+.idea/
+*.iml
+local.properties
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Secrets: each user brings their own Firebase project; release signing stays outside the repo
+google-services.json
+firebase*.properties
+*service-account*.json
+*.jks
+*.keystore
+*.p12
+*.pem
+.env
+.env.*
+
+# Release artifacts (built and published by the release workflow)
+*.apk
+*.aab
+*.zip
+*.sha256
+SHA256SUMS*
+
+# OS / local tooling
 .DS_Store
-
-# Local tooling caches
 .atl/
-
-# Delivery artifacts (release zips / APKs / checksums are produced by CI)
-/hermes-mobile-v0.2.0-alpha14-bundle/
-/*.zip
-/*.apk
-/*.sha256
-/SHA256SUMS*.txt

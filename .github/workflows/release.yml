@@ -1,0 +1,118 @@
+name: Release
+
+# Push a tag vX.Y.Z or vX.Y.Z-beta.N that matches versionName in app/build.gradle.kts.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write       # create the GitHub release
+      id-token: write       # sign the build provenance attestation
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check the tag matches versionName
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          declared="$(sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"
+          if [ "$version" != "$declared" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match versionName $declared"
+            exit 1
+          fi
+          python3 scripts/release_notes.py "$version" > /dev/null
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true   # release builds start clean
+
+      - name: Install Android platform
+        run: sdkmanager 'platforms;android-37.0'
+
+      - name: Verify source contract
+        run: python3 scripts/verify_source.py
+
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.HERMES_SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::The HERMES_SIGNING_KEYSTORE_BASE64 secret is not set"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+
+      - name: Test, lint and build the signed release
+        env:
+          HERMES_SIGNING_PASSWORD: ${{ secrets.HERMES_SIGNING_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.HERMES_SIGNING_KEY_ALIAS }}
+        run: >
+          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleRelease --stacktrace
+          -Phermes.signing.storeFile="$RUNNER_TEMP/release.jks"
+          -Phermes.signing.keyAlias="${KEY_ALIAS:-hermes-mobile}"
+
+      - name: Package the APK and checksums
+        id: package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir dist
+          apk="hermes-mobile-$VERSION.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/$apk"
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          "$apksigner" verify "dist/$apk"
+          cert="$("$apksigner" verify --print-certs "dist/$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
+          (cd dist && sha256sum "$apk" > SHA256SUMS)
+          echo "apk=dist/$apk" >> "$GITHUB_OUTPUT"
+          echo "cert=$cert" >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/release.jks"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.package.outputs.apk }}
+
+      - name: Write release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          CERT: ${{ steps.package.outputs.cert }}
+        run: |
+          python3 scripts/release_notes.py "$VERSION" > notes.md
+          {
+            echo
+            echo "---"
+            echo
+            echo "**Install:** download \`hermes-mobile-$VERSION.apk\` below and open it on your phone."
+            echo
+            echo "**Signing certificate SHA-256:** \`$CERT\`"
+            echo
+            echo "Verify: \`sha256sum -c SHA256SUMS\` and \`gh attestation verify hermes-mobile-$VERSION.apk --repo $GITHUB_REPOSITORY\`"
+          } >> notes.md
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Hermes Mobile $VERSION" --notes-file notes.md $prerelease

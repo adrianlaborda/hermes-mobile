@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in the app does not work as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Never paste secrets** here: no server keys, pairing secrets, tokens or `google-services.json`.
+        For a security problem, use [private vulnerability reporting](../security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Tap …
+  - type: input
+    id: app
+    attributes:
+      label: App version
+      description: Android Settings → Apps → Hermes Mobile shows it at the bottom, or use the release you installed.
+      placeholder: 0.3.0-beta.1
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Pixel 9, Android 16
+    validations:
+      required: true
+  - type: input
+    id: hermes
+    attributes:
+      label: Hermes Agent version
+      description: Output of `hermes --version` on the server.
+  - type: input
+    id: plugin
+    attributes:
+      label: hermes-android plugin version
+      description: Only for notification problems.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove anything private first.

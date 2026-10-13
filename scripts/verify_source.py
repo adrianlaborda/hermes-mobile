@@ -220,10 +220,13 @@ if (ROOT / 'app/src/main/java/com/nousresearch/hermesmobile/ui/screens/TelegramS
 # Phase-5A (alpha6) auth + multi-gateway routing invariants.
 import re as _re
 _vc = _re.search(r'versionCode = (\d+)', build_gradle)
-_vn = _re.search(r'versionName = "0\.2\.0-alpha(\d+)', build_gradle)
-# Every alpha bumps both; versionCode has tracked alphaN + 6 since alpha13.
-if not _vc or not _vn or int(_vc.group(1)) != int(_vn.group(1)) + 6:
-    errors.append('versionCode/versionName mismatch (expected versionCode = alpha + 6)')
+_vn = _re.search(r'versionName = "([^"]+)"', build_gradle)
+# SemVer with dot-separated pre-release identifiers (0.3.0-beta.1), so tags and release lists sort correctly.
+_semver = r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-(alpha|beta|rc)\.[1-9]\d*)?'
+if not _vc or int(_vc.group(1)) < 35:
+    errors.append('versionCode missing or lower than 35 (0.3.0-beta.1)')
+if not _vn or not _re.fullmatch(_semver, _vn.group(1)):
+    errors.append('versionName must be SemVer like 0.3.0 or 0.3.0-beta.1')
 
 auth_path = ROOT / 'app/src/main/java/com/nousresearch/hermesmobile/data/GatewayAuth.kt'
 if not auth_path.exists():

@@ -13,8 +13,8 @@ android {
         applicationId = providers.gradleProperty("hermes.applicationId").orElse("io.github.adrianlaborda.hermesmobile").get()
         minSdk = 26
         targetSdk = 36
-        versionCode = 34
-        versionName = "0.2.0-alpha28"
+        versionCode = 35
+        versionName = "0.3.0-beta.1"
 
         for (name in listOf("google_app_id", "gcm_defaultSenderId", "google_api_key", "project_id")) {
             resValue("string", name, providers.gradleProperty("firebase.$name").orElse("").get())
