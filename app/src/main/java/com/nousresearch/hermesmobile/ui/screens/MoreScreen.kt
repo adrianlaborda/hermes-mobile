@@ -34,6 +34,7 @@ fun MoreScreen(
     connections: List<GatewayConfig>,
     status: GatewayStatus?,
     profileCount: Int,
+    profileNames: List<String> = emptyList(),
     sessionCount: Int,
     onNotifications: () -> Unit,
     onSystem: () -> Unit,
@@ -92,6 +93,7 @@ fun MoreScreen(
                 Text(sessionCount.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             }
+            com.nousresearch.hermesmobile.assist.AssistSettingsSection(profileNames)
             SectionLabel(stringResource(R.string.ui_5a23444828))
             FlatRow(title = androidx.compose.ui.res.stringResource(com.nousresearch.hermesmobile.R.string.push_title),
                 leading = { Icon(Icons.Default.NotificationsNone, null) }, onClick = onNotifications)

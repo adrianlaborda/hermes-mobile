@@ -47,5 +47,19 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity>
+        <!-- Makes Hermes selectable as the digital assistant app (hold the power button, corner swipe). -->
+        <activity
+            android:name=".assist.AssistActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.assist"
+            android:theme="@style/Theme.HermesMobile.Assist"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

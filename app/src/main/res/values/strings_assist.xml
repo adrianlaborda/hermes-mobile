@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assist_voice_chat_title">Voice</string>
+    <string name="assist_unlock_to_talk">Unlock to talk to Hermes</string>
+    <string name="assist_unlock">Unlock</string>
+    <string name="assist_listening">Listening…</string>
+    <string name="assist_connecting">Connecting to your server…</string>
+    <string name="assist_transcribing">Transcribing…</string>
+    <string name="assist_not_heard">I didn\'t catch that. Tap the microphone and try again.</string>
+    <string name="assist_no_server">Open Hermes and connect to your server first.</string>
+    <string name="assist_unreachable">Can\'t reach your Hermes server.</string>
+    <string name="assist_mic_needed">Hermes needs microphone access to listen.</string>
+    <string name="assist_allow_mic">Allow microphone</string>
+    <string name="assist_needs_confirmation">Hermes needs your confirmation to continue.</string>
+    <string name="assist_review">Review</string>
+    <string name="assist_open_app">Open in Hermes</string>
+    <string name="assist_talk">Talk</string>
+    <string name="assist_stop">Stop</string>
+    <string name="assist_stop_speaking">Stop speaking</string>
+    <string name="assist_close">Close</string>
+    <string name="assist_locked">Locked</string>
+    <string name="assist_settings_title">Voice assistant</string>
+    <string name="assist_default_title">Digital assistant app</string>
+    <string name="assist_default_on">Hermes opens when you hold the power button</string>
+    <string name="assist_default_off">Choose Hermes to open it by holding the power button</string>
+    <string name="assist_profile">Assistant profile</string>
+    <string name="assist_profile_app">Profile selected in the app</string>
+    <string name="assist_lock_title">Use Hermes without unlocking</string>
+    <string name="assist_lock_desc">Talk to Hermes and hear answers on the lock screen. Earlier conversations, opening the app and confirming actions still need unlocking.</string>
+    <string name="assist_locked_profile">Profile while locked</string>
+    <string name="assist_locked_profile_same">Same as the assistant profile</string>
+    <string name="assist_lock_tip">Anyone holding your phone can talk to this profile. Give it only the tools you are comfortable with.</string>
+</resources>

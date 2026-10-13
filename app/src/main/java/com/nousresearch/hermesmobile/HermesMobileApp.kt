@@ -337,6 +337,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         connections = s.connections,
                         status = s.status,
                         profileCount = s.profiles.size,
+                        profileNames = s.profiles.map { it.name },
                         sessionCount = s.sessions.size,
                         onNotifications = { showPush = true },
                         onSystem = { vm.switchSection(MainSection.SYSTEM) },

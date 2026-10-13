@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assist_voice_chat_title">Voz</string>
+    <string name="assist_unlock_to_talk">Desbloquea para hablar con Hermes</string>
+    <string name="assist_unlock">Desbloquear</string>
+    <string name="assist_listening">Escuchando…</string>
+    <string name="assist_connecting">Conectando con tu servidor…</string>
+    <string name="assist_transcribing">Transcribiendo…</string>
+    <string name="assist_not_heard">No te he entendido. Toca el micrófono y vuelve a intentarlo.</string>
+    <string name="assist_no_server">Abre Hermes y conéctate primero a tu servidor.</string>
+    <string name="assist_unreachable">No se puede conectar con tu servidor de Hermes.</string>
+    <string name="assist_mic_needed">Hermes necesita acceso al micrófono para escucharte.</string>
+    <string name="assist_allow_mic">Permitir micrófono</string>
+    <string name="assist_needs_confirmation">Hermes necesita que confirmes para continuar.</string>
+    <string name="assist_review">Revisar</string>
+    <string name="assist_open_app">Abrir en Hermes</string>
+    <string name="assist_talk">Hablar</string>
+    <string name="assist_stop">Parar</string>
+    <string name="assist_stop_speaking">Dejar de hablar</string>
+    <string name="assist_close">Cerrar</string>
+    <string name="assist_locked">Bloqueado</string>
+    <string name="assist_settings_title">Asistente de voz</string>
+    <string name="assist_default_title">Aplicación de asistente digital</string>
+    <string name="assist_default_on">Hermes se abre al mantener pulsado el botón de encendido</string>
+    <string name="assist_default_off">Elige Hermes para abrirlo manteniendo pulsado el botón de encendido</string>
+    <string name="assist_profile">Perfil del asistente</string>
+    <string name="assist_profile_app">El perfil elegido en la app</string>
+    <string name="assist_lock_title">Usar Hermes sin desbloquear</string>
+    <string name="assist_lock_desc">Habla con Hermes y escucha sus respuestas en la pantalla de bloqueo. Las conversaciones anteriores, abrir la app y confirmar acciones siguen pidiendo desbloquear.</string>
+    <string name="assist_locked_profile">Perfil con el móvil bloqueado</string>
+    <string name="assist_locked_profile_same">El mismo que el del asistente</string>
+    <string name="assist_lock_tip">Cualquiera que tenga tu móvil puede hablar con este perfil. Dale solo las herramientas con las que estés tranquilo.</string>
+</resources>

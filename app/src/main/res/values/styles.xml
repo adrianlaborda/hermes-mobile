@@ -8,4 +8,12 @@
         <item name="android:windowBackground">@color/hermes_window_background</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>
+    <!-- The voice assistant: a translucent, dimmed window so its card floats over the current app or lock screen. -->
+    <style name="Theme.HermesMobile.Assist">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.45</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.InputMethod</item>
+    </style>
 </resources>

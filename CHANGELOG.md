@@ -11,6 +11,17 @@ server plugin it needs for notifications.
 
 ### Added
 
+- **Hermes as your digital assistant.** Choose Hermes under **Settings → Voice assistant → Digital assistant app**.
+  Holding the power button (or the corner swipe) opens a voice card over whatever is on screen:
+  - it listens at once and stops by itself when you stop talking;
+  - your server transcribes the request, Hermes answers in the profile's voice conversation, and the answer is read
+    aloud;
+  - talking again within five minutes continues the same conversation;
+  - **Open in Hermes** continues it in the app.
+- **The lock screen works like Gemini's.** By default the assistant asks you to unlock first. With **Use Hermes without
+  unlocking** it listens and answers over the lock screen, optionally with a separate, more limited profile. Earlier
+  conversations, opening the app and confirming actions still need unlocking.
+
 - **Settings → About** shows the app version, which you can tap to copy. It also links to what's new, problem reports,
   the source code and the open-source licenses.
 

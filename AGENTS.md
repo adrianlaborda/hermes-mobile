@@ -49,7 +49,7 @@ The server side is the [`hermes-android`](https://github.com/adrianlaborda/herme
 ## Architecture notes
 
 - Shell: `HermesMobileApp.kt` — `ModalNavigationDrawer` + `Scaffold`, hamburger in each top-level screen's top bar. The bottom navigation bar was intentionally removed.
-- State: single `HermesViewModel` exposing `uiState`; gateway REST/WS in `data/` (`HermesRestClient`, `GatewayConfigStore`, `ChatTimeline`); optional feature pages in `features/` (`ParityScreen`, `VoiceControls`, `ExperienceHub`, `WorkspaceExperience`).
+- State: single `HermesViewModel` exposing `uiState`. It is process-wide (`HermesApplication.viewModel`), shared by `MainActivity` and the voice assistant overlay `assist/AssistActivity`, which count as foreground through `screenStarted()` / `screenStopped()`; gateway REST/WS in `data/` (`HermesRestClient`, `GatewayConfigStore`, `ChatTimeline`); optional feature pages in `features/` (`ParityScreen`, `VoiceControls`, `ExperienceHub`, `WorkspaceExperience`).
 - Chat rendering: `data/ChatTimeline.kt` collapses consecutive tool/reasoning rows into `ChatTimelineItem.Activity` entries (tested in `ChatTimelineTest`). Tool activity renders as a centered pill (`ActivityPanel` in `ui/components/ChatActivity.kt`).
 - Agent images render via `ChatArtifactPreview` — downloaded on demand through the gateway file API (bounded 8 MB), decoded with `BitmapFactory`. There is deliberately no Coil/image-loader dependency for gateway paths.
 - Chat UI is split: `ChatScreen.kt` (orchestration + two-pane ≥ 760 dp), `SessionList.kt`, `ChatThread.kt`, `ChatComposer.kt`; `scripts/verify_source.py` checks them as one surface. Slash commands go through `data/SlashCommands.kt` (`complete.slash` / `slash.exec` / `command.dispatch`).

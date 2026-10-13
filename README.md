@@ -29,6 +29,8 @@ server.
 - **Routines.** Create, edit, pause and trigger cron jobs, and see their run history.
 - **Channels.** Set up Telegram and every other messaging platform your server offers, plus pairing and webhooks.
 - **Capabilities.** Manage models and providers, keys, skills, toolsets and MCP servers.
+- **Voice assistant.** Set Hermes as the digital assistant app and hold the power button to talk to it, over any app
+  or, if you allow it, over the lock screen.
 - **Notifications.** Reminders, scheduled jobs, finished turns and approval requests, for every profile. You need the
   [`hermes-android`](https://github.com/adrianlaborda/hermes-android-plugin) server plugin for these.
 - **Several servers.** Save and switch between gateways, each with its own sign-in.
