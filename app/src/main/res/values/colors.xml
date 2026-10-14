@@ -2,4 +2,6 @@
 <resources>
     <!-- Window background (light): Hermes Desktop Nous light canvas. -->
     <color name="hermes_window_background">#FFFFFF</color>
+    <!-- Nous blue, Hermes Desktop's accent. -->
+    <color name="hermes_notification_accent">#0053FD</color>
 </resources>

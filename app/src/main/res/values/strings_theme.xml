@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="theme_title">Theme</string>
+    <string name="theme_follow_hermes">Same as Hermes (%1$s)</string>
+    <string name="theme_follow_hint">Follows your server\'s Hermes skin, like Hermes Desktop. Change it with /skin.</string>
+</resources>

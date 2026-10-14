@@ -33,6 +33,12 @@ server plugin it needs for notifications.
   - Desktop's per-category colors in the context breakdown.
 
   The previous teal and gold palette was a Hermes skin that Desktop has retired. Notifications also use Nous blue.
+- **Same theme as Hermes Desktop.** By default the app follows your server's Hermes skin, resolved exactly as
+  Desktop resolves it, and changes live when the skin changes (for example with `/skin`).
+  **Settings → Theme** can instead pin any of Desktop's twelve built-in themes. The light, dark or system mode is a
+  separate setting, as in Desktop.
+- **New status bar icon:** the Hermes character, as in Desktop's monochrome icon. The old one showed as a blank
+  square.
 
 ### Fixed
 

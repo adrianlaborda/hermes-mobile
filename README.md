@@ -34,7 +34,7 @@ server.
 - **Notifications.** Reminders, scheduled jobs, finished turns and approval requests, for every profile. You need the
   [`hermes-android`](https://github.com/adrianlaborda/hermes-android-plugin) server plugin for these.
 - **Several servers.** Save and switch between gateways, each with its own sign-in.
-- **Built for phones and tablets.** Light and dark themes, two panes on tablets, and English and Spanish.
+- **Built for phones and tablets.** Hermes Desktop's themes, following your server's skin, in light and dark, two panes on tablets, and English and Spanish.
 
 ## Requirements
 

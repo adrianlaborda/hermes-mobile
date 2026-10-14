@@ -3253,6 +3253,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     override fun onGatewayReady(payload: JSONObject) {
+        // The server's Hermes skin: the app follows it, as Desktop does (Settings → Theme).
+        com.nousresearch.hermesmobile.ui.ThemeStore.saveServerSkin(getApplication(), payload.optJSONObject("skin"))
         viewModelScope.launch(Dispatchers.Main.immediate) {
         readyWaiter?.complete(Unit)
         uiState = uiState.copy(loading = false, error = null)
@@ -3319,6 +3321,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         )
                     }
                 }
+                "skin.changed" -> com.nousresearch.hermesmobile.ui.ThemeStore.saveServerSkin(getApplication(), payload.optJSONObject("skin") ?: payload)
                 "message.delta" -> handleMessageDelta(payload)
                 "thinking.delta", "reasoning.delta", "reasoning.available" -> handleReasoningEvent(type, payload)
                 "message.complete" -> { applyUsageEvent(payload); handleMessageComplete(payload) }
