@@ -39,6 +39,8 @@ class AssistController(
     var level by mutableFloatStateOf(0f)
     var locked by mutableStateOf(false)
     var speaking by mutableStateOf(false)
+    /** Reading the answer aloud failed (the gateway's text-to-speech); the answer is still on screen. */
+    var speechFailed by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     var profile by mutableStateOf("")
     val exchanges = mutableStateListOf<Exchange>()
@@ -68,6 +70,7 @@ class AssistController(
 
     private suspend fun runTurn() {
         error = null
+        speechFailed = false
         if (vm.uiState.savedConfig == null) { phase = Phase.NO_SERVER; return }
         phase = Phase.LISTENING
         stopRequested = false
@@ -103,8 +106,10 @@ class AssistController(
             phase = Phase.ANSWERED
             if (answer.isNotBlank()) {
                 speaking = true
-                voice.speak(c, answer)
-                speaking = false
+                try { voice.speak(c, answer) }
+                catch (e: CancellationException) { throw e }
+                catch (e: Throwable) { speechFailed = true }
+                finally { speaking = false }
             }
         } finally {
             c.dispose()

@@ -2,7 +2,6 @@ package com.nousresearch.hermesmobile.assist
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -47,23 +46,25 @@ fun AssistOverlay(
         Modifier.fillMaxSize().clickable(interactionSource = noRipple, indication = null, onClick = onDismiss),
         contentAlignment = Alignment.BottomCenter
     ) {
-        Column(
+        // A Surface, so text and icons get the theme's content color (a bare Column leaves them black).
+        Surface(
             Modifier
                 .navigationBarsPadding()
                 .padding(10.dp)
                 .widthIn(max = 640.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(26.dp))
-                .background(MaterialTheme.colorScheme.background)
-                .border(1.dp, MaterialTheme.hermes.line, RoundedCornerShape(26.dp))
                 // Taps inside the card must not reach the dismissing scrim.
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                .padding(horizontal = 18.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
+            shape = RoundedCornerShape(26.dp),
+            color = MaterialTheme.colorScheme.background,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.hermes.lineStrong)
         ) {
-            Header(controller, onDismiss)
-            Transcript(controller, Modifier.weight(1f, fill = false))
-            Footer(controller, onUnlock, onTalk, onOpenApp)
+            Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Header(controller, onDismiss)
+                Transcript(controller, Modifier.weight(1f, fill = false))
+                Footer(controller, onUnlock, onTalk, onOpenApp)
+            }
         }
     }
 }
@@ -106,6 +107,7 @@ private fun Transcript(controller: AssistController, modifier: Modifier) {
             Text(stringResource(R.string.assist_needs_confirmation), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
         }
         status(controller)?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        if (controller.speechFailed) Text(stringResource(R.string.assist_speech_failed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

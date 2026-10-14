@@ -30,4 +30,5 @@
     <string name="assist_locked_profile">Profile while locked</string>
     <string name="assist_locked_profile_same">Same as the assistant profile</string>
     <string name="assist_lock_tip">Anyone holding your phone can talk to this profile. Give it only the tools you are comfortable with.</string>
+    <string name="assist_speech_failed">Couldn\'t read the answer aloud. Check your server\'s text-to-speech.</string>
 </resources>

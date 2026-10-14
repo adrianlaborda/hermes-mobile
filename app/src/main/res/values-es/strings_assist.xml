@@ -30,4 +30,5 @@
     <string name="assist_locked_profile">Perfil con el móvil bloqueado</string>
     <string name="assist_locked_profile_same">El mismo que el del asistente</string>
     <string name="assist_lock_tip">Cualquiera que tenga tu móvil puede hablar con este perfil. Dale solo las herramientas con las que estés tranquilo.</string>
+    <string name="assist_speech_failed">No se ha podido leer la respuesta en voz alta. Revisa la voz (TTS) de tu servidor.</string>
 </resources>
