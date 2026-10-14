@@ -76,13 +76,17 @@ fun ContextRing(
     val arcColor by androidx.compose.animation.animateColorAsState(color, label = "context-ring-color")
     androidx.compose.foundation.Canvas(modifier) {
         val s = stroke.toPx()
-        drawCircle(color = track, radius = (size.minDimension - s) / 2f, style = androidx.compose.ui.graphics.drawscope.Stroke(s))
+        // Track and arc share one square inset by half the stroke, so the arc sits exactly on the track.
+        val diameter = size.minDimension - s
+        drawCircle(color = track, radius = diameter / 2f, style = androidx.compose.ui.graphics.drawscope.Stroke(s))
         if (fraction > 0f) {
             drawArc(
                 color = arcColor,
                 startAngle = -90f,
                 sweepAngle = 360f * fraction,
                 useCenter = false,
+                topLeft = androidx.compose.ui.geometry.Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f),
+                size = androidx.compose.ui.geometry.Size(diameter, diameter),
                 style = androidx.compose.ui.graphics.drawscope.Stroke(s, cap = androidx.compose.ui.graphics.StrokeCap.Round)
             )
         }

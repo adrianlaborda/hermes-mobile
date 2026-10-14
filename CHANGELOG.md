@@ -25,6 +25,11 @@ server plugin it needs for notifications.
 - **Settings → About** shows the app version, which you can tap to copy. It also links to what's new, problem reports,
   the source code and the open-source licenses.
 
+### Fixed
+
+- The context ring's arc now sits on its track. With the thick ring of the context sheet it used to stick out
+  of the circle.
+
 ## [0.3.0-beta.1] - 2026-10-13
 
 First public release.
