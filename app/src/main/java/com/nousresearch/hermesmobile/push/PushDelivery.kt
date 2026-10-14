@@ -71,9 +71,11 @@ object PushDelivery {
             .putExtra("event_id", eventId).setData(android.net.Uri.parse("hermes-notification:$eventId"))
         val tap = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val generic = context.getString(R.string.push_generic)
-        val publicVersion = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_hermes)
+        // Nous blue, Hermes Desktop's accent (HermesTokens.NousBlue).
+        val accent = 0xFF0053FD.toInt()
+        val publicVersion = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_hermes).setColor(accent)
             .setContentTitle("Hermes").setContentText(generic).build()
-        val builder = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_hermes)
+        val builder = NotificationCompat.Builder(context, CHANNEL).setSmallIcon(R.drawable.ic_hermes).setColor(accent)
             .setContentIntent(tap).setAutoCancel(true).setOnlyAlertOnce(true)
         if (event == null) {
             builder.setContentTitle("Hermes").setContentText(generic).setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

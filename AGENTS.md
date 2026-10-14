@@ -41,10 +41,10 @@ The server side is the [`hermes-android`](https://github.com/adrianlaborda/herme
 
 ## Design system — use it, don't bypass it
 
-- **Palette:** `ui/theme/HermesTheme.kt`. `HermesTokens` = Hermes family colors (dark/canonical: canvas `#041C1C`, cream ink `#FFE6CB`, gold `#FFBD38`, emerald `#34D399`; light = cream paper family). Theme-dependent structure lives in `HermesPalette`, accessed as `MaterialTheme.hermes.line` / `.accentTint` / `.field` / `.codeBlock` / `.userBubble` etc. Use theme roles or these tokens — never hardcode colors in screens.
+- **Palette:** `ui/theme/HermesTheme.kt` mirrors Hermes Desktop's default **Nous** skin (`apps/desktop/src/themes/presets.ts` + `apps/shared/src/theme-presets.ts` in hermes-agent): GitHub Light/Dark Default chrome with Nous blue (`#0053FD` light, `#4A84FE` dark), Desktop's `--ui-*` semantic colors and `--context-usage-*` series. Copy values from upstream instead of hand-tuning; the old teal/gold palette is a skin Desktop retired. Theme-dependent structure lives in `HermesPalette`, accessed as `MaterialTheme.hermes.line` / `.accentTint` / `.field` / `.codeBlock` / `.userBubble` etc. Use theme roles or these tokens — never hardcode colors in screens.
 - **Type:** `ui/theme/Type.kt` exposes `HermesSans` (Inter) and `HermesMono` (JetBrains Mono) as **bundled variable fonts** in `res/font/` (OFL) — the app must render identically offline; don't switch to downloadable Google Fonts.
 - **Primitives:** `ui/components/HermesPrimitives.kt` — `HermesTopBar`, `FlatRow`, `SectionLabel`, `DashedDivider`, `ThinkingIndicator`, `StatusPill`, `ContextRing`, `ChatMessageBubble`, `HermesLoader`… plus `HermesDrawer` for navigation. Compose new UI from these + `MaterialTheme.hermes.*`.
-- Visual reference: Hermes Desktop (`web/` in hermes-agent, LENS_0 palette) adapted to mobile, with component patterns from beautifului.dev (hairline borders, dashed separators, tinted pills).
+- Visual reference: Hermes Desktop (`apps/desktop/` in hermes-agent, Nous skin) adapted to mobile, with component patterns from beautifului.dev (hairline borders, dashed separators, tinted pills).
 
 ## Architecture notes
 

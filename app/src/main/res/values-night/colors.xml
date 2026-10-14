@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Hermes family window background (dark): the canonical Hermes Teal canvas. -->
-    <color name="hermes_window_background">#041C1C</color>
+    <!-- Window background (dark): Hermes Desktop Nous dark canvas. -->
+    <color name="hermes_window_background">#0D1117</color>
 </resources>

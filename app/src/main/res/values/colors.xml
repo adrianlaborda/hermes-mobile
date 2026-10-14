@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Hermes family window background (light): warm cream paper. -->
-    <color name="hermes_window_background">#FAF6EC</color>
+    <!-- Window background (light): Hermes Desktop Nous light canvas. -->
+    <color name="hermes_window_background">#FFFFFF</color>
 </resources>

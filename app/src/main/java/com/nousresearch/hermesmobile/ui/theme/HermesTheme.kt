@@ -13,62 +13,58 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 
 /**
- * Hermes family design tokens.
+ * Hermes family design tokens: Hermes Desktop's default "Nous" skin
+ * (apps/desktop/src/themes, apps/shared/src/theme-presets.ts in hermes-agent).
  *
- * The dark palette is the canonical Hermes Desktop look ("Hermes Teal",
- * LENS_0): deep teal canvas #041C1C, warm cream ink #FFE6CB and the brand
- * gold glow #FFBD38. The light palette keeps the same warmth on paper —
- * cream surfaces, teal ink and deep-gold accents — so both modes read as
- * the same product family.
- *
- * Component language follows beautifului.dev primitives: hairline strokes,
- * dashed separators, tinted chips, mono meta labels.
+ * Nous is GitHub's Light Default / Dark Default chrome carrying Nous blue. The brand blue
+ * #0053FD is the light accent; dark carries #4A84FE, the same hue lifted to clear AA on
+ * near-black. Semantic colors are Desktop's `--ui-*` palette, so status, diff and context
+ * series read the same on phone and desktop. Copy values from upstream; do not hand-tune.
  */
 object HermesTokens {
-    // Dark (Hermes Teal) ----------------------------------------------------
-    val Ink = Color(0xFF041C1C)          // page background
-    val InkRaised = Color(0xFF0A2624)    // raised surface
-    val InkSoft = Color(0xFF07211F)      // sunken / inset surface
-    val InkHigh = Color(0xFF0E2E2B)      // highest surface
+    // Dark (Nous dark) -------------------------------------------------------
+    val Ink = Color(0xFF0D1117)          // page background (Desktop background)
+    val InkRaised = Color(0xFF161B22)    // raised surface: sheets, menus, fields (popover)
+    val InkSoft = Color(0xFF010409)      // sunken surface: drawer, code (card / sidebar)
+    val InkHigh = Color(0xFF1A1E24)      // highest surface (muted)
 
-    // Light (Hermes Cream) --------------------------------------------------
-    val Paper = Color(0xFFFAF6EC)
+    // Light (Nous light) -----------------------------------------------------
+    val Paper = Color(0xFFFFFFFF)
     val PaperRaised = Color(0xFFFFFFFF)
-    val PaperSoft = Color(0xFFF3EEE1)
+    val PaperSoft = Color(0xFFF6F8FA)
 
-    // Brand -----------------------------------------------------------------
-    val Gold = Color(0xFFFFBD38)         // brand glow gold (dark accent)
-    val GoldStrong = Color(0xFFA16D0A)   // deep gold for light surfaces
-    val Cream = Color(0xFFFFE6CB)        // warm cream ink (desktop midground)
-    val Emerald = Color(0xFF34D399)      // desktop series-output token
+    // Brand ------------------------------------------------------------------
+    val NousBlue = Color(0xFF0053FD)     // brand accent on light surfaces
+    val NousBlueDark = Color(0xFF4A84FE) // same hue for dark surfaces
+    val NousCream = Color(0xFFFFE6CB)    // Nous cream, kept for brand moments only
 
-    // Dark text -------------------------------------------------------------
-    val TextDark = Cream
-    val TextDarkMuted = Color(0xFFA0B5AC)
-    val TextDarkFaint = Color(0xFF6E8780)
+    // Dark text --------------------------------------------------------------
+    val TextDark = Color(0xFFE6EDF3)
+    val TextDarkMuted = Color(0xFF7D8590)
+    val TextDarkFaint = Color(0xFF6E7681)
 
-    // Light text ------------------------------------------------------------
-    val TextLight = Color(0xFF21302C)
-    val TextLightMuted = Color(0xFF5F6F68)
-    val TextLightFaint = Color(0xFF8C9A92)
+    // Light text -------------------------------------------------------------
+    val TextLight = Color(0xFF1F2328)
+    val TextLightMuted = Color(0xFF656D76)
+    val TextLightFaint = Color(0xFF6E7781)
 
-    // Strokes ---------------------------------------------------------------
-    val StrokeDark = Color(0xFF223431)
-    val StrokeDarkStrong = Color(0xFF31403B)
-    val StrokeLight = Color(0xFFE8E1CF)
-    val StrokeLightStrong = Color(0xFFD9D0BA)
+    // Strokes ----------------------------------------------------------------
+    val StrokeDark = Color(0xFF21262D)
+    val StrokeDarkStrong = Color(0xFF30363D)
+    val StrokeLight = Color(0xFFD8DEE4)
+    val StrokeLightStrong = Color(0xFFD0D7DE)
 
-    // Semantic ----------------------------------------------------------------
-    val Danger = Color(0xFFF87C7C)
-    val DangerLight = Color(0xFFD64545)
-    val Success = Emerald
-    val SuccessLight = Color(0xFF1E9E63)
-    val Warning = Color(0xFFFFC24D)
-    val WarningLight = Color(0xFFB97F0E)
-
-    // Derived tints (composite helpers for chip backgrounds) -----------------
-    fun goldTint(on: Color, alpha: Float = 0.14f): Color = Gold.copy(alpha = alpha).compositeOver(on)
-    fun creamTint(on: Color, alpha: Float = 0.07f): Color = Cream.copy(alpha = alpha).compositeOver(on)
+    // Semantic (Desktop --ui-*) ------------------------------------------------
+    val Danger = Color(0xFFE75E78)
+    val DangerLight = Color(0xFFCF2D56)
+    val Success = Color(0xFF55A583)
+    val SuccessLight = Color(0xFF1F8A65)
+    val Warning = Color(0xFFC08532)
+    val WarningLight = Color(0xFFC08532)
+    val Orange = Color(0xFFDB704B)
+    val Purple = Color(0xFF9E94D5)
+    val Cyan = Color(0xFF6F9BA6)
+    val CyanLight = Color(0xFF4C7F8C)
 }
 
 /**
@@ -95,59 +91,73 @@ data class HermesPalette(
 private val DarkHermesPalette = HermesPalette(
     line = HermesTokens.StrokeDark,
     lineStrong = HermesTokens.StrokeDarkStrong,
-    glow = HermesTokens.Gold.copy(alpha = 0.35f),
-    accentTint = HermesTokens.Gold.copy(alpha = 0.13f).compositeOver(HermesTokens.InkRaised),
-    greenTint = HermesTokens.Emerald.copy(alpha = 0.14f).compositeOver(HermesTokens.InkRaised),
-    orangeTint = Color(0xFFF59E42).copy(alpha = 0.14f).compositeOver(HermesTokens.InkRaised),
-    redTint = HermesTokens.Danger.copy(alpha = 0.13f).compositeOver(HermesTokens.InkRaised),
-    field = Color(0xFF0C2624),
-    hover = Color(0xFF10302C),
-    userBubble = Color(0xFF133029),
-    userBubbleBorder = HermesTokens.Gold.copy(alpha = 0.22f),
-    codeBlock = Color(0xFF021413),
-    codeBlockBorder = HermesTokens.StrokeDark,
+    glow = HermesTokens.NousBlueDark.copy(alpha = 0.35f),
+    accentTint = Color(0xFF17243A),                                  // Nous dark accent
+    greenTint = HermesTokens.Success.copy(alpha = 0.12f).compositeOver(HermesTokens.Ink),
+    orangeTint = HermesTokens.Orange.copy(alpha = 0.12f).compositeOver(HermesTokens.Ink),
+    redTint = HermesTokens.Danger.copy(alpha = 0.12f).compositeOver(HermesTokens.Ink),
+    field = HermesTokens.InkRaised,
+    hover = Color(0xFF1D2E4F).copy(alpha = 0.45f).compositeOver(HermesTokens.Ink), // Nous dark secondary
+    userBubble = Color(0xFF07162C),
+    userBubbleBorder = HermesTokens.StrokeDarkStrong,
+    codeBlock = HermesTokens.InkSoft,
+    codeBlockBorder = HermesTokens.StrokeDarkStrong,
     isDark = true
 )
 
 private val LightHermesPalette = HermesPalette(
     line = HermesTokens.StrokeLight,
     lineStrong = HermesTokens.StrokeLightStrong,
-    glow = HermesTokens.Gold.copy(alpha = 0.30f),
-    accentTint = Color(0xFFF6EBD2),
-    greenTint = Color(0xFFE2F3E9),
-    orangeTint = Color(0xFFFCEEDD),
-    redTint = Color(0xFFF9E7E7),
-    field = Color(0xFFF5F0E3),
-    hover = Color(0xFFF1EBDD),
-    userBubble = Color(0xFFF6EED9),
-    userBubbleBorder = Color(0xFFE3D9C0),
-    codeBlock = Color(0xFFF3EEE1),
-    codeBlockBorder = HermesTokens.StrokeLight,
+    glow = HermesTokens.NousBlue.copy(alpha = 0.25f),
+    accentTint = Color(0xFFE3EDFF),                                  // Nous light accent
+    greenTint = HermesTokens.SuccessLight.copy(alpha = 0.12f).compositeOver(HermesTokens.Paper),
+    orangeTint = HermesTokens.Orange.copy(alpha = 0.12f).compositeOver(HermesTokens.Paper),
+    redTint = HermesTokens.DangerLight.copy(alpha = 0.12f).compositeOver(HermesTokens.Paper),
+    field = HermesTokens.PaperSoft,
+    hover = Color(0xFFDEEAFF).copy(alpha = 0.6f).compositeOver(HermesTokens.Paper), // Nous light secondary
+    userBubble = Color(0xFFDAE7FD),
+    userBubbleBorder = HermesTokens.StrokeLightStrong,
+    codeBlock = HermesTokens.PaperSoft,
+    codeBlockBorder = HermesTokens.StrokeLightStrong,
     isDark = false
 )
 
+private fun mix(a: Color, b: Color, aShare: Float) = Color(
+    red = a.red * aShare + b.red * (1 - aShare),
+    green = a.green * aShare + b.green * (1 - aShare),
+    blue = a.blue * aShare + b.blue * (1 - aShare)
+)
+
 /**
- * Context-window category series (Desktop's `--context-usage-*` roles): one stable hue per
- * `session.context_breakdown` category id, brighter on ink, deeper on paper.
+ * Context-window category series: Desktop's `--context-usage-*` roles, one stable hue per
+ * `session.context_breakdown` category id.
  */
-fun HermesPalette.contextSeries(id: String): Color = when (id) {
-    "system_prompt" -> if (isDark) HermesTokens.Danger else HermesTokens.DangerLight
-    "tool_definitions" -> if (isDark) Color(0xFFA78BFA) else Color(0xFF7354C9)
-    "rules" -> if (isDark) Color(0xFFF59E42) else Color(0xFFC2650E)
-    "skills" -> if (isDark) HermesTokens.Gold else HermesTokens.GoldStrong
-    "mcp" -> if (isDark) Color(0xFF38D0E8) else Color(0xFF0E8AA0)
-    "subagent_definitions" -> if (isDark) HermesTokens.Emerald else HermesTokens.SuccessLight
-    "memory" -> if (isDark) Color(0xFFF472B6) else Color(0xFFBE3F82)
-    "conversation" -> if (isDark) Color(0xFF60A5FA) else Color(0xFF2F6BD0)
-    else -> if (isDark) HermesTokens.TextDarkMuted else HermesTokens.TextLightMuted
+fun HermesPalette.contextSeries(id: String): Color {
+    val text = if (isDark) HermesTokens.TextDark else HermesTokens.TextLight
+    val page = if (isDark) HermesTokens.Ink else HermesTokens.Paper
+    val red = if (isDark) HermesTokens.Danger else HermesTokens.DangerLight
+    val green = if (isDark) HermesTokens.Success else HermesTokens.SuccessLight
+    val cyan = if (isDark) HermesTokens.Cyan else HermesTokens.CyanLight
+    val blue = if (isDark) HermesTokens.NousBlueDark else HermesTokens.NousBlue
+    return when (id) {
+        "system_prompt" -> mix(text, page, 0.55f)
+        "tool_definitions" -> HermesTokens.Purple
+        "rules" -> green
+        "skills" -> HermesTokens.Warning
+        "mcp" -> mix(red, HermesTokens.Purple, 0.72f)
+        "subagent_definitions" -> mix(blue, cyan, 0.70f)
+        "memory" -> mix(HermesTokens.Orange, HermesTokens.Warning, 0.80f)
+        "conversation" -> cyan
+        else -> if (isDark) HermesTokens.TextDarkMuted else HermesTokens.TextLightMuted
+    }
 }
 
-/** Ring / hint color for how full the context window is. */
+/** Ring / hint color for how full the context window is: brand blue, then amber, then red. */
 fun HermesPalette.contextPressure(percent: Int?): Color = when {
     percent == null -> if (isDark) HermesTokens.TextDarkFaint else HermesTokens.TextLightFaint
     percent >= 85 -> if (isDark) HermesTokens.Danger else HermesTokens.DangerLight
     percent >= 60 -> if (isDark) HermesTokens.Warning else HermesTokens.WarningLight
-    else -> if (isDark) HermesTokens.Emerald else HermesTokens.SuccessLight
+    else -> if (isDark) HermesTokens.NousBlueDark else HermesTokens.NousBlue
 }
 
 val LocalHermesPalette = staticCompositionLocalOf { DarkHermesPalette }
@@ -157,10 +167,10 @@ val MaterialTheme.hermes: HermesPalette
     @Composable get() = LocalHermesPalette.current
 
 private val DarkColors = darkColorScheme(
-    primary = HermesTokens.Gold,
-    onPrimary = Color(0xFF241A02),
-    primaryContainer = Color(0xFF3A2F0E),
-    onPrimaryContainer = HermesTokens.Cream,
+    primary = HermesTokens.NousBlueDark,
+    onPrimary = Color(0xFF161616),
+    primaryContainer = Color(0xFF1D2E4F),
+    onPrimaryContainer = HermesTokens.TextDark,
     background = HermesTokens.Ink,
     onBackground = HermesTokens.TextDark,
     surface = HermesTokens.Ink,
@@ -168,26 +178,27 @@ private val DarkColors = darkColorScheme(
     surfaceVariant = HermesTokens.InkRaised,
     onSurfaceVariant = HermesTokens.TextDarkMuted,
     outline = HermesTokens.StrokeDarkStrong,
-    secondary = HermesTokens.Cream,
-    onSecondary = Color(0xFF241A02),
-    secondaryContainer = HermesTokens.InkRaised,
+    secondary = Color(0xFF1D2E4F),
+    onSecondary = HermesTokens.TextDark,
+    secondaryContainer = Color(0xFF17243A),
     onSecondaryContainer = HermesTokens.TextDark,
     tertiary = HermesTokens.TextDarkMuted,
     surfaceContainerLowest = HermesTokens.InkSoft,
-    surfaceContainerLow = Color(0xFF07211F),
-    surfaceContainer = Color(0xFF0A2624),
-    surfaceContainerHigh = Color(0xFF0E2E2B),
-    surfaceContainerHighest = Color(0xFF143734),
+    surfaceContainerLow = HermesTokens.InkSoft,
+    surfaceContainer = HermesTokens.InkRaised,
+    surfaceContainerHigh = HermesTokens.InkRaised,
+    surfaceContainerHighest = HermesTokens.InkHigh,
     surfaceTint = Color.Transparent,
     outlineVariant = HermesTokens.StrokeDark,
-    error = HermesTokens.Danger
+    error = Color(0xFFF85149),
+    onError = Color(0xFFFFFFFF)
 )
 
 private val LightColors = lightColorScheme(
-    primary = HermesTokens.GoldStrong,
-    onPrimary = Color(0xFFFFF8E8),
-    primaryContainer = Color(0xFFF2E3BC),
-    onPrimaryContainer = Color(0xFF3A2E0C),
+    primary = HermesTokens.NousBlue,
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFDEEAFF),
+    onPrimaryContainer = HermesTokens.TextLight,
     background = HermesTokens.Paper,
     onBackground = HermesTokens.TextLight,
     surface = HermesTokens.Paper,
@@ -195,19 +206,20 @@ private val LightColors = lightColorScheme(
     surfaceVariant = HermesTokens.PaperSoft,
     onSurfaceVariant = HermesTokens.TextLightMuted,
     outline = HermesTokens.StrokeLightStrong,
-    secondary = Color(0xFF2E4B45),
-    onSecondary = Color(0xFFF6F1E2),
-    secondaryContainer = Color(0xFFE7EFE9),
+    secondary = Color(0xFFDEEAFF),
+    onSecondary = HermesTokens.TextLight,
+    secondaryContainer = Color(0xFFE3EDFF),
     onSecondaryContainer = HermesTokens.TextLight,
     tertiary = HermesTokens.TextLightMuted,
     surfaceContainerLowest = Color(0xFFFFFFFF),
-    surfaceContainerLow = Color(0xFFF7F2E5),
-    surfaceContainer = Color(0xFFF3EEE1),
-    surfaceContainerHigh = Color(0xFFEEE8D8),
-    surfaceContainerHighest = Color(0xFFE8E1CF),
+    surfaceContainerLow = HermesTokens.PaperSoft,
+    surfaceContainer = HermesTokens.PaperSoft,
+    surfaceContainerHigh = Color(0xFFF0F2F4),
+    surfaceContainerHighest = Color(0xFFEAEEF2),
     surfaceTint = Color.Transparent,
     outlineVariant = HermesTokens.StrokeLight,
-    error = HermesTokens.DangerLight
+    error = Color(0xFFCF222E),
+    onError = Color(0xFFFFFFFF)
 )
 
 @Composable
