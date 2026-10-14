@@ -18,6 +18,13 @@ server plugin it needs for notifications.
     aloud;
   - talking again within five minutes continues the same conversation;
   - **Open in Hermes** continues it in the app.
+- **The device's voice reads answers.** By default the assistant speaks with Android's voice (on a Pixel, Google's
+  neural voices):
+  - it reads each sentence as soon as Hermes writes it, instead of waiting for the whole answer;
+  - it works without the server's text-to-speech;
+  - chats' **Read aloud** uses it too.
+
+  **Settings → Voice assistant → Voice** switches back to the server's Hermes voice.
 - **The lock screen works like Gemini's.** By default the assistant asks you to unlock first. With **Use Hermes without
   unlocking** it listens and answers over the lock screen, optionally with a separate, more limited profile. Earlier
   conversations, opening the app and confirming actions still need unlocking.

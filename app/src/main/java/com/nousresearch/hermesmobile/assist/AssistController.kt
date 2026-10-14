@@ -14,6 +14,7 @@ import com.nousresearch.hermesmobile.features.ParityController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -27,6 +28,7 @@ class AssistController(
     private val app: HermesApplication,
     private val scope: CoroutineScope,
     private val voice: AssistVoice,
+    private val speech: AndroidSpeech,
     private val settings: AssistSettings,
     private val voiceChatTitle: String
 ) {
@@ -50,9 +52,12 @@ class AssistController(
 
     private var job: Job? = null
     private var stopRequested = false
+    /** The user silenced this turn: later sentences are not read either. */
+    private var muted = false
 
     fun listen() {
         job?.cancel()
+        speech.stop()
         job = scope.launch {
             try { runTurn() }
             catch (e: CancellationException) { throw e }
@@ -64,13 +69,20 @@ class AssistController(
     /** Ends the recording now and sends what was said. */
     fun stopListening() { stopRequested = true }
 
-    fun stopSpeaking() { if (speaking) { job?.cancel(); speaking = false } }
+    fun stopSpeaking() {
+        if (!speaking) return
+        muted = true
+        speech.stop()
+        if (!settings.deviceVoice) job?.cancel()
+        speaking = false
+    }
 
-    fun cancel() { job?.cancel(); job = null }
+    fun cancel() { job?.cancel(); job = null; speech.stop() }
 
     private suspend fun runTurn() {
         error = null
         speechFailed = false
+        muted = false
         if (vm.uiState.savedConfig == null) { phase = Phase.NO_SERVER; return }
         phase = Phase.LISTENING
         stopRequested = false
@@ -97,23 +109,43 @@ class AssistController(
             com.nousresearch.hermesmobile.push.AppPresence.openSessionId = chat.storedSessionId
             vm.sendMessage(prompt)
             settings.rememberSession(connection, profile, chat.storedSessionId, System.currentTimeMillis())
+            // The device voice reads each sentence as it streams in, as Gemini does; the server voice needs the whole answer.
+            val deviceVoice = settings.deviceVoice
+            val streamer = SpeechText.Streamer()
+            // A child of this turn, so cancelling the turn stops it too.
+            val reader = if (!deviceVoice) null else CoroutineScope(currentCoroutineContext()).launch {
+                snapshotFlow { vm.streamingText }.collect { text ->
+                    streamer.push(text).forEach { sentence -> speak { speaking = true; speech.enqueue(sentence) } }
+                }
+            }
             // sendMessage marks the chat running at once; the turn ends when it stops or the app moves elsewhere.
             snapshotFlow { vm.uiState.activeChat }.first { it == null || it.storedSessionId != chat.storedSessionId || !it.running }
+            reader?.cancel()
             val answer = vm.uiState.activeChat?.takeIf { it.storedSessionId == chat.storedSessionId }
                 ?.messages?.lastOrNull { it.role == "assistant" }?.content.orEmpty()
             exchanges[exchanges.lastIndex] = exchanges.last().copy(answer = answer)
             settings.rememberSession(connection, profile, chat.storedSessionId, System.currentTimeMillis())
             phase = Phase.ANSWERED
-            if (answer.isNotBlank()) {
+            if (deviceVoice) {
+                streamer.finish(answer).forEach { sentence -> speak { speaking = true; speech.enqueue(sentence) } }
+                if (speaking) speak { speech.awaitIdle() }
+                speaking = false
+            } else if (answer.isNotBlank()) {
                 speaking = true
-                try { voice.speak(c, answer) }
-                catch (e: CancellationException) { throw e }
-                catch (e: Throwable) { speechFailed = true }
-                finally { speaking = false }
+                speak { voice.speak(c, answer) }
+                speaking = false
             }
         } finally {
             c.dispose()
         }
+    }
+
+    /** Runs a speech step; a failure is reported once and never ends the turn (the answer stays on screen). */
+    private suspend fun speak(block: suspend () -> Unit) {
+        if (speechFailed || muted) return
+        try { block() }
+        catch (e: CancellationException) { throw e }
+        catch (e: Throwable) { speechFailed = true; speech.stop() }
     }
 
     /** The voice conversation to talk in: the recent one of this profile, or a new chat. */

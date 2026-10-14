@@ -56,9 +56,11 @@ fun VoiceControls(c:ParityController,onTranscript:(String)->Unit,textForSpeech:S
     var speaking by remember(c){mutableStateOf(false)}
     var status by remember(c){mutableStateOf<String?>(null)}
     var voiceJob by remember(c){mutableStateOf<Job?>(null)}
+    // The device voice (Settings → Voice assistant → Voice), created on first use.
+    val deviceSpeech = remember(c){ lazy { com.nousresearch.hermesmobile.assist.AndroidSpeech(context, android.media.AudioAttributes.USAGE_MEDIA) } }
     suspend fun lease(kind:String,active:Boolean){try{c.api("/api/audio/$kind-lease","POST",json("lease" to lease,"active" to active),180)}catch(e:com.nousresearch.hermesmobile.data.HermesHttpException){if(e.status !in listOf(404,405,501))throw e}}
     fun releaseInBackground(){CoroutineScope(Dispatchers.IO).launch {withTimeoutOrNull(10_000){runCatching{lease("stt",false)};runCatching{lease("tts",false)}}}}
-    fun cancel(){voiceJob?.cancel();recorder?.let{runCatching{it.stop()};it.release()};recorder=null;recording?.delete();recording=null;busy=false;speaking=false;status=null;releaseInBackground()}
+    fun cancel(){if(deviceSpeech.isInitialized())deviceSpeech.value.stop();voiceJob?.cancel();recorder?.let{runCatching{it.stop()};it.release()};recorder=null;recording?.delete();recording=null;busy=false;speaking=false;status=null;releaseInBackground()}
     fun finish(){
         val active=recorder ?: return
         val audio=recording ?: return
@@ -100,7 +102,7 @@ fun VoiceControls(c:ParityController,onTranscript:(String)->Unit,textForSpeech:S
     DisposableEffect(c,lifecycle){
         val observer=LifecycleEventObserver{_,event->if(event==Lifecycle.Event.ON_STOP)cancel()}
         lifecycle.addObserver(observer)
-        onDispose{lifecycle.removeObserver(observer);cancel()}
+        onDispose{lifecycle.removeObserver(observer);cancel();if(deviceSpeech.isInitialized())deviceSpeech.value.shutdown()}
     }
     val dictate: () -> Unit = {
         if(recorder!=null) finish()
@@ -108,7 +110,14 @@ fun VoiceControls(c:ParityController,onTranscript:(String)->Unit,textForSpeech:S
         else permission.launch(Manifest.permission.RECORD_AUDIO)
     }
     val speakText: (String) -> Unit = { textToSpeak ->
-                if(speaking)cancel()else if(textToSpeak.isNotBlank()) {
+                if(speaking)cancel()else if(textToSpeak.isNotBlank() && com.nousresearch.hermesmobile.assist.AssistSettings(context).deviceVoice) {
+                    speaking=true;status=msgSpeaking
+                    voiceJob=scope.launch {
+                        try { deviceSpeech.value.speak(textToSpeak); status=null }
+                        catch(e:CancellationException){throw e}catch(e:Throwable){status=e.message}
+                        finally{speaking=false}
+                    }
+                } else if(textToSpeak.isNotBlank()) {
                     speaking=true;status=msgPreparingSpeech
                     voiceJob=scope.launch {
                         var file:File?=null;var player:MediaPlayer?=null

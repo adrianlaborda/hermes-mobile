@@ -11,6 +11,11 @@ class AssistSettings(context: Context) {
         get() = prefs.getBoolean("allow_locked", false)
         set(value) { prefs.edit { putBoolean("allow_locked", value) } }
 
+    /** Read answers with the device's voice (default) instead of the server's text-to-speech. Also used by the chat. */
+    var deviceVoice: Boolean
+        get() = prefs.getBoolean("device_voice", true)
+        set(value) { prefs.edit { putBoolean("device_voice", value) } }
+
     /** Blank means the profile selected in the app. */
     var profile: String
         get() = prefs.getString("profile", "").orEmpty()

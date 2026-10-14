@@ -35,6 +35,7 @@ class AssistActivity : ComponentActivity() {
     private lateinit var keyguard: KeyguardManager
     private lateinit var settings: AssistSettings
     private lateinit var controller: AssistController
+    private lateinit var speech: AndroidSpeech
 
     private val unlocked = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) { controller.locked = keyguard.isKeyguardLocked }
@@ -54,7 +55,8 @@ class AssistActivity : ComponentActivity() {
         enableEdgeToEdge()
         keyguard = getSystemService(KeyguardManager::class.java)
         settings = AssistSettings(this)
-        controller = AssistController(app, lifecycleScope, AssistVoice(this), settings, getString(R.string.assist_voice_chat_title))
+        speech = AndroidSpeech(this)
+        controller = AssistController(app, lifecycleScope, AssistVoice(this), speech, settings, getString(R.string.assist_voice_chat_title))
         controller.locked = keyguard.isKeyguardLocked
         ContextCompat.registerReceiver(this, unlocked, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
         setContent {
@@ -86,7 +88,7 @@ class AssistActivity : ComponentActivity() {
         if (!isChangingConfigurations) { controller.cancel(); finish() }
     }
 
-    override fun onDestroy() { unregisterReceiver(unlocked); super.onDestroy() }
+    override fun onDestroy() { unregisterReceiver(unlocked); speech.shutdown(); super.onDestroy() }
 
     private fun begin() {
         controller.locked = keyguard.isKeyguardLocked

@@ -31,4 +31,10 @@
     <string name="assist_locked_profile_same">Same as the assistant profile</string>
     <string name="assist_lock_tip">Anyone holding your phone can talk to this profile. Give it only the tools you are comfortable with.</string>
     <string name="assist_speech_failed">Couldn\'t read the answer aloud. Check your server\'s text-to-speech.</string>
+    <string name="assist_voice">Voice</string>
+    <string name="assist_voice_device">Device</string>
+    <string name="assist_voice_server">Server</string>
+    <string name="assist_voice_device_hint">Android\'s voice: starts at once, reads while Hermes writes, works offline. Also used by Read aloud in chats.</string>
+    <string name="assist_voice_server_hint">Your server\'s Hermes voice, as in Desktop and Telegram. Reads once the answer is complete.</string>
+    <string name="assist_voice_android_settings">Android voice settings</string>
 </resources>

@@ -31,4 +31,10 @@
     <string name="assist_locked_profile_same">El mismo que el del asistente</string>
     <string name="assist_lock_tip">Cualquiera que tenga tu móvil puede hablar con este perfil. Dale solo las herramientas con las que estés tranquilo.</string>
     <string name="assist_speech_failed">No se ha podido leer la respuesta en voz alta. Revisa la voz (TTS) de tu servidor.</string>
+    <string name="assist_voice">Voz</string>
+    <string name="assist_voice_device">Dispositivo</string>
+    <string name="assist_voice_server">Servidor</string>
+    <string name="assist_voice_device_hint">La voz de Android: empieza al instante, lee mientras Hermes escribe y funciona sin conexión. También se usa en «Leer en voz alta» de los chats.</string>
+    <string name="assist_voice_server_hint">La voz de Hermes de tu servidor, como en Desktop y Telegram. Lee cuando la respuesta está completa.</string>
+    <string name="assist_voice_android_settings">Ajustes de voz de Android</string>
 </resources>

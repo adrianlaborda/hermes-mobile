@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.KeyboardVoice
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.NoEncryption
+import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -36,6 +38,8 @@ fun AssistSettingsSection(profiles: List<String>) {
     var profile by remember { mutableStateOf(settings.profile) }
     var lockedProfile by remember { mutableStateOf(settings.lockedProfile) }
     var allowLocked by remember { mutableStateOf(settings.allowWhileLocked) }
+    var deviceVoice by remember { mutableStateOf(settings.deviceVoice) }
+    var voiceMenu by remember { mutableStateOf(false) }
 
     SectionLabel(stringResource(R.string.assist_settings_title))
     FlatRow(
@@ -50,6 +54,27 @@ fun AssistSettingsSection(profiles: List<String>) {
         value = profile, blankLabel = stringResource(R.string.assist_profile_app), profiles = profiles,
         icon = { Icon(Icons.Default.ManageAccounts, null) }
     ) { profile = it; settings.profile = it }
+    Box {
+        FlatRow(
+            title = stringResource(R.string.assist_voice),
+            description = stringResource(if (deviceVoice) R.string.assist_voice_device_hint else R.string.assist_voice_server_hint),
+            leading = { Icon(Icons.AutoMirrored.Filled.VolumeUp, null) },
+            trailing = { Text(stringResource(if (deviceVoice) R.string.assist_voice_device else R.string.assist_voice_server), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) },
+            onClick = { voiceMenu = true }
+        )
+        DropdownMenu(expanded = voiceMenu, onDismissRequest = { voiceMenu = false }) {
+            DropdownMenuItem(text = { Text(stringResource(R.string.assist_voice_device)) }, onClick = { voiceMenu = false; deviceVoice = true; settings.deviceVoice = true })
+            DropdownMenuItem(text = { Text(stringResource(R.string.assist_voice_server)) }, onClick = { voiceMenu = false; deviceVoice = false; settings.deviceVoice = false })
+        }
+    }
+    if (deviceVoice) {
+        FlatRow(
+            title = stringResource(R.string.assist_voice_android_settings),
+            leading = { Icon(Icons.Default.RecordVoiceOver, null) },
+            trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(18.dp)) },
+            onClick = { openTtsSettings(context) }
+        )
+    }
     FlatRow(
         title = stringResource(R.string.assist_lock_title),
         description = stringResource(R.string.assist_lock_desc),
@@ -91,6 +116,13 @@ private fun ProfileRow(
 private fun isDefaultAssistant(context: Context): Boolean =
     if (Build.VERSION.SDK_INT >= 29) context.getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_ASSISTANT) == true
     else Settings.Secure.getString(context.contentResolver, "assistant").orEmpty().startsWith(context.packageName + "/")
+
+/** Android's text-to-speech settings: engine, installed voices, speech rate. */
+private fun openTtsSettings(context: Context) {
+    for (intent in listOf(Intent("com.android.settings.TTS_SETTINGS"), Intent(Settings.ACTION_SETTINGS))) {
+        if (runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess) return
+    }
+}
 
 /** The "Digital assistant app" page; the assistant role cannot be requested with a dialog. */
 private fun openAssistantSettings(context: Context) {
