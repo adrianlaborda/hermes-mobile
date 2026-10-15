@@ -37,4 +37,8 @@
     <string name="assist_voice_device_hint">La voz de Android: empieza al instante, lee mientras Hermes escribe y funciona sin conexión. También se usa en «Leer en voz alta» de los chats.</string>
     <string name="assist_voice_server_hint">La voz de Hermes de tu servidor, como en Desktop y Telegram. Lee cuando la respuesta está completa.</string>
     <string name="assist_voice_android_settings">Ajustes de voz de Android</string>
+    <string name="assist_model">Modelo de voz</string>
+    <string name="assist_model_profile">El del perfil</string>
+    <string name="assist_thinking">Pensar antes de responder</string>
+    <string name="assist_thinking_hint">Apagado: el modelo responde enseguida. Encendido: razona antes, mejor para preguntas difíciles pero tarda varios segundos.</string>
 </resources>

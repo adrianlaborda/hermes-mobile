@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.KeyboardVoice
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.NoEncryption
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.*
@@ -39,6 +41,15 @@ fun AssistSettingsSection(profiles: List<String>) {
     var lockedProfile by remember { mutableStateOf(settings.lockedProfile) }
     var allowLocked by remember { mutableStateOf(settings.allowWhileLocked) }
     var deviceVoice by remember { mutableStateOf(settings.deviceVoice) }
+    var voiceModel by remember { mutableStateOf(settings.voiceModel) }
+    var thinking by remember { mutableStateOf(settings.voiceThinking) }
+    var modelMenu by remember { mutableStateOf(false) }
+    // The server's models for the assistant's profile, as the chat's model picker lists them.
+    val app = context.applicationContext as com.nousresearch.hermesmobile.HermesApplication
+    val choices by produceState(emptyList<com.nousresearch.hermesmobile.data.SessionModelChoice>(), profile) {
+        val repo = app.viewModel.featureRepository() ?: return@produceState
+        value = runCatching { repo.sessionModelOptions(profile.ifBlank { app.viewModel.uiState.selectedProfile }) }.getOrDefault(emptyList())
+    }
     var voiceMenu by remember { mutableStateOf(false) }
 
     SectionLabel(stringResource(R.string.assist_settings_title))
@@ -54,6 +65,30 @@ fun AssistSettingsSection(profiles: List<String>) {
         value = profile, blankLabel = stringResource(R.string.assist_profile_app), profiles = profiles,
         icon = { Icon(Icons.Default.ManageAccounts, null) }
     ) { profile = it; settings.profile = it }
+    Box {
+        FlatRow(
+            title = stringResource(R.string.assist_model),
+            description = voiceModel?.let { "${it.second} · ${it.first}" } ?: stringResource(R.string.assist_model_profile),
+            leading = { Icon(Icons.Default.Bolt, null) },
+            trailing = { Icon(Icons.Default.ArrowDropDown, null) },
+            onClick = { modelMenu = true }
+        )
+        DropdownMenu(expanded = modelMenu, onDismissRequest = { modelMenu = false }) {
+            DropdownMenuItem(text = { Text(stringResource(R.string.assist_model_profile)) },
+                onClick = { modelMenu = false; voiceModel = null; settings.voiceModel = null })
+            choices.forEach { choice ->
+                DropdownMenuItem(text = { Text("${choice.label} · ${choice.provider}") },
+                    onClick = { modelMenu = false; voiceModel = choice.provider to choice.model; settings.voiceModel = voiceModel })
+            }
+        }
+    }
+    FlatRow(
+        title = stringResource(R.string.assist_thinking),
+        description = stringResource(R.string.assist_thinking_hint),
+        leading = { Icon(Icons.Default.Psychology, null) },
+        trailing = { Switch(checked = thinking, onCheckedChange = null) },
+        onClick = { thinking = !thinking; settings.voiceThinking = thinking }
+    )
     Box {
         FlatRow(
             title = stringResource(R.string.assist_voice),

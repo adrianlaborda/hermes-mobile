@@ -16,6 +16,19 @@ class AssistSettings(context: Context) {
         get() = prefs.getBoolean("device_voice", true)
         set(value) { prefs.edit { putBoolean("device_voice", value) } }
 
+    /**
+     * The model voice chats use, as "provider\tmodel"; blank keeps the profile's model. Voice wants a fast model:
+     * a reasoning model spends seconds thinking before the first word.
+     */
+    var voiceModel: Pair<String, String>?
+        get() = prefs.getString("voice_model", "").orEmpty().split('\t').takeIf { it.size == 2 && it[1].isNotBlank() }?.let { it[0] to it[1] }
+        set(value) { prefs.edit { putString("voice_model", value?.let { "${it.first}\t${it.second}" } ?: "") } }
+
+    /** Let the voice model reason before answering. Off by default: thinking costs seconds before the first word. */
+    var voiceThinking: Boolean
+        get() = prefs.getBoolean("voice_thinking", false)
+        set(value) { prefs.edit { putBoolean("voice_thinking", value) } }
+
     /** Blank means the profile selected in the app. */
     var profile: String
         get() = prefs.getString("profile", "").orEmpty()

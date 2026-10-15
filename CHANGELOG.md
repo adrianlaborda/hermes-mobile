@@ -25,6 +25,10 @@ server plugin it needs for notifications.
   - chats' **Read aloud** uses it too.
 
   **Settings → Voice assistant → Voice** switches back to the server's Hermes voice.
+- **A fast model for voice.** Voice chats skip reasoning by default, and **Settings → Voice assistant → Voice model**
+  can pick a fast model for them. Measured on a real Hermes turn: a small model without reasoning answers in about
+  2 seconds, against about 8 seconds per call for a reasoning model. **Think before answering** turns reasoning back
+  on.
 - **The lock screen works like Gemini's.** By default the assistant asks you to unlock first. With **Use Hermes without
   unlocking** it listens and answers over the lock screen, optionally with a separate, more limited profile. Earlier
   conversations, opening the app and confirming actions still need unlocking.

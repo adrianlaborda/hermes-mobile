@@ -104,6 +104,10 @@ class AssistController(
             exchanges += Exchange(prompt)
             phase = Phase.THINKING
             val chat = openVoiceChat(profile) ?: run { phase = Phase.UNREACHABLE; return }
+            // The voice model and no reasoning: a thinking model spends seconds before its first word.
+            settings.voiceModel.let { picked ->
+                vm.applyVoiceModel(picked?.first.orEmpty(), picked?.second.orEmpty(), if (settings.voiceThinking) "" else "none")
+            }
             val connection = vm.uiState.activeConnectionId.orEmpty()
             // The answer is on screen here: the push service must not also post a turn notice for it.
             com.nousresearch.hermesmobile.push.AppPresence.openSessionId = chat.storedSessionId

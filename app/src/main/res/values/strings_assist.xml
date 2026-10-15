@@ -37,4 +37,8 @@
     <string name="assist_voice_device_hint">Android\'s voice: starts at once, reads while Hermes writes, works offline. Also used by Read aloud in chats.</string>
     <string name="assist_voice_server_hint">Your server\'s Hermes voice, as in Desktop and Telegram. Reads once the answer is complete.</string>
     <string name="assist_voice_android_settings">Android voice settings</string>
+    <string name="assist_model">Voice model</string>
+    <string name="assist_model_profile">The profile\'s model</string>
+    <string name="assist_thinking">Think before answering</string>
+    <string name="assist_thinking_hint">Off: the model answers at once. On: it reasons first, which is better for hard questions but takes several seconds.</string>
 </resources>

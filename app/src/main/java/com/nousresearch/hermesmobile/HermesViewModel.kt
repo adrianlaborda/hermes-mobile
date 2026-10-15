@@ -1364,6 +1364,33 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun cancelSessionModelChange() { uiState = uiState.copy(pendingSessionModelChange = null) }
 
+    /**
+     * The voice assistant's model for the open voice chat, session-scoped and silent (no snackbar). A blank [model]
+     * keeps the profile's model and only sets [reasoning]; a blank [reasoning] leaves it as it is.
+     * Returns false when nothing could be applied (no chat, a turn running, or the server refused).
+     */
+    suspend fun applyVoiceModel(provider: String, model: String, reasoning: String): Boolean {
+        val chat = uiState.activeChat ?: return false
+        val repo = repository ?: return false
+        if (chat.running) return false
+        val runtime = chat.runtimeSessionId
+        if (model.isNotBlank() && (chat.model != model || chat.provider != provider || chat.reasoningEffort != reasoning)) {
+            val result = runCatching { repo.switchSessionModel(runtime, chat.profile, provider, model, reasoning) }.getOrNull() ?: return false
+            if (result.confirmRequired) return false
+            sessionModelPins[runtime] = SessionModelPin(chat.profile, provider, model, reasoning, ensureOnNextPrompt = true)
+            uiState.activeChat?.takeIf { it.runtimeSessionId == runtime }?.let {
+                uiState = uiState.copy(activeChat = it.copy(provider = provider, model = model, reasoningEffort = reasoning))
+            }
+        } else if (model.isBlank() && reasoning.isNotBlank() && chat.reasoningEffort != reasoning) {
+            runCatching { repo.setSessionReasoning(runtime, chat.profile, reasoning) }.getOrNull() ?: return false
+            sessionModelPins[runtime]?.let { sessionModelPins[runtime] = it.copy(reasoning = reasoning) }
+            uiState.activeChat?.takeIf { it.runtimeSessionId == runtime }?.let {
+                uiState = uiState.copy(activeChat = it.copy(reasoningEffort = reasoning))
+            }
+        }
+        return true
+    }
+
     fun setSessionReasoning(level: String) {
         val chat = uiState.activeChat ?: return
         val repo = repository ?: return
