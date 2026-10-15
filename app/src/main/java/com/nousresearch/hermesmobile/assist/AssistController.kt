@@ -115,12 +115,14 @@ class AssistController(
             // A child of this turn, so cancelling the turn stops it too.
             val reader = if (!deviceVoice) null else CoroutineScope(currentCoroutineContext()).launch {
                 snapshotFlow { vm.streamingText }.collect { text ->
+                    android.util.Log.d("HermesAssist", "stream len=${text.length}")
                     streamer.push(text).forEach { sentence -> speak { speaking = true; speech.enqueue(sentence) } }
                 }
             }
             // sendMessage marks the chat running at once; the turn ends when it stops or the app moves elsewhere.
             snapshotFlow { vm.uiState.activeChat }.first { it == null || it.storedSessionId != chat.storedSessionId || !it.running }
             reader?.cancel()
+            android.util.Log.d("HermesAssist", "turn done")
             val answer = vm.uiState.activeChat?.takeIf { it.storedSessionId == chat.storedSessionId }
                 ?.messages?.lastOrNull { it.role == "assistant" }?.content.orEmpty()
             exchanges[exchanges.lastIndex] = exchanges.last().copy(answer = answer)

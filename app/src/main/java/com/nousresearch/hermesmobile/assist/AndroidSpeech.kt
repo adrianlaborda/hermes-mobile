@@ -4,7 +4,6 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import android.speech.tts.Voice
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +30,7 @@ class AndroidSpeech(context: Context, private val usage: Int = AudioAttributes.U
 
     init {
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) {}
+            override fun onStart(utteranceId: String?) { android.util.Log.d("HermesAssist", "tts start $utteranceId") }
             override fun onDone(utteranceId: String?) = finished()
             @Deprecated("Deprecated in Java") override fun onError(utteranceId: String?) = finished()
             override fun onError(utteranceId: String?, errorCode: Int) = finished()
@@ -50,14 +49,11 @@ class AndroidSpeech(context: Context, private val usage: Int = AudioAttributes.U
     private fun configure() {
         configured = true
         tts.setAudioAttributes(AudioAttributes.Builder().setUsage(usage).setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+        // The voice the user set up in Android's text-to-speech settings, unless it speaks another language.
         val locale = Locale.getDefault()
-        val voice = runCatching { tts.voices }.getOrNull().orEmpty()
-            .filter { it.locale.language == locale.language && TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in it.features }
-            .sortedWith(compareByDescending<Voice> { it.locale.country == locale.country }
-                .thenByDescending { it.quality }
-                .thenBy { it.isNetworkConnectionRequired })
-            .firstOrNull()
-        if (voice != null) tts.voice = voice else tts.language = locale
+        val current = runCatching { tts.voice ?: tts.defaultVoice }.getOrNull()
+        if (current == null || current.locale.language != locale.language) tts.language = locale
+        android.util.Log.d("HermesAssist", "tts voice=${runCatching { tts.voice?.name }.getOrNull()} quality=${runCatching { tts.voice?.quality }.getOrNull()}")
     }
 
     /** Queues one sentence after whatever is playing. */
@@ -66,6 +62,7 @@ class AndroidSpeech(context: Context, private val usage: Int = AudioAttributes.U
         awaitReady()
         pending.incrementAndGet()
         _speaking.value = true
+        android.util.Log.d("HermesAssist", "tts enqueue ${sentence.take(40)}")
         if (tts.speak(sentence, TextToSpeech.QUEUE_ADD, null, "hermes-${nextId++}") != TextToSpeech.SUCCESS) finished()
     }
 

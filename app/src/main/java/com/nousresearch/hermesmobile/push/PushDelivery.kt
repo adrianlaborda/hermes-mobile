@@ -45,7 +45,13 @@ object PushDelivery {
         val title = event.optString("title").ifBlank { "Hermes" }
         val body = event.optString("body")
         return when (type) {
-            "approval_required" -> context.getString(R.string.a25_approval_title) to context.getString(R.string.a25_approval_body)
+            // Plugin 0.5.3+: title = the chat, body = "…to continue: <what the action does>".
+            "approval_required" -> {
+                val detail = body.substringAfter("continue: ", "").trim()
+                val heading = context.getString(R.string.a25_approval_title)
+                (if (title == "Hermes") heading else "$heading · $title") to
+                    (context.getString(R.string.a25_approval_body) + if (detail.isNotBlank()) "\n$detail" else "")
+            }
             "test" -> "Hermes" to context.getString(R.string.a25_test_body)
             "reminder" -> (if (title == "Hermes reminder") context.getString(R.string.a25_reminder_title) else title) to body
             "turn_failed" -> title to body.replace("The task failed or needs your attention.", context.getString(R.string.a25_turn_failed)).trim()
@@ -91,6 +97,34 @@ object PushDelivery {
         nm.notify(eventId, 0, builder.build())
         return true
     }
+    /** Removes a notice from the shade and the inbox: the server withdrew it. */
+    fun withdraw(context: Context, eventId: String) {
+        context.getSystemService(NotificationManager::class.java).cancel(eventId, 0)
+        runCatching { PushStore(context).forget(eventId) }
+    }
+
+    /**
+     * What to do with an event fetched from the inbox. Returns true when the server can mark it delivered.
+     * - `approval_resolved`: the approval was answered (Desktop, Telegram, the app) or timed out → withdraw its notice.
+     * - already acknowledged or expired: the server withdrew it → remove any generic notice still showing.
+     * - anything else: store it and show it.
+     */
+    fun handle(context: Context, account: PushAccount, event: JSONObject): Boolean {
+        val id = event.getString("event_id")
+        if (event.optString("event_type") == "approval_resolved") {
+            event.optString("source_id").takeIf { it.isNotBlank() }?.let { withdraw(context, it) }
+            return true
+        }
+        if (event.optString("state") in setOf("expired", "acked") || event.optDouble("expires_at") * 1000 <= System.currentTimeMillis()) {
+            withdraw(context, id)
+            return false
+        }
+        PushStore(context).received(account, event)
+        // Replaces the generic notice (same tag) with the real content.
+        val shown = show(context, id, event)
+        return shown || event.optString("session_id").let { it.isNotBlank() && AppPresence.isShowing(it) }
+    }
+
     fun schedule(context: Context, eventId: String? = null) {
         if (!configured(context) || runCatching { PushStore(context).accounts().isEmpty() }.getOrDefault(true)) return
         val request = OneTimeWorkRequestBuilder<PushSyncWorker>()
@@ -111,10 +145,8 @@ class HermesMessagingService : FirebaseMessagingService() {
         val account = runCatching { PushStore(this).accounts().firstOrNull { it.device == device && it.connection in validConnections } }.getOrNull() ?: return
         // FCM only carried the ID: fetch the content from the user's server now (briefly; it may need a VPN).
         val event = runCatching { PushClient.call(account, "event.get", JSONObject().put("event_id", id), fast = true) }.getOrNull()
-        if (event != null && event.optString("state") !in setOf("expired", "acked")) {
-            PushStore(this).received(account, event)
-            PushDelivery.show(this, id, event)
-            runCatching { PushClient.call(account, "event.ack", JSONObject().put("event_id", id), fast = true) }
+        if (event != null) {
+            if (PushDelivery.handle(this, account, event)) runCatching { PushClient.call(account, "event.ack", JSONObject().put("event_id", id), fast = true) }
             return
         }
         // Persist only the known owner before notifying. An offline tap must open
@@ -144,11 +176,7 @@ class PushSyncWorker(context: Context, params: WorkerParameters) : CoroutineWork
                     else PushClient.call(account, "events.pending", JSONObject().put("limit", 10)).getJSONArray("events").let { a -> (0 until a.length()).map { a.getJSONObject(it) } }
                 if (id == null && events.size >= 10 && PushDelivery.permitted(context)) retry = true
                 for (event in events) {
-                    if (event.optString("state") in setOf("expired", "acked") || event.optDouble("expires_at") * 1000 <= System.currentTimeMillis()) continue
-                    store.received(account, event)
-                    // Replaces the generic notice (same tag) with the real content.
-                    val shown = PushDelivery.show(context, event.getString("event_id"), event)
-                    if (shown || event.optString("session_id").let { it.isNotBlank() && AppPresence.isShowing(it) }) {
+                    if (PushDelivery.handle(context, account, event)) {
                         PushClient.call(account, "event.ack", JSONObject().put("event_id", event.getString("event_id")))
                     }
                 }

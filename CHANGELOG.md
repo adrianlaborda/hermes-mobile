@@ -49,6 +49,14 @@ server plugin it needs for notifications.
 
 ### Fixed
 
+- **Approval notices that led nowhere.** With hermes-android 0.5.3 the phone is told only about approvals someone
+  actually has to answer:
+  - not Hermes' smart-approval checks, which decide on their own;
+  - not duplicate requests.
+
+  The notice names the chat and the action, and tapping it opens that chat, where the approval is waiting. When the
+  approval is answered elsewhere (Desktop, Telegram) or times out, the notice disappears from the phone.
+- A notice the server withdrew no longer lingers as a generic "Hermes" notification.
 - The context ring's arc now sits on its track. With the thick ring of the context sheet it used to stick out
   of the circle.
 

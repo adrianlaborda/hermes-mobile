@@ -56,6 +56,12 @@ class PushStore(context: Context) {
         secure.writePrivate("push_events", JSONArray(entries.takeLast(100)).toString())
         changes.value += 1
     }
+    /** Drops a notice the server withdrew (an approval answered elsewhere). */
+    fun forget(eventId: String) = synchronized(lock) {
+        val entries = events().filterNot { it.optString("event_id") == eventId }
+        secure.writePrivate("push_events", JSONArray(entries).toString())
+        changes.value += 1
+    }
     companion object { private val lock = Any(); val changes = kotlinx.coroutines.flow.MutableStateFlow(0L) }
 }
 
