@@ -1,9 +1,15 @@
 name: Release
 
 # Push a tag vX.Y.Z or vX.Y.Z-beta.N that matches versionName in app/build.gradle.kts.
+# To rebuild an existing tag whose release failed (release tags are immutable), run it by hand with that tag.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release, e.g. v0.3.0-beta.2'
+        required: true
 
 permissions:
   contents: read
@@ -12,6 +18,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     environment: release
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
     permissions:
       contents: write       # create the GitHub release
       id-token: write       # sign the build provenance attestation
@@ -19,15 +27,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: refs/tags/${{ env.TAG }}
           persist-credentials: false
 
       - name: Check the tag matches versionName
         id: version
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${TAG#v}"
           declared="$(sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"
           if [ "$version" != "$declared" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match versionName $declared"
+            echo "::error::Tag $TAG does not match versionName $declared"
             exit 1
           fi
           python3 scripts/release_notes.py "$version" > /dev/null
@@ -78,10 +87,7 @@ jobs:
           mkdir dist
           apk="hermes-mobile-$VERSION.apk"
           cp app/build/outputs/apk/release/app-release.apk "dist/$apk"
-          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
-          "$apksigner" verify "dist/$apk"
-          cert="$("$apksigner" verify --print-certs "dist/$apk" | sed -n 's/^Signer.*certificate SHA-256 digest: //p' | head -1)"
-          test -n "$cert"
+          cert="$(scripts/apk_cert.sh "dist/$apk")"
           (cd dist && sha256sum "$apk" > SHA256SUMS)
           echo "apk=dist/$apk" >> "$GITHUB_OUTPUT"
           echo "cert=$cert" >> "$GITHUB_OUTPUT"
@@ -116,5 +122,5 @@ jobs:
         run: |
           prerelease=""
           case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "Hermes Mobile $VERSION" --notes-file notes.md $prerelease
