@@ -154,7 +154,6 @@ class AssistController(
                 }
             }
             reader?.cancel()
-            android.util.Log.d("HermesAssist", "turn done")
             val answer = vm.uiState.activeChat?.takeIf { it.storedSessionId == chat.storedSessionId }
                 ?.messages?.lastOrNull { it.role == "assistant" }?.content.orEmpty()
             exchanges[exchanges.lastIndex] = exchanges.last().copy(answer = answer)

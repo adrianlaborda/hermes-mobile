@@ -3398,8 +3398,9 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     private fun handleMessageDelta(payload: JSONObject) {
         val chat = uiState.activeChat ?: return
         if (!payloadSessionMatches(payload, chat)) return
-        val delta = TranscriptText.visible(payload.opt("text")).ifBlank { TranscriptText.visible(payload.opt("delta")) }
-        if (delta.isBlank()) return
+        val delta = TranscriptText.visible(payload.opt("text")).ifEmpty { TranscriptText.visible(payload.opt("delta")) }
+        // A delta can be only whitespace (some models stream the space before a word on its own): keep it.
+        if (delta.isEmpty()) return
 
         streamBuffer.append(delta)
         if (!chat.running) uiState = uiState.copy(activeChat = chat.copy(running = true))
