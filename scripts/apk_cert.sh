@@ -7,13 +7,8 @@ apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
 echo "apksigner: $apksigner" >&2
 certs="$("$apksigner" verify --print-certs "$apk" 2>&1)" || { echo "$certs" >&2; exit 1; }
 echo "$certs" >&2
-cert="$(sed -n 's/^Signer.*certificate SHA-256 digest: //p' <<< "$certs" | head -1)"
-if [ -z "$cert" ]; then
-  # Fall back to the JDK's reading of the same certificate.
-  printed="$(keytool -printcert -jarfile "$apk")"
-  echo "$printed" >&2
-  cert="$(sed -n 's/^[[:space:]]*SHA256: //p' <<< "$printed" | head -1 | tr -d ':' | tr 'A-F' 'a-f')"
-fi
+# "Signer #1 certificate SHA-256 digest: …" (build-tools ≤ 36) or "V2 Signer: certificate SHA-256 digest: …" (37).
+cert="$(sed -n '/Source Stamp/d; /Signer/s/.*certificate SHA-256 digest: //p' <<< "$certs" | head -1)"
 if [ -z "$cert" ]; then
   echo "Could not read the signing certificate digest of $apk" >&2
   exit 1
