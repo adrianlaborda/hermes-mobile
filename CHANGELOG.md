@@ -60,6 +60,8 @@ server plugin it needs for notifications.
 
   The notice names the chat and the action, and tapping it opens that chat, where the approval is waiting. When the
   approval is answered elsewhere (Desktop, Telegram) or times out, the notice disappears from the phone.
+- Opening a bot, a chat from Home or a new chat no longer flashes the Chats list while it loads: the screen stays
+  where it was until the chat is ready.
 - A notice the server withdrew no longer lingers as a generic "Hermes" notification.
 - The context ring's arc now sits on its track. With the thick ring of the context sheet it used to stick out
   of the circle.

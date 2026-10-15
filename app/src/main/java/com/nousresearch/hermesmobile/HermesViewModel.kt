@@ -2050,12 +2050,14 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val generation = ++navigationGeneration
         resetStream()
         viewModelScope.launch {
-            uiState = uiState.copy(loading = true, error = null, section = MainSection.CHAT)
+            uiState = uiState.copy(loading = true, error = null)
             runCatching { repo.createSession(profile, title.takeIf { it.isNotBlank() }, cwd = cwd) }
                 .onSuccess { chat ->
                     if (generation == navigationGeneration) {
                         resetStream(chat.streamingText)
                         uiState = uiState.copy(
+                            // Switch only now: switching first showed the Chats list while the chat loaded.
+                            section = MainSection.CHAT,
                             activeChat = chat.copy(streamingText = ""),
                             sessionUsage = null,
                             loading = false,
@@ -2141,12 +2143,14 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val generation = ++navigationGeneration
         resetStream()
         viewModelScope.launch {
-            uiState = uiState.copy(loading = true, error = null, section = MainSection.CHAT)
+            uiState = uiState.copy(loading = true, error = null)
             runCatching { repo.resumeSession(session.id, session.profile, session.title, session.source) }
                 .onSuccess { chat ->
                     if (generation != navigationGeneration) return@onSuccess
                     resetStream(chat.streamingText)
                     uiState = uiState.copy(
+                        // Switch only now: switching first showed the Chats list while the chat loaded.
+                        section = MainSection.CHAT,
                         activeChat = chat.copy(streamingText = ""),
                         sessionUsage = null,
                         loading = false,
@@ -2174,7 +2178,6 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             uiState = uiState.copy(
                 loading = true,
                 error = null,
-                section = MainSection.CHAT,
                 selectedProfile = profile.name
             )
             runCatching { repo.openBotChat(profile) }
@@ -2182,6 +2185,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     if (generation == navigationGeneration) {
                         resetStream(chat.streamingText)
                         uiState = uiState.copy(
+                            // Switch only now: switching first showed the Chats list while the chat loaded.
+                            section = MainSection.CHAT,
                             activeChat = chat.copy(title = profile.label, streamingText = ""),
                             sessionUsage = null,
                             loading = false,
