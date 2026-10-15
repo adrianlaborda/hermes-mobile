@@ -24,7 +24,7 @@
     <string name="assist_default_on">Hermes se abre al mantener pulsado el botón de encendido</string>
     <string name="assist_default_off">Elige Hermes para abrirlo manteniendo pulsado el botón de encendido</string>
     <string name="assist_profile">Perfil del asistente</string>
-    <string name="assist_profile_app">El perfil elegido en la app</string>
+    <string name="assist_profile_app">El perfil principal (default)</string>
     <string name="assist_lock_title">Usar Hermes sin desbloquear</string>
     <string name="assist_lock_desc">Habla con Hermes y escucha sus respuestas en la pantalla de bloqueo. Las conversaciones anteriores, abrir la app y confirmar acciones siguen pidiendo desbloquear.</string>
     <string name="assist_locked_profile">Perfil con el móvil bloqueado</string>

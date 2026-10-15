@@ -24,7 +24,7 @@
     <string name="assist_default_on">Hermes opens when you hold the power button</string>
     <string name="assist_default_off">Choose Hermes to open it by holding the power button</string>
     <string name="assist_profile">Assistant profile</string>
-    <string name="assist_profile_app">Profile selected in the app</string>
+    <string name="assist_profile_app">Main profile (default)</string>
     <string name="assist_lock_title">Use Hermes without unlocking</string>
     <string name="assist_lock_desc">Talk to Hermes and hear answers on the lock screen. Earlier conversations, opening the app and confirming actions still need unlocking.</string>
     <string name="assist_locked_profile">Profile while locked</string>

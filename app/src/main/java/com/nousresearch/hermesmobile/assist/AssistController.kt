@@ -175,9 +175,11 @@ class AssistController(
     }
 
     private fun resolveProfile(): String {
-        val selected = vm.uiState.selectedProfile
-        val wanted = AssistPolicy.profile(locked, settings.profile, settings.lockedProfile, selected)
+        // Unset means the server's main profile, not whatever the app last selected (a notifications picker, a
+        // chat filter): the assistant must answer from the same place every time, lock screen included.
         val known = vm.uiState.profiles.map { it.name }
-        return if (known.isEmpty() || wanted in known) wanted else selected
+        val main = if (known.isEmpty() || "default" in known) "default" else known.first()
+        val wanted = AssistPolicy.profile(locked, settings.profile, settings.lockedProfile, main)
+        return if (known.isEmpty() || wanted in known) wanted else main
     }
 }

@@ -48,7 +48,7 @@ fun AssistSettingsSection(profiles: List<String>) {
     val app = context.applicationContext as com.nousresearch.hermesmobile.HermesApplication
     val choices by produceState(emptyList<com.nousresearch.hermesmobile.data.SessionModelChoice>(), profile) {
         val repo = app.viewModel.featureRepository() ?: return@produceState
-        value = runCatching { repo.sessionModelOptions(profile.ifBlank { app.viewModel.uiState.selectedProfile }) }.getOrDefault(emptyList())
+        value = runCatching { repo.sessionModelOptions(profile.ifBlank { "default" }) }.getOrDefault(emptyList())
     }
     var voiceMenu by remember { mutableStateOf(false) }
 
