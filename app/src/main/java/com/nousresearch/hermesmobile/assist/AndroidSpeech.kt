@@ -56,6 +56,9 @@ class AndroidSpeech(context: Context, private val usage: Int = AudioAttributes.U
         android.util.Log.d("HermesAssist", "tts voice=${runCatching { tts.voice?.name }.getOrNull()} quality=${runCatching { tts.voice?.quality }.getOrNull()}")
     }
 
+    /** Binds and configures the engine ahead of time, so the first sentence starts without the cold start. */
+    suspend fun warmUp() { runCatching { awaitReady() } }
+
     /** Queues one sentence after whatever is playing. */
     suspend fun enqueue(sentence: String) {
         if (sentence.isBlank()) return

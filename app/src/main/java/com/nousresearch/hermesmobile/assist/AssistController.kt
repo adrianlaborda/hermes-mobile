@@ -14,6 +14,7 @@ import com.nousresearch.hermesmobile.features.ParityController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -88,16 +89,18 @@ class AssistController(
         if (vm.uiState.savedConfig == null) { phase = Phase.NO_SERVER; return }
         phase = Phase.LISTENING
         stopRequested = false
+        val turn = CoroutineScope(currentCoroutineContext())
+        // While the user talks: wake the device voice and get the voice chat ready with its model, so neither
+        // waits for the transcript.
+        if (settings.deviceVoice) turn.launch { speech.warmUp() }
+        val prepared = turn.async { prepareChat() }
         val recording = voice.record({ level = it }, { stopRequested })
-        val audio = recording.file ?: run { phase = Phase.NOT_HEARD; return }
+        val audio = recording.file ?: run { prepared.cancel(); phase = Phase.NOT_HEARD; return }
         if (vm.uiState.connectionState != GatewayConnectionState.CONNECTED) phase = Phase.CONNECTING
-        val connected = withTimeoutOrNull(20_000) {
-            snapshotFlow { vm.uiState.connectionState }.first { it == GatewayConnectionState.CONNECTED }
-        } != null
+        val ready = prepared.await()
         val repo = vm.featureRepository()
-        if (!connected || repo == null) { audio.delete(); phase = Phase.UNREACHABLE; return }
-
-        profile = resolveProfile()
+        if (ready == null || repo == null) { audio.delete(); phase = Phase.UNREACHABLE; return }
+        val chat = ready
         val c = ParityController(repo, profile, scope)
         try {
             phase = Phase.TRANSCRIBING
@@ -105,12 +108,6 @@ class AssistController(
             if (prompt.isBlank()) { phase = Phase.NOT_HEARD; return }
             exchanges += Exchange(prompt)
             phase = Phase.THINKING
-            val chat = openVoiceChat(profile) ?: run { phase = Phase.UNREACHABLE; return }
-            // The voice model and no reasoning: a thinking model spends seconds before its first word.
-            settings.voiceModel.let { picked ->
-                val applied = vm.applyVoiceModel(picked?.first.orEmpty(), picked?.second.orEmpty(), if (settings.voiceThinking) "" else "none")
-                android.util.Log.d("HermesAssist", "voice model ${picked ?: "profile"} applied=$applied")
-            }
             val connection = vm.uiState.activeConnectionId.orEmpty()
             // The answer is on screen here: the push service must not also post a turn notice for it.
             com.nousresearch.hermesmobile.push.AppPresence.openSessionId = chat.storedSessionId
@@ -122,7 +119,6 @@ class AssistController(
             // A child of this turn, so cancelling the turn stops it too.
             val reader = if (!deviceVoice) null else CoroutineScope(currentCoroutineContext()).launch {
                 snapshotFlow { vm.streamingText }.collect { text ->
-                    android.util.Log.d("HermesAssist", "stream len=${text.length}")
                     streamer.push(text).forEach { sentence -> speak { speaking = true; speech.enqueue(sentence) } }
                 }
             }
@@ -163,6 +159,21 @@ class AssistController(
         try { block() }
         catch (e: CancellationException) { throw e }
         catch (e: Throwable) { speechFailed = true; speech.stop() }
+    }
+
+    /** Connected, the voice chat open and the voice model applied; null when the server cannot be reached. */
+    private suspend fun prepareChat(): ActiveChat? {
+        val connected = withTimeoutOrNull(20_000) {
+            snapshotFlow { vm.uiState.connectionState }.first { it == GatewayConnectionState.CONNECTED }
+        } != null
+        if (!connected || vm.featureRepository() == null) return null
+        profile = resolveProfile()
+        val chat = openVoiceChat(profile) ?: return null
+        // The voice model and no reasoning: a thinking model spends seconds before its first word.
+        val picked = settings.voiceModel
+        val applied = vm.applyVoiceModel(picked?.first.orEmpty(), picked?.second.orEmpty(), if (settings.voiceThinking) "" else "none")
+        android.util.Log.d("HermesAssist", "voice model ${picked ?: "profile"} applied=$applied")
+        return vm.uiState.activeChat?.takeIf { it.storedSessionId == chat.storedSessionId } ?: chat
     }
 
     /** The voice conversation to talk in: the recent one of this profile, or a new chat. */
