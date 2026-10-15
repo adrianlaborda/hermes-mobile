@@ -25,6 +25,9 @@ server plugin it needs for notifications.
   - chats' **Read aloud** uses it too.
 
   **Settings → Voice assistant → Voice** switches back to the server's Hermes voice.
+- **The device recognizes your speech.** By default the assistant uses Android's speech recognizer (on a Pixel,
+  Google's, on the device). Your words appear as you speak, and nothing is uploaded to be transcribed. **Settings →
+  Voice assistant → Speech recognition** switches back to the server's Whisper.
 - **A fast model for voice.** Voice chats skip reasoning by default, and **Settings → Voice assistant → Voice model**
   can pick a fast model for them. Measured on a real Hermes turn: a small model without reasoning answers in about
   2 seconds, against about 8 seconds per call for a reasoning model. **Think before answering** turns reasoning back

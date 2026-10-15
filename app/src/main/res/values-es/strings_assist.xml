@@ -41,4 +41,7 @@
     <string name="assist_model_profile">El del perfil</string>
     <string name="assist_thinking">Pensar antes de responder</string>
     <string name="assist_thinking_hint">Apagado: el modelo responde enseguida. Encendido: razona antes, mejor para preguntas difíciles pero tarda varios segundos.</string>
+    <string name="assist_recognition">Reconocimiento de voz</string>
+    <string name="assist_recognition_device_hint">El reconocedor de Android: muestra tus palabras mientras hablas y no sube el audio. Suele acertar más que el Whisper del servidor.</string>
+    <string name="assist_recognition_server_hint">Tu servidor transcribe la grabación (Whisper) cuando terminas de hablar.</string>
 </resources>

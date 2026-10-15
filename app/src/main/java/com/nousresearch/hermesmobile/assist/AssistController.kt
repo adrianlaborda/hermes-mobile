@@ -30,6 +30,7 @@ class AssistController(
     private val scope: CoroutineScope,
     private val voice: AssistVoice,
     private val speech: AndroidSpeech,
+    private val recognizer: DeviceRecognizer,
     private val settings: AssistSettings,
     private val voiceChatTitle: String
 ) {
@@ -48,6 +49,8 @@ class AssistController(
     var speechFailed by mutableStateOf(false)
     var error by mutableStateOf<String?>(null)
     var profile by mutableStateOf("")
+    /** What the device recognizer has heard so far, shown while the user speaks. */
+    var partial by mutableStateOf("")
     val exchanges = mutableStateListOf<Exchange>()
 
     val vm get() = app.viewModel
@@ -70,7 +73,7 @@ class AssistController(
     }
 
     /** Ends the recording now and sends what was said. */
-    fun stopListening() { stopRequested = true }
+    fun stopListening() { stopRequested = true; recognizer.stop() }
 
     fun stopSpeaking() {
         if (!speaking) return
@@ -94,17 +97,29 @@ class AssistController(
         // waits for the transcript.
         if (settings.deviceVoice) turn.launch { speech.warmUp() }
         val prepared = turn.async { prepareChat() }
-        val recording = voice.record({ level = it }, { stopRequested })
-        val audio = recording.file ?: run { prepared.cancel(); phase = Phase.NOT_HEARD; return }
+        partial = ""
+        // The device recognizer transcribes as the user speaks; the server path records, then transcribes.
+        val heard: String?
+        var audio: java.io.File? = null
+        if (settings.deviceRecognition && recognizer.available) {
+            heard = recognizer.listen({ partial = it }, { level = it })
+            if (heard == null) { prepared.cancel(); phase = Phase.NOT_HEARD; return }
+        } else {
+            heard = null
+            audio = voice.record({ level = it }, { stopRequested }).file ?: run { prepared.cancel(); phase = Phase.NOT_HEARD; return }
+        }
         if (vm.uiState.connectionState != GatewayConnectionState.CONNECTED) phase = Phase.CONNECTING
         val ready = prepared.await()
         val repo = vm.featureRepository()
-        if (ready == null || repo == null) { audio.delete(); phase = Phase.UNREACHABLE; return }
+        if (ready == null || repo == null) { audio?.delete(); phase = Phase.UNREACHABLE; return }
         val chat = ready
         val c = ParityController(repo, profile, scope)
         try {
-            phase = Phase.TRANSCRIBING
-            val prompt = voice.transcribe(c, audio)
+            val prompt = heard ?: run {
+                phase = Phase.TRANSCRIBING
+                voice.transcribe(c, audio!!)
+            }
+            partial = ""
             if (prompt.isBlank()) { phase = Phase.NOT_HEARD; return }
             exchanges += Exchange(prompt)
             phase = Phase.THINKING

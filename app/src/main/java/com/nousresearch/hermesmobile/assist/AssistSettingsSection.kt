@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.NoEncryption
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -41,6 +42,8 @@ fun AssistSettingsSection(profiles: List<String>) {
     var lockedProfile by remember { mutableStateOf(settings.lockedProfile) }
     var allowLocked by remember { mutableStateOf(settings.allowWhileLocked) }
     var deviceVoice by remember { mutableStateOf(settings.deviceVoice) }
+    var deviceRecognition by remember { mutableStateOf(settings.deviceRecognition) }
+    var recognitionMenu by remember { mutableStateOf(false) }
     var voiceModel by remember { mutableStateOf(settings.voiceModel) }
     var thinking by remember { mutableStateOf(settings.voiceThinking) }
     var modelMenu by remember { mutableStateOf(false) }
@@ -89,6 +92,19 @@ fun AssistSettingsSection(profiles: List<String>) {
         trailing = { Switch(checked = thinking, onCheckedChange = null) },
         onClick = { thinking = !thinking; settings.voiceThinking = thinking }
     )
+    Box {
+        FlatRow(
+            title = stringResource(R.string.assist_recognition),
+            description = stringResource(if (deviceRecognition) R.string.assist_recognition_device_hint else R.string.assist_recognition_server_hint),
+            leading = { Icon(Icons.Default.Mic, null) },
+            trailing = { Text(stringResource(if (deviceRecognition) R.string.assist_voice_device else R.string.assist_voice_server), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) },
+            onClick = { recognitionMenu = true }
+        )
+        DropdownMenu(expanded = recognitionMenu, onDismissRequest = { recognitionMenu = false }) {
+            DropdownMenuItem(text = { Text(stringResource(R.string.assist_voice_device)) }, onClick = { recognitionMenu = false; deviceRecognition = true; settings.deviceRecognition = true })
+            DropdownMenuItem(text = { Text(stringResource(R.string.assist_voice_server)) }, onClick = { recognitionMenu = false; deviceRecognition = false; settings.deviceRecognition = false })
+        }
+    }
     Box {
         FlatRow(
             title = stringResource(R.string.assist_voice),

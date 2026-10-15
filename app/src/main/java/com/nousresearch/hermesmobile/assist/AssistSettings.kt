@@ -29,6 +29,11 @@ class AssistSettings(context: Context) {
         get() = prefs.getBoolean("voice_thinking", false)
         set(value) { prefs.edit { putBoolean("voice_thinking", value) } }
 
+    /** Recognize speech on the device (default) instead of recording and transcribing on the server. */
+    var deviceRecognition: Boolean
+        get() = prefs.getBoolean("device_recognition", true)
+        set(value) { prefs.edit { putBoolean("device_recognition", value) } }
+
     /** Blank means the profile selected in the app. */
     var profile: String
         get() = prefs.getString("profile", "").orEmpty()

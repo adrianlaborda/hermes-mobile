@@ -41,4 +41,7 @@
     <string name="assist_model_profile">The profile\'s model</string>
     <string name="assist_thinking">Think before answering</string>
     <string name="assist_thinking_hint">Off: the model answers at once. On: it reasons first, which is better for hard questions but takes several seconds.</string>
+    <string name="assist_recognition">Speech recognition</string>
+    <string name="assist_recognition_device_hint">Android\'s recognizer: shows your words as you speak and needs no upload. Usually more accurate than the server\'s Whisper.</string>
+    <string name="assist_recognition_server_hint">Your server transcribes the recording (Whisper), once you stop talking.</string>
 </resources>

@@ -106,7 +106,11 @@ private fun Transcript(controller: AssistController, modifier: Modifier) {
         if (controller.phase == Phase.THINKING && controller.vm.uiState.interaction != null) {
             Text(stringResource(R.string.assist_needs_confirmation), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
         }
-        status(controller)?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        // The device recognizer's live transcript, as the user speaks.
+        if (controller.phase == Phase.LISTENING && controller.partial.isNotBlank()) {
+            Text(controller.partial, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.align(Alignment.End)
+                .clip(RoundedCornerShape(16.dp)).background(MaterialTheme.hermes.userBubble).padding(horizontal = 14.dp, vertical = 9.dp))
+        } else status(controller)?.let { Text(it, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         if (controller.speechFailed) Text(stringResource(R.string.assist_speech_failed), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -56,7 +56,7 @@ class AssistActivity : ComponentActivity() {
         keyguard = getSystemService(KeyguardManager::class.java)
         settings = AssistSettings(this)
         speech = AndroidSpeech(this)
-        controller = AssistController(app, lifecycleScope, AssistVoice(this), speech, settings, getString(R.string.assist_voice_chat_title))
+        controller = AssistController(app, lifecycleScope, AssistVoice(this), speech, DeviceRecognizer(this), settings, getString(R.string.assist_voice_chat_title))
         controller.locked = keyguard.isKeyguardLocked
         ContextCompat.registerReceiver(this, unlocked, IntentFilter(Intent.ACTION_USER_PRESENT), ContextCompat.RECEIVER_NOT_EXPORTED)
         setContent {
