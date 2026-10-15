@@ -1375,7 +1375,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         if (chat.running) return false
         val runtime = chat.runtimeSessionId
         if (model.isNotBlank() && (chat.model != model || chat.provider != provider || chat.reasoningEffort != reasoning)) {
-            val result = runCatching { repo.switchSessionModel(runtime, chat.profile, provider, model, reasoning) }.getOrNull() ?: return false
+            val result = runCatching { repo.switchSessionModel(runtime, chat.profile, provider, model, reasoning) }
+                .onFailure { android.util.Log.w("HermesAssist", "voice model switch failed: ${it.message}") }.getOrNull() ?: return false
             if (result.confirmRequired) return false
             sessionModelPins[runtime] = SessionModelPin(chat.profile, provider, model, reasoning, ensureOnNextPrompt = true)
             uiState.activeChat?.takeIf { it.runtimeSessionId == runtime }?.let {

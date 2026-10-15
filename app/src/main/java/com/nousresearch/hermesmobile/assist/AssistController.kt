@@ -32,6 +32,8 @@ class AssistController(
     private val settings: AssistSettings,
     private val voiceChatTitle: String
 ) {
+    private companion object { const val TURN_TIMEOUT_MS = 5 * 60 * 1000L }
+
     enum class Phase { UNLOCK, NO_SERVER, PERMISSION, LISTENING, CONNECTING, TRANSCRIBING, THINKING, ANSWERED, NOT_HEARD, UNREACHABLE, ERROR }
 
     /** One question and its answer. Only this overlay's turns are shown: earlier ones need unlocking the app. */
@@ -106,7 +108,8 @@ class AssistController(
             val chat = openVoiceChat(profile) ?: run { phase = Phase.UNREACHABLE; return }
             // The voice model and no reasoning: a thinking model spends seconds before its first word.
             settings.voiceModel.let { picked ->
-                vm.applyVoiceModel(picked?.first.orEmpty(), picked?.second.orEmpty(), if (settings.voiceThinking) "" else "none")
+                val applied = vm.applyVoiceModel(picked?.first.orEmpty(), picked?.second.orEmpty(), if (settings.voiceThinking) "" else "none")
+                android.util.Log.d("HermesAssist", "voice model ${picked ?: "profile"} applied=$applied")
             }
             val connection = vm.uiState.activeConnectionId.orEmpty()
             // The answer is on screen here: the push service must not also post a turn notice for it.
@@ -123,8 +126,16 @@ class AssistController(
                     streamer.push(text).forEach { sentence -> speak { speaking = true; speech.enqueue(sentence) } }
                 }
             }
-            // sendMessage marks the chat running at once; the turn ends when it stops or the app moves elsewhere.
-            snapshotFlow { vm.uiState.activeChat }.first { it == null || it.storedSessionId != chat.storedSessionId || !it.running }
+            // The turn ends when an answer newer than our question is in the chat and nothing runs. `running` alone
+            // is not enough: a reconnect reloads the chat from the server mid-turn, briefly not running and without
+            // the answer yet.
+            val answersBefore = chat.messages.count { it.role == "assistant" }
+            withTimeoutOrNull(TURN_TIMEOUT_MS) {
+                snapshotFlow { vm.uiState.activeChat }.first { c ->
+                    c == null || c.storedSessionId != chat.storedSessionId ||
+                        (!c.running && c.messages.count { it.role == "assistant" } > answersBefore)
+                }
+            }
             reader?.cancel()
             android.util.Log.d("HermesAssist", "turn done")
             val answer = vm.uiState.activeChat?.takeIf { it.storedSessionId == chat.storedSessionId }
