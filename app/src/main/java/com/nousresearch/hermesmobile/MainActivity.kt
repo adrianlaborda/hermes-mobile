@@ -31,11 +31,12 @@ class MainActivity : ComponentActivity() {
         receiveNotification(intent)
     }
     private fun receiveNotification(intent: Intent?) {
+        if (intent?.action == com.nousresearch.hermesmobile.update.AppUpdates.ACTION_OPEN) { com.nousresearch.hermesmobile.update.AppUpdates.openDialog(this); return }
         val id = intent?.getStringExtra("event_id") ?: return
         val event = runCatching { com.nousresearch.hermesmobile.push.PushStore(this).events().firstOrNull { it.optString("event_id") == id } }.getOrNull()
         if (event != null) vm.openNotification(event)
         else { vm.notificationInboxRequested = true; com.nousresearch.hermesmobile.push.PushDelivery.schedule(this, id) }
     }
-    override fun onStart() { super.onStart(); (application as HermesApplication).screenStarted(); com.nousresearch.hermesmobile.push.PushDelivery.schedule(this) }
+    override fun onStart() { super.onStart(); (application as HermesApplication).screenStarted(); com.nousresearch.hermesmobile.push.PushDelivery.schedule(this); com.nousresearch.hermesmobile.update.AppUpdates.onAppStarted(this) }
     override fun onStop() { (application as HermesApplication).screenStopped(); super.onStop() }
 }

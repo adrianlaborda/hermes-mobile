@@ -3288,6 +3288,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     override fun onGatewayReady(payload: JSONObject) {
         // The server's Hermes skin: the app follows it, as Desktop does (Settings → Theme).
         com.nousresearch.hermesmobile.ui.ThemeStore.saveServerSkin(getApplication(), payload.optJSONObject("skin"))
+        // Whether the server's hermes-android plugin is older than this app needs (Settings says so).
+        repository?.let { repo -> com.nousresearch.hermesmobile.update.AppUpdates.checkPlugin(getApplication(), repo.rest.currentConfig().id, repo) }
         viewModelScope.launch(Dispatchers.Main.immediate) {
         readyWaiter?.complete(Unit)
         uiState = uiState.copy(loading = false, error = null)

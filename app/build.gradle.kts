@@ -16,6 +16,8 @@ android {
         versionCode = 36
         versionName = "0.3.0-beta.2"
 
+        // Where the app looks for its own updates (GitHub releases); forks set theirs, or "" to turn it off.
+        buildConfigField("String", "UPDATE_REPO", "\"${providers.gradleProperty("hermes.updateRepo").orElse("adrianlaborda/hermes-mobile").get()}\"")
         for (name in listOf("google_app_id", "gcm_defaultSenderId", "google_api_key", "project_id")) {
             resValue("string", name, providers.gradleProperty("firebase.$name").orElse("").get())
         }

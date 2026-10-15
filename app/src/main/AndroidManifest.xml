@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Installs its own updates from GitHub releases (the app is not distributed through a store). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Android 11+ package visibility: the device's text-to-speech engine. -->
     <queries>
@@ -37,6 +39,7 @@
         <service android:name=".push.HermesMessagingService" android:exported="false">
             <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT" /></intent-filter>
         </service>
+        <receiver android:name=".update.UpdateInstallReceiver" android:exported="false" />
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.files" android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>

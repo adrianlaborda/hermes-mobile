@@ -11,6 +11,14 @@ server plugin it needs for notifications.
 
 ### Added
 
+- **Updates from inside the app.** Hermes Mobile checks its GitHub releases once a day:
+  - a new version is announced once, as a notification (or a dialog while the app is open), and stays at the top
+    of **Settings**;
+  - **Install** downloads it, checks it against the published checksums and the installed app's signing
+    certificate, and updates in place, keeping your connections and chats. Android asks once to allow it;
+  - **Settings → About** has **Check for updates** and **Beta versions** (on when you run a beta).
+- **Server plugin notice.** When the server's `hermes-android` plugin is older than the app needs, or a newer one is
+  published, **Settings** says so and shows the command that updates it.
 - **Hermes as your digital assistant.** Choose Hermes under **Settings → Voice assistant → Digital assistant app**.
   Holding the power button (or the corner swipe) opens a voice card over whatever is on screen:
   - it listens at once and stops by itself when you stop talking;

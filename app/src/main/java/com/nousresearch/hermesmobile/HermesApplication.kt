@@ -56,6 +56,7 @@ class HermesApplication : Application(), ViewModelStoreOwner {
         super.onCreate()
         // Before any FCM callback: a prebuilt APK only knows the user's imported Firebase project.
         runCatching { com.nousresearch.hermesmobile.push.FirebaseRuntime.ensureInitialized(this) }
+        com.nousresearch.hermesmobile.update.AppUpdates.schedule(this)
         // Capture leftovers before any screen can start a new recording. Never touch arbitrary cache files.
         val oldAudio = cacheDir.listFiles()?.filter { it.name.startsWith("hermes-voice-") || it.name.startsWith("hermes-speech-") }.orEmpty()
         Thread({

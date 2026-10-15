@@ -57,6 +57,7 @@ fun MoreScreen(
             HermesTopBar(stringResource(R.string.a21_settings), listOfNotNull(config?.displayLabel, status?.version?.let { "Hermes $it" }).joinToString(" · ").ifBlank { null },
                 leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } })
             DashedDivider(color = MaterialTheme.hermes.line)
+            com.nousresearch.hermesmobile.update.UpdateNotices()
             SectionLabel(stringResource(R.string.a14_intelligence))
             FlatRow(stringResource(R.string.a14_intelligence_hint), leading = { Icon(Icons.Default.Psychology, null) }, onClick = onCapabilities)
             FlatRow(stringResource(R.string.a14_models_advanced), leading = { Icon(Icons.Default.Tune, null) }, onClick = { onFeature("Models") })
@@ -192,6 +193,7 @@ private fun AboutSection() {
         // Android 13+ confirms the copy itself.
         onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Hermes Mobile", version))) } }
     )
+    com.nousresearch.hermesmobile.update.UpdateSettings()
     FlatRow(stringResource(R.string.about_changes), leading = { Icon(Icons.Default.NewReleases, null) },
         trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(18.dp)) },
         onClick = { uri.openUri("$APP_REPO_URL/releases") })

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_channel">Actualizaciones de la app</string>
+    <string name="update_available_title">Hermes Mobile %1$s disponible</string>
+    <string name="update_available_tap">Toca para ver las novedades e instalarla</string>
+    <string name="update_installed_version">Tienes la %1$s. Al actualizar se conservan tus conexiones y chats.</string>
+    <string name="update_downloading">Descargando…</string>
+    <string name="update_installing">Instalando…</string>
+    <string name="update_permission">Android te pide, una sola vez, que permitas a Hermes instalar actualizaciones. Activa «Permitir de esta fuente», vuelve y toca Instalar de nuevo.</string>
+    <string name="update_allow">Permitir</string>
+    <string name="update_install">Instalar</string>
+    <string name="update_later">Más tarde</string>
+    <string name="update_open_github">Abrir en GitHub</string>
+    <string name="update_failed">No se pudo instalar la actualización (%1$s). Puedes descargarla desde GitHub.</string>
+    <string name="update_failed_checksum">La descarga no coincide con la versión publicada. Inténtalo más tarde o descárgala desde GitHub.</string>
+    <string name="update_failed_signature">Esta actualización está firmada con un certificado distinto al de la app instalada, así que Android no puede instalarla encima. Descárgala desde GitHub.</string>
+    <string name="update_check">Buscar actualizaciones</string>
+    <string name="update_checking">Buscando…</string>
+    <string name="update_up_to_date">Tienes la última versión</string>
+    <string name="update_check_failed">No se pudo conectar con GitHub</string>
+    <string name="update_beta">Versiones beta</string>
+    <string name="update_beta_hint">Recibe versiones de prueba antes de que sean estables</string>
+    <string name="update_plugin_required">Plugin del servidor: actualízalo a la %1$s</string>
+    <string name="update_plugin_available">Plugin del servidor %1$s disponible</string>
+    <string name="update_plugin_installed">Tu servidor tiene hermes-android %1$s</string>
+    <string name="update_plugin_title">Actualiza el plugin del servidor</string>
+    <string name="update_plugin_required_body">Tu servidor tiene hermes-android %1$s y esta app necesita la %2$s o posterior. Las notificaciones pueden fallar hasta que lo actualices.</string>
+    <string name="update_plugin_available_body">Tu servidor tiene hermes-android %1$s. Está disponible la %2$s.</string>
+    <string name="update_plugin_how">En el servidor, con el usuario que ejecuta Hermes:</string>
+    <string name="update_plugin_restart">Después reinicia Hermes para que cargue la versión nueva.</string>
+    <string name="update_copy_command">Copiar comando</string>
+    <string name="update_close">Cerrar</string>
+</resources>

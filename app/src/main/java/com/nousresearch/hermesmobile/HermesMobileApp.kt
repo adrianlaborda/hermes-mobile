@@ -360,6 +360,8 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
         }
         }
 
+        com.nousresearch.hermesmobile.update.UpdateDialog()
+
         s.pendingCapabilityModelChange?.let { pending ->
             AlertDialog(
                 onDismissRequest = vm::cancelCapabilityModelChange,

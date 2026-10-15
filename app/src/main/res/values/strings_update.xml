@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_channel">App updates</string>
+    <string name="update_available_title">Hermes Mobile %1$s is available</string>
+    <string name="update_available_tap">Tap to see what\'s new and install it</string>
+    <string name="update_installed_version">You have %1$s. Updating keeps your connections and chats.</string>
+    <string name="update_downloading">Downloading…</string>
+    <string name="update_installing">Installing…</string>
+    <string name="update_permission">Android asks you, once, to let Hermes install updates. Turn on \"Allow from this source\", come back and tap Install again.</string>
+    <string name="update_allow">Allow</string>
+    <string name="update_install">Install</string>
+    <string name="update_later">Later</string>
+    <string name="update_open_github">Open on GitHub</string>
+    <string name="update_failed">Could not install the update (%1$s). You can download it from GitHub.</string>
+    <string name="update_failed_checksum">The download does not match the published release. Try again later, or download it from GitHub.</string>
+    <string name="update_failed_signature">This update is signed with a different certificate than the installed app, so Android cannot install it over it. Download it from GitHub.</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">You have the latest version</string>
+    <string name="update_check_failed">Could not reach GitHub</string>
+    <string name="update_beta">Beta versions</string>
+    <string name="update_beta_hint">Get test versions before they are stable</string>
+    <string name="update_plugin_required">Server plugin: update to %1$s</string>
+    <string name="update_plugin_available">Server plugin %1$s is available</string>
+    <string name="update_plugin_installed">Your server has hermes-android %1$s</string>
+    <string name="update_plugin_title">Update the server plugin</string>
+    <string name="update_plugin_required_body">Your server runs hermes-android %1$s, and this app needs %2$s or later. Notifications may not work until you update it.</string>
+    <string name="update_plugin_available_body">Your server runs hermes-android %1$s. Version %2$s is available.</string>
+    <string name="update_plugin_how">On the server, as the user that runs Hermes:</string>
+    <string name="update_plugin_restart">Then restart Hermes so it loads the new version.</string>
+    <string name="update_copy_command">Copy command</string>
+    <string name="update_close">Close</string>
+</resources>
