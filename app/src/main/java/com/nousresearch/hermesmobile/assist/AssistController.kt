@@ -191,8 +191,7 @@ class AssistController(
         val chat = openVoiceChat(profile) ?: return null
         // The voice model and no reasoning: a thinking model spends seconds before its first word.
         val picked = settings.voiceModel
-        val applied = vm.applyVoiceModel(picked?.first.orEmpty(), picked?.second.orEmpty(), if (settings.voiceThinking) "" else "none")
-        android.util.Log.d("HermesAssist", "voice model ${picked ?: "profile"} applied=$applied")
+        vm.applyVoiceModel(picked?.first.orEmpty(), picked?.second.orEmpty(), if (settings.voiceThinking) "" else "none")
         return vm.uiState.activeChat?.takeIf { it.storedSessionId == chat.storedSessionId } ?: chat
     }
 

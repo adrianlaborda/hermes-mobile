@@ -30,7 +30,7 @@ class AndroidSpeech(context: Context, private val usage: Int = AudioAttributes.U
 
     init {
         tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-            override fun onStart(utteranceId: String?) { android.util.Log.d("HermesAssist", "tts start $utteranceId") }
+            override fun onStart(utteranceId: String?) {}
             override fun onDone(utteranceId: String?) = finished()
             @Deprecated("Deprecated in Java") override fun onError(utteranceId: String?) = finished()
             override fun onError(utteranceId: String?, errorCode: Int) = finished()
@@ -53,7 +53,6 @@ class AndroidSpeech(context: Context, private val usage: Int = AudioAttributes.U
         val locale = Locale.getDefault()
         val current = runCatching { tts.voice ?: tts.defaultVoice }.getOrNull()
         if (current == null || current.locale.language != locale.language) tts.language = locale
-        android.util.Log.d("HermesAssist", "tts voice=${runCatching { tts.voice?.name }.getOrNull()} quality=${runCatching { tts.voice?.quality }.getOrNull()}")
     }
 
     /** Binds and configures the engine ahead of time, so the first sentence starts without the cold start. */
@@ -65,7 +64,6 @@ class AndroidSpeech(context: Context, private val usage: Int = AudioAttributes.U
         awaitReady()
         pending.incrementAndGet()
         _speaking.value = true
-        android.util.Log.d("HermesAssist", "tts enqueue ${sentence.take(40)}")
         if (tts.speak(sentence, TextToSpeech.QUEUE_ADD, null, "hermes-${nextId++}") != TextToSpeech.SUCCESS) finished()
     }
 

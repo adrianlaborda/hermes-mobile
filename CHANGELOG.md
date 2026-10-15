@@ -9,6 +9,10 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.2] - 2026-10-15
+
+Install this version by hand once: from now on the app tells you about new versions and installs them itself.
+
 ### Added
 
 - **Updates from inside the app.** Hermes Mobile checks its GitHub releases once a day:
@@ -22,8 +26,7 @@ server plugin it needs for notifications.
 - **Hermes as your digital assistant.** Choose Hermes under **Settings → Voice assistant → Digital assistant app**.
   Holding the power button (or the corner swipe) opens a voice card over whatever is on screen:
   - it listens at once and stops by itself when you stop talking;
-  - your server transcribes the request, Hermes answers in the profile's voice conversation, and the answer is read
-    aloud;
+  - Hermes answers in the profile's voice conversation, and the answer is read aloud;
   - talking again within five minutes continues the same conversation;
   - **Open in Hermes** continues it in the app.
 - **The device's voice reads answers.** By default the assistant speaks with Android's voice (on a Pixel, Google's
@@ -43,7 +46,6 @@ server plugin it needs for notifications.
 - **The lock screen works like Gemini's.** By default the assistant asks you to unlock first. With **Use Hermes without
   unlocking** it listens and answers over the lock screen, optionally with a separate, more limited profile. Earlier
   conversations, opening the app and confirming actions still need unlocking.
-
 - **Settings → About** shows the app version, which you can tap to copy. It also links to what's new, problem reports,
   the source code and the open-source licenses.
 
@@ -77,6 +79,8 @@ server plugin it needs for notifications.
 - A notice the server withdrew no longer lingers as a generic "Hermes" notification.
 - The context ring's arc now sits on its track. With the thick ring of the context sheet it used to stick out
   of the circle.
+
+Requires `hermes-android` 0.5.1; the approval-notice fixes need 0.5.3. Version code 36.
 
 ## [0.3.0-beta.1] - 2026-10-13
 
@@ -157,5 +161,6 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.1...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.2...HEAD
+[0.3.0-beta.2]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.2
 [0.3.0-beta.1]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.1
