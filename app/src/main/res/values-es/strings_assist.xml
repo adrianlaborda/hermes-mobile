@@ -44,4 +44,5 @@
     <string name="assist_recognition">Reconocimiento de voz</string>
     <string name="assist_recognition_device_hint">El reconocedor de Android: muestra tus palabras mientras hablas y no sube el audio. Suele acertar más que el Whisper del servidor.</string>
     <string name="assist_recognition_server_hint">Tu servidor transcribe la grabación (Whisper) cuando terminas de hablar.</string>
+    <string name="assist_model_tip">Para respuestas rápidas elige un modelo pequeño y veloz (muchos tokens por segundo) que no razone. Un modelo que razona pasa varios segundos pensando antes de decir la primera palabra.</string>
 </resources>

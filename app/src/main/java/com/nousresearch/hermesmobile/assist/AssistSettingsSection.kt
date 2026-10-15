@@ -85,6 +85,12 @@ fun AssistSettingsSection(profiles: List<String>) {
             }
         }
     }
+    Text(
+        stringResource(R.string.assist_model_tip),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 6.dp)
+    )
     FlatRow(
         title = stringResource(R.string.assist_thinking),
         description = stringResource(R.string.assist_thinking_hint),

@@ -44,4 +44,5 @@
     <string name="assist_recognition">Speech recognition</string>
     <string name="assist_recognition_device_hint">Android\'s recognizer: shows your words as you speak and needs no upload. Usually more accurate than the server\'s Whisper.</string>
     <string name="assist_recognition_server_hint">Your server transcribes the recording (Whisper), once you stop talking.</string>
+    <string name="assist_model_tip">For quick answers pick a small, fast model (many tokens per second) that does not reason. A reasoning model spends seconds thinking before its first word.</string>
 </resources>

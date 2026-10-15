@@ -101,11 +101,17 @@ class AssistController(
         // The device recognizer transcribes as the user speaks; the server path records, then transcribes.
         val heard: String?
         var audio: java.io.File? = null
-        if (settings.deviceRecognition && recognizer.available) {
-            heard = recognizer.listen({ partial = it }, { level = it })
+        val onDevice = settings.deviceRecognition && recognizer.available
+        val recognized = if (!onDevice) Result.failure(IllegalStateException("server recognition"))
+            else runCatching { recognizer.listen({ partial = it }, { level = it }) }
+                .onFailure { if (it is CancellationException) throw it; android.util.Log.w("HermesAssist", "device recognition failed, using the server: ${it.message}") }
+        if (recognized.isSuccess) {
+            heard = recognized.getOrNull()
             if (heard == null) { prepared.cancel(); phase = Phase.NOT_HEARD; return }
         } else {
+            // No recognizer, or it failed: record and let the server transcribe (Whisper).
             heard = null
+            partial = ""
             audio = voice.record({ level = it }, { stopRequested }).file ?: run { prepared.cancel(); phase = Phase.NOT_HEARD; return }
         }
         if (vm.uiState.connectionState != GatewayConnectionState.CONNECTED) phase = Phase.CONNECTING
