@@ -607,7 +607,19 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
+    /** The page a chat was opened from (Bots, Home…): back from the chat returns there, not to the Chats list. */
+    private var chatReturnSection: MainSection? = null
+
+    private fun rememberChatOrigin() {
+        chatReturnSection = when {
+            uiState.section != MainSection.CHAT -> uiState.section
+            uiState.activeChat != null -> chatReturnSection // one chat to another keeps the first one's origin
+            else -> null
+        }
+    }
+
     fun closeActiveChat() {
+        val back = chatReturnSection
         persistCurrentComposerNow()
         uiState.activeChat?.runtimeSessionId?.let(sessionModelPins::remove)
         navigationGeneration += 1
@@ -632,9 +644,11 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             section = MainSection.CHAT
         )
         refreshSessions()
+        if (back != null) switchSection(back)
     }
 
     fun switchSection(section: MainSection) {
+        chatReturnSection = null
         if (section != MainSection.BOTS) {
             // Hosted room work is gateway-owned and continues. Only retire the
             // mobile observer while its surface is not visible.
@@ -2046,6 +2060,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun newWorkspaceChat(profile: String, title: String, cwd: String?, draft: String = "") {
         val repo = repository ?: return
+        rememberChatOrigin()
         persistCurrentComposerNow()
         val generation = ++navigationGeneration
         resetStream()
@@ -2140,6 +2155,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun openSession(session: HermesSession) {
         val repo = repository ?: return
+        rememberChatOrigin()
         val generation = ++navigationGeneration
         resetStream()
         viewModelScope.launch {
@@ -2172,6 +2188,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun openBot(profile: HermesProfile) {
         val repo = repository ?: return
+        rememberChatOrigin()
         val generation = ++navigationGeneration
         resetStream()
         viewModelScope.launch {
@@ -2229,6 +2246,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun branchSession(session: HermesSession) {
         val repo = repository ?: return
+        rememberChatOrigin()
         val generation = ++navigationGeneration
         resetStream()
         viewModelScope.launch {
@@ -2289,6 +2307,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun createBot(name: String, title: String, description: String, cloneFrom: String? = null) {
         val repo = repository ?: return
+        rememberChatOrigin()
         val generation = ++navigationGeneration
         viewModelScope.launch {
             uiState = uiState.copy(loading = true, error = null)

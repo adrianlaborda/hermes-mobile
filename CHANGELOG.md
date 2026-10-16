@@ -9,6 +9,10 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Fixed
+
+- Back from a chat opened from **Bots** or **Home** returns there instead of to the Chats list.
+
 ## [0.3.0-beta.3] - 2026-10-15
 
 Install this version by hand once: from now on the app tells you about new versions and installs them itself.
