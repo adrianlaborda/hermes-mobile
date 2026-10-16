@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="i18n_cron_search">Search routines</string>
-    <string name="i18n_cron_empty">No routines</string>
+    <string name="i18n_cron_search">Search jobs</string>
+    <string name="i18n_cron_empty">No jobs</string>
     <string name="i18n_cron_empty_hint">Schedule prompts to run on your Hermes gateway.</string>
-    <string name="i18n_cron_no_matches_hint">Try another routine name, profile, schedule or prompt.</string>
-    <string name="i18n_cron_routine">Routine</string>
-    <string name="i18n_cron_new">New routine</string>
-    <string name="i18n_cron_edit">Edit routine</string>
+    <string name="i18n_cron_no_matches_hint">Try another job name, profile, schedule or prompt.</string>
+    <string name="i18n_cron_routine">Job</string>
+    <string name="i18n_cron_new">New job</string>
+    <string name="i18n_cron_edit">Edit job</string>
     <string name="i18n_profile_named">Profile: %1$s</string>
     <string name="i18n_name">Name</string>
     <string name="i18n_cron_prompt">Prompt</string>
@@ -39,8 +39,8 @@
     <string name="i18n_refresh">Refresh</string>
     <string name="i18n_cron_run">Run</string>
     <plurals name="i18n_routines_count">
-        <item quantity="one">%d routine</item>
-        <item quantity="other">%d routines</item>
+        <item quantity="one">%d job</item>
+        <item quantity="other">%d jobs</item>
     </plurals>
     <string name="i18n_msg_restart">Restart messaging gateway</string>
     <string name="i18n_msg_no_channels">No channels available</string>
@@ -76,10 +76,10 @@
     <string name="i18n_wh_prompt_hint">You can reference the payload with the gateway\'s template syntax</string>
     <string name="i18n_wh_target">Delivery target</string>
     <string name="i18n_wh_skills_hint">optional, comma separated</string>
-    <string name="i18n_wh_cron">Existing routine</string>
-    <string name="i18n_wh_cron_hint">optional routine id</string>
+    <string name="i18n_wh_cron">Existing cron job</string>
+    <string name="i18n_wh_cron_hint">optional job id</string>
     <string name="i18n_wh_direct_needs_target">Direct delivery cannot use the local log; choose a messaging target.</string>
-    <string name="i18n_wh_exclusive">Direct delivery and an existing routine cannot be combined.</string>
+    <string name="i18n_wh_exclusive">Direct delivery and an existing cron job cannot be combined.</string>
     <plurals name="i18n_platforms_count">
         <item quantity="one">%d platform</item>
         <item quantity="other">%d platforms</item>
@@ -277,10 +277,10 @@
     <string name="i18n_vm_bot_deleted">Bot %1$s deleted</string>
     <string name="i18n_vm_queued">Message queued</string>
     <string name="i18n_vm_steer_sent">Correction sent</string>
-    <string name="i18n_vm_routine_created">Routine created</string>
-    <string name="i18n_vm_routine_updated">Routine updated</string>
-    <string name="i18n_vm_routine_queued">Routine queued</string>
-    <string name="i18n_vm_blueprint">Routine created from %1$s</string>
+    <string name="i18n_vm_routine_created">Job created</string>
+    <string name="i18n_vm_routine_updated">Job updated</string>
+    <string name="i18n_vm_routine_queued">Job queued</string>
+    <string name="i18n_vm_blueprint">Job created from %1$s</string>
     <string name="i18n_vm_restart">Gateway restart requested</string>
     <string name="i18n_vm_telegram">Telegram linked</string>
     <string name="i18n_vm_pairing_cleared">Pending pairing requests cleared</string>

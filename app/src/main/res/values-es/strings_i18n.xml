@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="i18n_cron_search">Buscar rutinas</string>
-    <string name="i18n_cron_empty">No hay rutinas</string>
+    <string name="i18n_cron_search">Buscar trabajos</string>
+    <string name="i18n_cron_empty">No hay trabajos</string>
     <string name="i18n_cron_empty_hint">Programa instrucciones para que se ejecuten en tu gateway de Hermes.</string>
     <string name="i18n_cron_no_matches_hint">Prueba con otro nombre, perfil, horario o instrucción.</string>
-    <string name="i18n_cron_routine">Rutina</string>
-    <string name="i18n_cron_new">Nueva rutina</string>
-    <string name="i18n_cron_edit">Editar rutina</string>
+    <string name="i18n_cron_routine">Trabajo</string>
+    <string name="i18n_cron_new">Nuevo trabajo</string>
+    <string name="i18n_cron_edit">Editar trabajo</string>
     <string name="i18n_profile_named">Perfil: %1$s</string>
     <string name="i18n_name">Nombre</string>
     <string name="i18n_cron_prompt">Instrucción</string>
@@ -39,8 +39,8 @@
     <string name="i18n_refresh">Actualizar</string>
     <string name="i18n_cron_run">Ejecución</string>
     <plurals name="i18n_routines_count">
-        <item quantity="one">%d rutina</item>
-        <item quantity="other">%d rutinas</item>
+        <item quantity="one">%d trabajo</item>
+        <item quantity="other">%d trabajos</item>
     </plurals>
     <string name="i18n_msg_restart">Reiniciar el gateway de mensajería</string>
     <string name="i18n_msg_no_channels">No hay canales disponibles</string>
@@ -76,10 +76,10 @@
     <string name="i18n_wh_prompt_hint">Puedes referirte al contenido con la sintaxis de plantillas del gateway</string>
     <string name="i18n_wh_target">Destino de entrega</string>
     <string name="i18n_wh_skills_hint">opcional, separadas por comas</string>
-    <string name="i18n_wh_cron">Rutina existente</string>
-    <string name="i18n_wh_cron_hint">id de la rutina (opcional)</string>
+    <string name="i18n_wh_cron">Trabajo de cron existente</string>
+    <string name="i18n_wh_cron_hint">id del trabajo (opcional)</string>
     <string name="i18n_wh_direct_needs_target">La entrega directa no puede usar el registro local; elige un destino de mensajería.</string>
-    <string name="i18n_wh_exclusive">La entrega directa y una rutina existente no se pueden combinar.</string>
+    <string name="i18n_wh_exclusive">La entrega directa y un trabajo de cron existente no se pueden combinar.</string>
     <plurals name="i18n_platforms_count">
         <item quantity="one">%d plataforma</item>
         <item quantity="other">%d plataformas</item>
@@ -277,10 +277,10 @@
     <string name="i18n_vm_bot_deleted">Bot %1$s eliminado</string>
     <string name="i18n_vm_queued">Mensaje en cola</string>
     <string name="i18n_vm_steer_sent">Corrección enviada</string>
-    <string name="i18n_vm_routine_created">Rutina creada</string>
-    <string name="i18n_vm_routine_updated">Rutina actualizada</string>
-    <string name="i18n_vm_routine_queued">Rutina en cola</string>
-    <string name="i18n_vm_blueprint">Rutina creada a partir de %1$s</string>
+    <string name="i18n_vm_routine_created">Trabajo creado</string>
+    <string name="i18n_vm_routine_updated">Trabajo actualizado</string>
+    <string name="i18n_vm_routine_queued">Trabajo en cola</string>
+    <string name="i18n_vm_blueprint">Trabajo creado a partir de %1$s</string>
     <string name="i18n_vm_restart">Reinicio del gateway solicitado</string>
     <string name="i18n_vm_telegram">Telegram vinculado</string>
     <string name="i18n_vm_pairing_cleared">Solicitudes de emparejamiento pendientes borradas</string>

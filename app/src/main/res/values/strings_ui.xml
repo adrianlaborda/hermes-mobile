@@ -144,7 +144,7 @@
     <string name="ui_db18382a24">"New chat"</string>
     <string name="ui_cf28f49ec5">"New folder"</string>
     <string name="ui_75be83ad9a">"New preset"</string>
-    <string name="ui_d5e520f554">"New routine"</string>
+    <string name="ui_d5e520f554">"New job"</string>
     <string name="ui_b13f96dc48">"New side chat"</string>
     <string name="ui_d58b5d6489">"New webhook"</string>
     <string name="ui_a2167afadd">"No additional credentials are required."</string>
@@ -255,5 +255,5 @@
     <string name="ui_2f52ef69f0">"Models, provider accounts, Skills, Tools, MCP and API keys"</string>
     <string name="ui_d47d7cb0e4">"More"</string>
     <string name="ui_535e52e4a2">"Profiles"</string>
-    <string name="ui_61b7bb44e2">"Routines"</string>
+    <string name="ui_61b7bb44e2">"Cron"</string>
 </resources>

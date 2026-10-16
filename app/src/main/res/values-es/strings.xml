@@ -83,8 +83,8 @@
     <string name="routines_manage">Gestionar</string>
     <string name="routines_no_runs">Aún no se ha ejecutado</string>
     <string name="routines_state_paused">En pausa</string>
-    <string name="routines_state_completed">Terminada</string>
-    <string name="routines_state_disabled">Desactivada</string>
+    <string name="routines_state_completed">Terminado</string>
+    <string name="routines_state_disabled">Desactivado</string>
     <string name="routines_state_error">Falló</string>
-    <string name="routines_delete_title">¿Eliminar esta rutina?</string>
+    <string name="routines_delete_title">¿Eliminar este trabajo?</string>
 </resources>

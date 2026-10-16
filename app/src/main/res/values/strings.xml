@@ -86,5 +86,5 @@
     <string name="routines_state_completed">Done</string>
     <string name="routines_state_disabled">Off</string>
     <string name="routines_state_error">Failed</string>
-    <string name="routines_delete_title">Delete this routine?</string>
+    <string name="routines_delete_title">Delete this job?</string>
 </resources>
