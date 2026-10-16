@@ -103,6 +103,8 @@ data class HermesUiState(
     val selectedProfile: String = "default",
     val sessionProfileFilter: String = "all",
     val activeChat: ActiveChat? = null,
+    /** Chats with something to show in their status dot (Desktop's sidebar dots), by stored session id. */
+    val sessionDots: Map<String, com.nousresearch.hermesmobile.data.SessionDot> = emptyMap(),
     val loadingOlderMessages: Boolean = false,
     val tools: List<ToolActivity> = emptyList(),
     val chatDraft: String = "",
@@ -160,6 +162,9 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     /** `commands.catalog` of one runtime session; an empty catalog marks a gateway without it. */
     private var slashCatalog: Pair<String, SlashCatalog>? = null
     private var groupPollingJob: Job? = null
+    private val liveSessions = com.nousresearch.hermesmobile.data.LiveSessions()
+    private var liveSessionsJob: Job? = null
+    private val liveSessionsPoke = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
     private var groupGeneration = 0L
     private var telegramOnboardingPollingJob: Job? = null
     private var nativeAuthJob: Job? = null
@@ -325,9 +330,11 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         repository?.gateway?.setEnvironment(foreground, online, networkChanged)
         if (!foreground) {
             persistComposerSoon(immediate = true)
+            liveSessionsJob?.cancel()
             groupPollingJob?.cancel()
             telegramOnboardingPollingJob?.cancel()
         } else if (becameAvailable) {
+            startLiveSessions()
             if (uiState.section == MainSection.BOTS) uiState.activeGroup?.let { startGroupPolling(it.room.roomId, groupGeneration) }
             if (uiState.section == MainSection.MESSAGING) uiState.telegramOnboarding?.takeUnless { it.status.lowercase() in setOf("ready", "expired", "cancelled", "failed", "error") }?.let { pollTelegramOnboarding(uiState.selectedProfile, it) }
         }
@@ -513,6 +520,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         groupPollingJob?.cancel()
         telegramOnboardingPollingJob?.cancel()
         nativeAuthJob?.cancel()
+        liveSessionsJob?.cancel()
+        liveSessions.clear()
         groupGeneration += 1
         clearAvatarCache()
         avatarLoading.clear()
@@ -605,6 +614,31 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                 }
                 .onFailure { t -> uiState = uiState.copy(loading = false, error = reason ?: t.message) }
         }
+    }
+
+    /**
+     * Desktop's sidebar liveness: `session.active_list` every few seconds while the app is in the foreground, and
+     * at once when a turn starts or ends elsewhere. Stops in the background; the next foreground restarts it.
+     */
+    private fun startLiveSessions() {
+        if (!appForeground || liveSessionsJob?.isActive == true) return
+        val repo = repository ?: return
+        liveSessionsJob = viewModelScope.launch {
+            while (repository === repo && appForeground) {
+                val snapshot = runCatching { repo.gateway.requestObject("session.active_list", JSONObject(), 15_000) }.getOrNull()
+                if (snapshot != null) {
+                    val viewing = uiState.activeChat?.storedSessionId?.takeIf { uiState.section == MainSection.CHAT }
+                    val changed = liveSessions.apply(snapshot, viewing)
+                    if (changed || (viewing != null && liveSessions.seen(viewing))) uiState = uiState.copy(sessionDots = liveSessions.dots())
+                }
+                kotlinx.coroutines.withTimeoutOrNull(LIVE_SESSIONS_POLL_MS) { liveSessionsPoke.receive() }
+            }
+        }
+    }
+
+    /** Opening a chat reads its finished turn, as in Desktop. */
+    private fun markChatSeen(storedId: String) {
+        if (liveSessions.seen(storedId)) uiState = uiState.copy(sessionDots = liveSessions.dots())
     }
 
     /** The page a chat was opened from (Bots, Home…): back from the chat returns there, not to the Chats list. */
@@ -2179,6 +2213,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         repo.rest.patchSession(session.id, session.profile, JSONObject().put("unread", false))
                     }
                     updateSessionLocal(session.copy(unread = false))
+                    markChatSeen(chat.storedSessionId)
                 }
                 .onFailure {
                     if (generation == navigationGeneration) uiState = uiState.copy(loading = false, error = it.message)
@@ -2211,6 +2246,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                             loadingOlderMessages = false
                         )
                         loadChatEnhancements(chat.copy(title = profile.label))
+                        markChatSeen(chat.storedSessionId)
                     }
                 }
                 .onFailure {
@@ -3307,6 +3343,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     override fun onGatewayReady(payload: JSONObject) {
         // The server's Hermes skin: the app follows it, as Desktop does (Settings → Theme).
         com.nousresearch.hermesmobile.ui.ThemeStore.saveServerSkin(getApplication(), payload.optJSONObject("skin"))
+        startLiveSessions()
         // Whether the server's hermes-android plugin is older than this app needs (Settings says so).
         repository?.let { repo -> com.nousresearch.hermesmobile.update.AppUpdates.checkPlugin(getApplication(), repo.rest.currentConfig().id, repo) }
         viewModelScope.launch(Dispatchers.Main.immediate) {
@@ -3364,6 +3401,11 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     override fun onEvent(type: String, payload: JSONObject) {
         viewModelScope.launch(Dispatchers.Main.immediate) {
+            // A turn started or ended in a chat that is not on screen: refresh the row dots now.
+            if (type == "message.start" || type == "message.complete" || type == "approval.request" || type == "clarify.request") {
+                val chat = uiState.activeChat
+                if (chat == null || !payloadSessionMatches(payload, chat)) liveSessionsPoke.trySend(Unit)
+            }
             when (type) {
                 "message.start" -> {
                     val chat = uiState.activeChat ?: return@launch
@@ -3647,6 +3689,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     companion object {
+        private const val LIVE_SESSIONS_POLL_MS = 4_000L
         private const val NAV_SECTION = "nav.section"
         private const val NAV_SESSION = "nav.session"
         private const val NAV_PROFILE = "nav.profile"

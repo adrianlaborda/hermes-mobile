@@ -9,6 +9,16 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Added
+
+- **See which chats Hermes is working on.** As in Hermes Desktop's sidebar, chats in **Chats**, **Bots** and the side
+  menu show a status dot before their title:
+  - accent, with a thin light travelling around the row: Hermes is working on it;
+  - amber: it is waiting for your answer (an approval or a question);
+  - green: it finished while you were elsewhere, until you open it.
+
+  It covers the conversations of the Hermes process the app is connected to, as Desktop's does.
+
 ### Changed
 
 - **Bots:** tap anywhere on a bot to open its conversation, as in Chats; a long press shows its actions.

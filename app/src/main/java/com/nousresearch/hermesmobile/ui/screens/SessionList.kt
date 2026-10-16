@@ -1,5 +1,10 @@
 package com.nousresearch.hermesmobile.ui.screens
 
+import com.nousresearch.hermesmobile.data.LiveSessions
+import com.nousresearch.hermesmobile.data.SessionDot
+import com.nousresearch.hermesmobile.ui.components.SessionStatusDot
+import com.nousresearch.hermesmobile.ui.components.runningArc
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -61,6 +66,7 @@ internal class SessionListActions(
 internal fun SessionListPane(
     profiles: List<HermesProfile>,
     sessions: List<HermesSession>,
+    sessionDots: Map<String, SessionDot>,
     searchResults: List<HermesSession>,
     searchQuery: String,
     searchLoading: Boolean,
@@ -133,6 +139,7 @@ internal fun SessionListPane(
                     items(section.rows, key = { "${it.profile}:${it.id}" }, contentType = { "session" }) { session ->
                         SessionRow(
                             session = session,
+                            dot = LiveSessions.dotFor(sessionDots, session.id, session.unread),
                             selected = activeKey == "${session.profile}:${session.id}",
                             showProfile = profiles.size > 1,
                             onOpen = { actions.onOpen(session) },
@@ -257,6 +264,7 @@ private fun SessionSearchBar(query: String, loading: Boolean, onSearch: (String)
 @Composable
 private fun SessionRow(
     session: HermesSession,
+    dot: SessionDot,
     selected: Boolean,
     showProfile: Boolean,
     onOpen: () -> Unit,
@@ -317,7 +325,8 @@ private fun SessionRow(
             }
         }
     ) {
-        Surface(color = if (selected) MaterialTheme.hermes.accentTint else MaterialTheme.colorScheme.background) {
+        Surface(color = if (selected) MaterialTheme.hermes.accentTint else MaterialTheme.colorScheme.background,
+            modifier = Modifier.runningArc(dot == SessionDot.WORKING)) {
             FlatRow(
                 onClick = onOpen,
                 onLongClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); onMore() },
@@ -327,23 +336,29 @@ private fun SessionRow(
                         Text(
                             relativeDate(session.lastActive),
                             style = MaterialTheme.typography.labelSmall,
-                            color = if (session.unread) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             if (session.pinned) Icon(Icons.Default.PushPin, stringResource(R.string.a22_pinned_cd), Modifier.size(13.dp),
                                 tint = MaterialTheme.colorScheme.primary)
-                            if (session.unread) Box(Modifier.size(8.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(50)))
                         }
                     }
                 }
             ) {
-                Text(
-                    session.title.ifBlank { stringResource(R.string.a21_untitled) },
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (session.unread) FontWeight.SemiBold else FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // Desktop's lead slot: the status dot sits before the title.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (dot != SessionDot.NONE) {
+                        SessionStatusDot(dot)
+                        Spacer(Modifier.width(7.dp))
+                    }
+                    Text(
+                        session.title.ifBlank { stringResource(R.string.a21_untitled) },
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (dot != SessionDot.NONE) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
                 Spacer(Modifier.height(3.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (showProfile) {

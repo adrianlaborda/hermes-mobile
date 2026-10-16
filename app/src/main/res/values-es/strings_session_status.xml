@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="session_dot_working">Trabajando</string>
+    <string name="session_dot_needs_input">Esperando tu respuesta</string>
+    <string name="session_dot_unread">Terminado, sin leer</string>
+</resources>

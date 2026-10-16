@@ -105,6 +105,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                             .sortedWith(compareByDescending<com.nousresearch.hermesmobile.data.HermesSession> { it.pinned }.thenByDescending { it.lastActive })
                     },
                     activeSessionId = s.activeChat?.storedSessionId,
+                    sessionDots = s.sessionDots,
                     onOpenSession = vm::openSession,
                     drawerState = drawerState
                 )
@@ -208,6 +209,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         groupActionBusy = s.groupActionBusy,
                         groupError = s.groupError,
                         avatarAssets = vm.avatarAssets,
+                        sessionDots = s.sessionDots,
                         onEnsureAvatar = vm::ensureAvatar,
                         onSwitchConnection = vm::switchConnection,
                         onOpen = vm::openBot,
@@ -476,6 +478,7 @@ private fun ChatContent(vm: HermesViewModel, s: HermesUiState, onMenu: () -> Uni
     ChatScreen(
         profiles = s.profiles,
         sessions = s.sessions,
+        sessionDots = s.sessionDots,
         searchResults = s.sessionSearchResults,
         searchQuery = s.sessionSearchQuery,
         searchLoading = s.sessionSearchLoading,

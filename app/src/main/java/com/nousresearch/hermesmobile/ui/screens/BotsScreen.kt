@@ -41,6 +41,7 @@ fun BotsScreen(
     groupActionBusy: Boolean,
     groupError: String?,
     avatarAssets: Map<String, String>,
+    sessionDots: Map<String, com.nousresearch.hermesmobile.data.SessionDot>,
     onEnsureAvatar: (HermesProfile) -> Unit,
     onSwitchConnection: (String) -> Unit,
     onOpen: (HermesProfile) -> Unit,
@@ -127,6 +128,8 @@ fun BotsScreen(
                     BotRow(
                         routed = routed,
                         avatarDataUrl = avatarAssets[profile.name].takeIf { routed.activeConnection },
+                        dot = if (routed.activeConnection) com.nousresearch.hermesmobile.data.LiveSessions.dotFor(sessionDots, profile.canonicalSession)
+                            else com.nousresearch.hermesmobile.data.SessionDot.NONE,
                         onSwitchConnection = { onSwitchConnection(routed.connectionId) },
                         onOpen = { onOpen(profile) },
                         onNewChat = { onNewChat(profile) },
@@ -205,6 +208,7 @@ fun BotsScreen(
 private fun BotRow(
     routed: RoutedBot,
     avatarDataUrl: String?,
+    dot: com.nousresearch.hermesmobile.data.SessionDot,
     onSwitchConnection: () -> Unit,
     onOpen: () -> Unit,
     onNewChat: () -> Unit,
@@ -216,6 +220,7 @@ private fun BotRow(
     // Like a chat row: the whole row opens the bot (or switches to its gateway); a long press shows its actions.
     Row(
         Modifier.fillMaxWidth()
+            .runningArc(dot == com.nousresearch.hermesmobile.data.SessionDot.WORKING)
             .combinedClickable(onClick = if (routed.activeConnection) onOpen else onSwitchConnection, onLongClick = { menu = true })
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -224,6 +229,10 @@ private fun BotRow(
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (dot != com.nousresearch.hermesmobile.data.SessionDot.NONE) {
+                    com.nousresearch.hermesmobile.ui.components.SessionStatusDot(dot)
+                    Spacer(Modifier.width(7.dp))
+                }
                 Text(
                     profile.label,
                     style = MaterialTheme.typography.bodyLarge,

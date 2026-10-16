@@ -25,6 +25,7 @@ private val TwoPaneMinWidth = 760.dp
 fun ChatScreen(
     profiles: List<HermesProfile>,
     sessions: List<HermesSession>,
+    sessionDots: Map<String, com.nousresearch.hermesmobile.data.SessionDot>,
     searchResults: List<HermesSession>,
     searchQuery: String,
     searchLoading: Boolean,
@@ -104,6 +105,7 @@ fun ChatScreen(
     fun list(modifier: Modifier) = SessionListPane(
         profiles = profiles,
         sessions = sessions,
+        sessionDots = sessionDots,
         searchResults = searchResults,
         searchQuery = searchQuery,
         searchLoading = searchLoading,

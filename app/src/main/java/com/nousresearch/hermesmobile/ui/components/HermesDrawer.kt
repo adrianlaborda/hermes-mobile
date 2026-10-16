@@ -39,6 +39,7 @@ fun HermesDrawer(
     onClose: () -> Unit,
     recentSessions: List<com.nousresearch.hermesmobile.data.HermesSession> = emptyList(),
     activeSessionId: String? = null,
+    sessionDots: Map<String, com.nousresearch.hermesmobile.data.SessionDot> = emptyMap(),
     onOpenSession: (com.nousresearch.hermesmobile.data.HermesSession) -> Unit = {},
     drawerState: DrawerState? = null
 ) {
@@ -97,7 +98,8 @@ fun HermesDrawer(
             if (recentSessions.isNotEmpty()) {
                 DrawerSection(stringResource(R.string.a21_recent))
                 recentSessions.take(6).forEach { session ->
-                    DrawerSessionRow(session, selected = session.id == activeSessionId) { onClose(); onOpenSession(session) }
+                    DrawerSessionRow(session, selected = session.id == activeSessionId,
+                        dot = com.nousresearch.hermesmobile.data.LiveSessions.dotFor(sessionDots, session.id, session.unread)) { onClose(); onOpenSession(session) }
                 }
             }
 
@@ -122,10 +124,17 @@ fun HermesDrawer(
 }
 
 @Composable
-private fun DrawerSessionRow(session: com.nousresearch.hermesmobile.data.HermesSession, selected: Boolean, onClick: () -> Unit) {
+private fun DrawerSessionRow(
+    session: com.nousresearch.hermesmobile.data.HermesSession,
+    selected: Boolean,
+    dot: com.nousresearch.hermesmobile.data.SessionDot,
+    onClick: () -> Unit
+) {
+    // Desktop's sidebar row: status dot in the lead slot, the travelling arc while its turn runs.
     Row(
         Modifier
             .fillMaxWidth()
+            .runningArc(dot == com.nousresearch.hermesmobile.data.SessionDot.WORKING, cornerRadius = 8f)
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) MaterialTheme.hermes.accentTint else androidx.compose.ui.graphics.Color.Transparent)
             .clickable(onClick = onClick)
@@ -133,6 +142,7 @@ private fun DrawerSessionRow(session: com.nousresearch.hermesmobile.data.HermesS
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        SessionStatusDot(dot)
         if (session.pinned) Icon(Icons.Default.PushPin, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
         Text(
             session.title.ifBlank { stringResource(R.string.a21_untitled) },
@@ -142,7 +152,6 @@ private fun DrawerSessionRow(session: com.nousresearch.hermesmobile.data.HermesS
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        if (session.unread) StateDot(true)
     }
 }
 
