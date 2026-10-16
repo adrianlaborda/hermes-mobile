@@ -150,6 +150,19 @@ data class GatewayDiscovery(
     val nativeProviders: List<AuthProvider> get() = providers.filter { it.supportsSession && !it.supportsPassword }
 }
 
+/**
+ * Desktop's `botActivitySession`: the fresher of the bot's Bot Chat (`canonical_session`, hidden from session lists)
+ * and its newest listed conversation (`last_session`). Its preview is the newest message, not the first one.
+ */
+internal fun botActivity(canonical: JSONObject?, last: JSONObject?): JSONObject? = when {
+    canonical == null || last == null -> canonical ?: last
+    canonical.optLong("last_active", 0L) >= last.optLong("last_active", 0L) -> canonical
+    else -> last
+}
+
+/** Gateway timestamps come in seconds or milliseconds; seconds here. */
+internal fun sessionEpochSeconds(ts: Long): Long = if (ts > 10_000_000_000L) ts / 1000L else ts
+
 data class HermesProfile(
     val name: String,
     val displayName: String = "",
@@ -162,6 +175,9 @@ data class HermesProfile(
     val canonicalSession: String? = null,
     val canonicalResolvedSession: String? = null,
     val lastSession: String? = null,
+    /** The newest message of the bot's freshest conversation and when it was active (Desktop's roster row). */
+    val activityPreview: String = "",
+    val activityAt: Long = 0L,
     val hasAvatar: Boolean = false,
     val skillCount: Int = 0,
     val uiMeta: JSONObject? = null,
@@ -182,6 +198,9 @@ data class HermesProfile(
             val canonicalObject = o.optJSONObject("canonical_session")
             val canonical = canonicalObject?.optStringOrNull("id")
             val canonicalResolved = canonicalObject?.optStringOrNull("resolved_id")
+            // `last_session` is the newest listed conversation (an object; a bare id on older gateways).
+            val lastObject = o.optJSONObject("last_session")
+            val activity = botActivity(canonicalObject, lastObject)
             return HermesProfile(
                 name = o.optString("name", o.optString("id", "default")),
                 displayName = o.optString("display_name"),
@@ -193,7 +212,9 @@ data class HermesProfile(
                 provider = o.optString("provider"),
                 canonicalSession = canonical,
                 canonicalResolvedSession = canonicalResolved,
-                lastSession = o.optStringOrNull("last_session"),
+                lastSession = lastObject?.optStringOrNull("id") ?: o.optStringOrNull("last_session"),
+                activityPreview = activity?.optString("preview").orEmpty(),
+                activityAt = activity?.let { sessionEpochSeconds(it.optLong("last_active", 0L)) } ?: 0L,
                 hasAvatar = o.optBoolean("has_avatar", false),
                 skillCount = o.optInt("skill_count", 0),
                 uiMeta = meta,
@@ -319,6 +340,9 @@ data class HermesSession(
     val hidden: Boolean = false,
     val lineageRootId: String? = null
 ) {
+    /** A scheduled job's run (Desktop keeps these out of the recents, in their own Cron section). */
+    val isRoutineRun: Boolean get() = source.trim().lowercase() in setOf("cron", "cron_output")
+
     companion object {
         fun fromJson(o: JSONObject): HermesSession = HermesSession(
             id = o.optString("id", o.optString("session_id")),
@@ -459,6 +483,18 @@ fun sessionSourceInfo(raw: String): SessionSourceInfo {
     }
     return SessionSourceInfo(id, labels[id] ?: id.replace('_', ' ').replaceFirstChar { it.uppercase() }.ifBlank { "Hermes" }, kind)
 }
+
+/** Bots as Desktop orders its roster: pinned first, then the most recently active, then by name. */
+val botRosterOrder: Comparator<RoutedBot> = compareByDescending<RoutedBot> { it.profile.botPinned }
+    .thenByDescending { it.profile.activityAt }
+    .thenBy { it.label.lowercase() }
+
+/** A message excerpt as one plain line: markdown markers, links' targets and line breaks dropped. */
+fun previewLine(text: String): String = text
+    .replace(Regex("""!?\[([^\]]*)]\([^)]*\)"""), "$1")
+    .replace(Regex("""[*_`~#>]+"""), "")
+    .replace(Regex("""\s+"""), " ")
+    .trim()
 
 data class RoutedBot(
     val connectionId: String,
@@ -967,8 +1003,12 @@ data class CronRun(
     val status: String,
     val startedAt: Long? = null,
     val lastActiveAt: Long? = null,
-    val profile: String = ""
+    val profile: String = "",
+    val source: String = ""
 ) {
+    /** A script-only job's fire: listed from its output file, with no conversation behind it to open. */
+    val outputOnly: Boolean get() = source == "cron_output" || id.startsWith("cron_output:")
+
     companion object {
         fun fromJson(o: JSONObject): CronRun = CronRun(
             id = o.optString("session_id").ifBlank { o.optString("id") },
@@ -977,7 +1017,8 @@ data class CronRun(
             status = o.optString("status").ifBlank { o.optString("state") },
             startedAt = o.optTimestampMillisOrNull("started_at") ?: o.optTimestampMillisOrNull("created_at"),
             lastActiveAt = o.optTimestampMillisOrNull("last_active") ?: o.optTimestampMillisOrNull("updated_at"),
-            profile = o.optString("profile")
+            profile = o.optString("profile"),
+            source = o.optString("source")
         )
     }
 }

@@ -69,8 +69,8 @@ fun ProjectsPage(repo: HermesRepository, profile: String, onOpen: (HermesSession
         DisposableEffect(controller) { onDispose { controller.dispose() } }
         BackHandler { filesOpen = false }
         Column {
-            TextButton(onClick = { filesOpen = false }) { Text(stringResource(R.string.a14_back)) }
-            controller.message?.let { Text(it, Modifier.padding(16.dp)) }
+            SubBar(selected?.optString("label").orEmpty(), onClose = { filesOpen = false })
+            controller.message?.let { Text(shown(it), Modifier.padding(16.dp)) }
             FilesPage(controller, initialDirectory = selected?.optString("path"))
         }
         FeatureConsent(controller)
@@ -78,8 +78,8 @@ fun ProjectsPage(repo: HermesRepository, profile: String, onOpen: (HermesSession
     }
     BackHandler(selected != null) { selected = null }
     Column(Modifier.fillMaxSize()) {
-        HermesTopBar(selected?.optString("label") ?: stringResource(R.string.a14_projects), profile,
-            leading = if (selected != null) {{ IconButton(onClick = { selected = null }) { Icon(Icons.Default.Close, stringResource(R.string.a14_back)) } }} else null,
+        // Under the Chats header: the open project's name and close, or what this view is.
+        SubBar(selected?.optString("label") ?: stringResource(R.string.a14_projects), onClose = if (selected != null) {{ selected = null }} else null,
             actions = {
                 IconButton(onClick = { revision++ }, enabled = !loading) { Icon(Icons.Default.Refresh, stringResource(R.string.a14_refresh)) }
                 if (selected == null) IconButton(onClick = { create = true }) { Icon(Icons.Default.Add, stringResource(R.string.a14_create_project)) }

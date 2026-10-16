@@ -1,6 +1,7 @@
 package com.nousresearch.hermesmobile.ui.screens
 
 import com.nousresearch.hermesmobile.R
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.layout.*
@@ -18,8 +19,8 @@ import com.nousresearch.hermesmobile.data.*
 import com.nousresearch.hermesmobile.ui.components.*
 import com.nousresearch.hermesmobile.ui.theme.hermes
 
-enum class CapabilitiesTab(val title: String) {
-    MODELS("Models"), SKILLS("Skills"), TOOLS("Tools"), MCP("MCP"), KEYS("Keys")
+enum class CapabilitiesTab(val title: Int) {
+    MODELS(R.string.i18n_caps_models), SKILLS(R.string.i18n_skills), TOOLS(R.string.i18n_caps_tools), MCP(R.string.i18n_caps_mcp), KEYS(R.string.i18n_caps_keys)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -34,7 +35,7 @@ fun CapabilitiesScreen(
     skillDetail: CapabilitySkillDocument?,
     toolsetConfig: CapabilityToolsetConfig?,
     oauthFlow: CapabilityOAuthFlow?,
-    onBack: () -> Unit,
+    onMenu: () -> Unit,
     onProfile: (String) -> Unit,
     onRefresh: () -> Unit,
     onSetModel: (String, String) -> Unit,
@@ -66,38 +67,20 @@ fun CapabilitiesScreen(
     onDismissOAuth: () -> Unit
 ) {
     var tab by remember { mutableStateOf(CapabilitiesTab.MODELS) }
-    var profileMenu by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize()) {
         HermesTopBar(
             title = stringResource(R.string.ui_9460f16ac9),
-            subtitle = snapshot?.let { "${it.profile} · remote gateway" } ?: profile,
-            leading = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+            subtitleContent = { com.nousresearch.hermesmobile.ui.components.ProfileSwitcher(profile, profiles.map { it.name }, onProfile) },
+            leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
             actions = {
-                IconButton(onClick = onRefresh, enabled = !loading) { Icon(Icons.Default.Refresh, "Refresh") }
+                IconButton(onClick = onRefresh, enabled = !loading) { Icon(Icons.Default.Refresh, stringResource(R.string.i18n_refresh)) }
             }
         )
         DashedDivider(color = MaterialTheme.hermes.line)
-        Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
-            OutlinedButton(onClick = { profileMenu = true }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.AccountCircle, null)
-                Spacer(Modifier.width(8.dp))
-                Text(profiles.firstOrNull { it.name == profile }?.label ?: profile, modifier = Modifier.weight(1f))
-                Icon(Icons.Default.ArrowDropDown, null)
-            }
-            DropdownMenu(expanded = profileMenu, onDismissRequest = { profileMenu = false }) {
-                profiles.forEach { p ->
-                    DropdownMenuItem(
-                        text = { Text(p.label) },
-                        onClick = { profileMenu = false; onProfile(p.name) },
-                        leadingIcon = { if (p.name == profile) Icon(Icons.Default.Check, null) }
-                    )
-                }
-            }
-        }
         SecondaryScrollableTabRow(selectedTabIndex = tab.ordinal, edgePadding = 8.dp) {
             CapabilitiesTab.entries.forEach { item ->
-                Tab(selected = tab == item, onClick = { tab = item }, text = { Text(item.title) })
+                Tab(selected = tab == item, onClick = { tab = item }, text = { Text(stringResource(item.title)) })
             }
         }
         if (loading && snapshot == null) {
@@ -140,23 +123,23 @@ private fun ModelsPane(
         item {
             SectionLabel(stringResource(R.string.ui_3840d9d294))
             if (s == null || "models" in s.unsupported) {
-                FlatRow("Model settings unavailable", "This gateway does not expose the current model settings API.")
+                FlatRow(stringResource(R.string.i18n_caps_model_na), stringResource(R.string.i18n_caps_model_na_hint))
             } else {
                 FlatRow(
-                    title = s.modelInfo.model.ifBlank { "Not selected" },
+                    title = s.modelInfo.model.ifBlank { stringResource(R.string.i18n_caps_not_selected) },
                     description = listOfNotNull(
                         s.modelInfo.provider.takeIf(String::isNotBlank),
-                        s.modelInfo.effectiveContextLength?.let { "$it context" }
+                        s.modelInfo.effectiveContextLength?.let { stringResource(R.string.i18n_caps_context, it) }
                     ).joinToString(" · "),
                     leading = { Icon(Icons.Default.Psychology, null) },
                     trailing = { TextButton(onClick = { modelDialog = true }) { Text(stringResource(R.string.ui_c0bf75bd78)) } }
                 )
                 val caps = buildList {
-                    if (s.modelInfo.supportsTools == true) add("tools")
-                    if (s.modelInfo.supportsVision == true) add("vision")
-                    if (s.modelInfo.supportsReasoning == true) add("reasoning")
+                    if (s.modelInfo.supportsTools == true) add(stringResource(R.string.i18n_caps_cap_tools))
+                    if (s.modelInfo.supportsVision == true) add(stringResource(R.string.i18n_caps_cap_vision))
+                    if (s.modelInfo.supportsReasoning == true) add(stringResource(R.string.i18n_caps_cap_reasoning))
                 }
-                if (caps.isNotEmpty()) FlatRow("Capabilities", caps.joinToString(" · "))
+                if (caps.isNotEmpty()) FlatRow(stringResource(R.string.i18n_caps_capabilities), caps.joinToString(" · "))
             }
             SectionLabel(stringResource(R.string.ui_a701acdcc0))
         }
@@ -165,10 +148,10 @@ private fun ModelsPane(
                 FlatRow(
                     title = provider.name,
                     description = when {
-                        provider.loggedIn -> provider.account.ifBlank { "Connected" }
-                        provider.flow == "device_code" -> "Device-code sign-in · use API key or Desktop/CLI on current gateways"
-                        provider.flow == "external" -> "Authentication delegated to gateway CLI"
-                        else -> "${provider.flow.ifBlank { "OAuth" }} account"
+                        provider.loggedIn -> provider.account.ifBlank { stringResource(R.string.i18n_connected) }
+                        provider.flow == "device_code" -> stringResource(R.string.i18n_caps_device_code)
+                        provider.flow == "external" -> stringResource(R.string.i18n_caps_external)
+                        else -> stringResource(R.string.i18n_caps_account, provider.flow.ifBlank { "OAuth" })
                     },
                     leading = { StateDot(provider.loggedIn, !provider.loggedIn) },
                     trailing = {
@@ -185,8 +168,8 @@ private fun ModelsPane(
         item {
             SectionLabel(stringResource(R.string.ui_693550d642), s?.customEndpoints?.size?.toString())
             FlatRow(
-                "Add custom endpoint",
-                "OpenAI-compatible, Anthropic Messages or Codex Responses endpoint",
+                stringResource(R.string.i18n_caps_add_endpoint),
+                stringResource(R.string.i18n_caps_add_endpoint_hint),
                 leading = { Icon(Icons.Default.AddLink, null) },
                 onClick = { endpointDialog = null; newEndpoint = true }
             )
@@ -195,7 +178,7 @@ private fun ModelsPane(
             items(s.customEndpoints, key = { it.id }) { endpoint ->
                 FlatRow(
                     title = endpoint.name,
-                    description = "${endpoint.baseUrl} · ${endpoint.model}" + if (endpoint.current) " · active" else "",
+                    description = "${endpoint.baseUrl} · ${endpoint.model}" + if (endpoint.current) " · " + stringResource(R.string.i18n_active) else "",
                     leading = { StateDot(endpoint.current, endpoint.hasApiKey) },
                     trailing = {
                         Row {
@@ -260,14 +243,14 @@ private fun CustomEndpointDialog(
     var makeDefault by remember { mutableStateOf(existing?.current ?: false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "Add endpoint" else "Edit endpoint") },
+        title = { Text(stringResource(if (existing == null) R.string.i18n_caps_endpoint_add else R.string.i18n_caps_endpoint_edit)) },
         text = {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                HermesTextField(name, { name = it }, "Name")
-                HermesTextField(base, { base = it }, "Base URL", placeholder = "http://host:port/v1")
-                HermesTextField(model, { model = it }, "Model")
-                HermesTextField(apiKey, { apiKey = it }, if (existing?.hasApiKey == true) "API key (blank keeps existing)" else "API key", password = true)
-                HermesTextField(mode, { mode = it }, "API mode", placeholder = "auto / chat_completions / anthropic_messages")
+                HermesTextField(name, { name = it }, stringResource(R.string.i18n_name))
+                HermesTextField(base, { base = it }, stringResource(R.string.i18n_caps_base_url), placeholder = "http://host:port/v1")
+                HermesTextField(model, { model = it }, stringResource(R.string.i18n_model))
+                HermesTextField(apiKey, { apiKey = it }, stringResource(if (existing?.hasApiKey == true) R.string.i18n_caps_api_key_keep else R.string.i18n_caps_api_key), password = true)
+                HermesTextField(mode, { mode = it }, stringResource(R.string.i18n_caps_api_mode), placeholder = "auto / chat_completions / anthropic_messages")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(makeDefault, { makeDefault = it })
                     Text(stringResource(R.string.ui_cc7d24bc8d))
@@ -301,7 +284,7 @@ private fun SkillsPane(
                 FilterChip(selected = !browse, onClick = { browse = false }, label = { Text(stringResource(R.string.ui_f8b32f4e92)) })
                 FilterChip(selected = browse, onClick = { browse = true }, label = { Text(stringResource(R.string.ui_3227aa9666)) })
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = onUpdate, enabled = busy == null) { Icon(Icons.Default.SystemUpdateAlt, "Update skills") }
+                IconButton(onClick = onUpdate, enabled = busy == null) { Icon(Icons.Default.SystemUpdateAlt, stringResource(R.string.i18n_caps_update_skills)) }
             }
         }
         if (!browse) {
@@ -315,7 +298,7 @@ private fun SkillsPane(
                     trailing = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(skill.enabled, { onEnabled(skill, it) }, enabled = busy == null)
-                            if (skill.provenance == "hub") IconButton(onClick = { onUninstall(skill) }, enabled = busy == null) { Icon(Icons.Default.DeleteOutline, "Uninstall") }
+                            if (skill.provenance == "hub") IconButton(onClick = { onUninstall(skill) }, enabled = busy == null) { Icon(Icons.Default.DeleteOutline, stringResource(R.string.i18n_caps_uninstall)) }
                         }
                     }
                 )
@@ -324,7 +307,7 @@ private fun SkillsPane(
         } else {
             item {
                 Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                    HermesTextField(query, { query = it; onSearch(it) }, "Search Skills Hub", placeholder = "github, browser, docs…")
+                    HermesTextField(query, { query = it; onSearch(it) }, stringResource(R.string.i18n_caps_search_hub), placeholder = "github, browser, docs…")
                 }
                 SectionLabel(stringResource(R.string.ui_e674447337), browseRows.size.toString())
             }
@@ -352,7 +335,7 @@ private fun SkillDetailDialog(document: CapabilitySkillDocument, onDismiss: () -
                     item { Text(document.path, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     item { Spacer(Modifier.height(10.dp)) }
                 }
-                item { Text(document.content.ifBlank { "No SKILL.md content returned by this gateway." }, style = MaterialTheme.typography.bodySmall) }
+                item { Text(document.content.ifBlank { stringResource(R.string.i18n_caps_no_skill_md) }, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ui_11a6767d56)) } }
@@ -391,7 +374,7 @@ private fun ToolsetConfigDialog(
     val secrets = remember(config.name, config.activeProvider) { mutableStateMapOf<String, String>() }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Configure ${config.name}") },
+        title = { Text(stringResource(R.string.i18n_msg_configure, config.name)) },
         text = {
             LazyColumn(Modifier.heightIn(max = 520.dp)) {
                 items(config.providers, key = { it.name }) { provider ->
@@ -407,7 +390,7 @@ private fun ToolsetConfigDialog(
                             HermesTextField(
                                 value = secrets[field.key].orEmpty(),
                                 onValueChange = { secrets[field.key] = it },
-                                label = if (field.isSet) "${field.prompt.ifBlank { field.key }} (set)" else field.prompt.ifBlank { field.key },
+                                label = if (field.isSet) stringResource(R.string.i18n_caps_field_set, field.prompt.ifBlank { field.key }) else field.prompt.ifBlank { field.key },
                                 password = true
                             )
                             Spacer(Modifier.height(6.dp))
@@ -439,12 +422,12 @@ private fun McpPane(
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 32.dp)) {
         item {
             SectionLabel(stringResource(R.string.ui_84aebc69a1), snapshot?.mcpServers?.size?.toString())
-            FlatRow("Add MCP server", "HTTP/SSE URL or stdio command", leading = { Icon(Icons.Default.Add, null) }, onClick = { addDialog = true })
+            FlatRow(stringResource(R.string.i18n_caps_add_mcp), stringResource(R.string.i18n_caps_add_mcp_hint), leading = { Icon(Icons.Default.Add, null) }, onClick = { addDialog = true })
         }
         items(snapshot?.mcpServers.orEmpty(), key = { it.name }) { server ->
             FlatRow(
                 server.name,
-                listOf(server.transport, server.url.ifBlank { server.command }, "${server.tools.size} tools").filter(String::isNotBlank).joinToString(" · "),
+                listOf(server.transport, server.url.ifBlank { server.command }, pluralStringResource(R.plurals.i18n_tools_count, server.tools.size, server.tools.size)).filter(String::isNotBlank).joinToString(" · "),
                 leading = { StateDot(server.enabled) },
                 trailing = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -480,11 +463,11 @@ private fun AddMcpDialog(onDismiss: () -> Unit, onAdd: (String, String, String, 
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.ui_0e3e58f90d)) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            HermesTextField(name, { name = it }, "Name")
-            HermesTextField(url, { url = it }, "HTTP URL", placeholder = "https://…")
+            HermesTextField(name, { name = it }, stringResource(R.string.i18n_name))
+            HermesTextField(url, { url = it }, stringResource(R.string.i18n_caps_http_url), placeholder = "https://…")
             Text(stringResource(R.string.ui_7175517a37), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            HermesTextField(command, { command = it }, "stdio command", placeholder = "npx / uvx / binary")
-            HermesTextField(args, { args = it }, "Arguments", placeholder = "space-separated")
+            HermesTextField(command, { command = it }, stringResource(R.string.i18n_caps_stdio), placeholder = "npx / uvx / binary")
+            HermesTextField(args, { args = it }, stringResource(R.string.i18n_caps_args), placeholder = stringResource(R.string.i18n_caps_args_hint))
         } },
         confirmButton = { TextButton(onClick = { onAdd(name, url, command, splitArgs(args)) }) { Text(stringResource(R.string.ui_9fd728c66c)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ui_19766ed6cc)) } }
@@ -498,7 +481,7 @@ private fun McpCatalogInstallDialog(entry: CapabilityMcpCatalogEntry, onDismiss:
     val env = remember(entry.name) { mutableStateMapOf<String, String>() }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Install ${entry.name}") },
+        title = { Text(stringResource(R.string.i18n_caps_install, entry.name)) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(entry.description)
             entry.requiredEnv.forEach { key -> HermesTextField(env[key].orEmpty(), { env[key] = it }, key, password = true) }
@@ -522,7 +505,7 @@ private fun KeysPane(snapshot: CapabilitySnapshot?, busy: String?, onSet: (Capab
                 Switch(advanced, { advanced = it })
             }
             Text(
-                "Secrets are stored only by the remote Hermes profile. Mobile never persists the value entered here.",
+                stringResource(R.string.i18n_caps_secrets_note),
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -535,7 +518,7 @@ private fun KeysPane(snapshot: CapabilitySnapshot?, busy: String?, onSet: (Capab
                 leading = { StateDot(variable.isSet) },
                 trailing = {
                     Row {
-                        TextButton(onClick = { edit = variable }, enabled = busy == null) { Text(if (variable.isSet) "Replace" else "Set") }
+                        TextButton(onClick = { edit = variable }, enabled = busy == null) { Text(stringResource(if (variable.isSet) R.string.i18n_replace else R.string.i18n_set)) }
                         if (variable.isSet) IconButton(onClick = { onDelete(variable) }, enabled = busy == null) { Icon(Icons.Default.DeleteOutline, stringResource(R.string.ui_c3812fc4ac)) }
                     }
                 }
@@ -567,7 +550,7 @@ private fun OAuthCodeDialog(flow: CapabilityOAuthFlow, onSubmit: (String) -> Uni
         title = { Text(stringResource(R.string.ui_fb7084b712)) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(R.string.ui_0d6ddd6125))
-            HermesTextField(code, { code = it }, "Authorization code")
+            HermesTextField(code, { code = it }, stringResource(R.string.i18n_caps_auth_code))
         } },
         confirmButton = { TextButton(onClick = { onSubmit(code) }, enabled = code.isNotBlank()) { Text(stringResource(R.string.ui_1a2303ede0)) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ui_7d9eb7acb1)) } }

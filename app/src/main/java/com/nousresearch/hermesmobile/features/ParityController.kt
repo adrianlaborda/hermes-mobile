@@ -13,6 +13,20 @@ fun JSONObject.strings(key: String): List<String> = optJSONArray(key)?.let { a -
 fun json(vararg entries: Pair<String, Any?>) = JSONObject().apply { entries.forEach { (k,v) -> put(k, v ?: JSONObject.NULL) } }
 
 /** One immutable owner per mounted surface. Disposal cancels reads and fences late results. */
+/** Placeholders the controller (which has no resources) stores, put into words where they are shown: [shown]. */
+internal const val UNSUPPORTED = "\u0000unsupported"
+internal const val LOAD_FAILED = "\u0000load-failed"
+internal const val REQUEST_FAILED = "\u0000request-failed"
+
+/** A controller message or unavailability note in the user's language. */
+@androidx.compose.runtime.Composable
+fun shown(text: String): String = when (text) {
+    UNSUPPORTED -> androidx.compose.ui.res.stringResource(com.nousresearch.hermesmobile.R.string.i18n_unsupported)
+    LOAD_FAILED -> androidx.compose.ui.res.stringResource(com.nousresearch.hermesmobile.R.string.i18n_load_failed)
+    REQUEST_FAILED -> androidx.compose.ui.res.stringResource(com.nousresearch.hermesmobile.R.string.i18n_request_failed)
+    else -> text
+}
+
 class ParityController(val repo: HermesRepository, val profile: String, parentScope: CoroutineScope) {
     private val ownerJob = SupervisorJob(parentScope.coroutineContext[Job])
     private val scope = CoroutineScope(parentScope.coroutineContext + ownerJob)
@@ -41,7 +55,7 @@ class ParityController(val repo: HermesRepository, val profile: String, parentSc
                 catch (e: Throwable) {
                     if (alive && generation == readGeneration) {
                         val optional = (e as? HermesHttpException)?.status in listOf(404,405,501) || (e as? GatewayRpcException)?.code == -32601
-                        unavailable[key] = if (optional) "Not supported by this gateway version" else e.message ?: "Could not load"
+                        unavailable[key] = if (optional) UNSUPPORTED else e.message ?: LOAD_FAILED
                     }
                 }
             }
@@ -69,11 +83,14 @@ class ParityController(val repo: HermesRepository, val profile: String, parentSc
                     result.optString("error", "The gateway did not apply this change")
                 }
                 if (!result.optBoolean("consent_required") && !result.optBoolean("confirm_required")) {
-                    message = result.optString("message").ifBlank { result.optString("detail").ifBlank { "Done" } }
+                    // Only what the server has to say: a read (opening a folder) or a plain write needs no "Done".
+                    // A success note clears itself; errors stay until dismissed.
+                    message = result.optString("message").ifBlank { result.optString("detail") }.ifBlank { null }
+                    message?.let { note -> scope.launch { delay(4_000); if (message == note) message = null } }
                     if (refresh != null && refresh != "Files") { reloading = true; load(refresh) }
                 }
             } catch (e: CancellationException) { throw e }
-            catch (e: Throwable) { if (alive) message = e.message ?: "Request failed" }
+            catch (e: Throwable) { if (alive) message = e.message ?: REQUEST_FAILED }
             finally { if (alive && !reloading) busy = false }
         }
     }

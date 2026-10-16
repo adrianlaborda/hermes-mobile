@@ -1,6 +1,17 @@
 package com.nousresearch.hermesmobile.features
 
 import com.nousresearch.hermesmobile.R
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.pluralStringResource
+import com.nousresearch.hermesmobile.ui.components.HermesSearchField
+import com.nousresearch.hermesmobile.ui.components.StatusPill
+import com.nousresearch.hermesmobile.ui.components.StateDot
+import com.nousresearch.hermesmobile.ui.components.FlatRow
+import com.nousresearch.hermesmobile.ui.components.SectionLabel
+import com.nousresearch.hermesmobile.ui.components.DashedDivider
+import com.nousresearch.hermesmobile.ui.components.ProfileSwitcher
+import com.nousresearch.hermesmobile.ui.components.HermesTopBar
 import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
@@ -14,7 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,28 +38,42 @@ import com.nousresearch.hermesmobile.ui.theme.hermes
 import org.json.JSONArray
 import org.json.JSONObject
 
+private fun workspaceTabTitle(name: String): Int = when (name) {
+    "Memory" -> R.string.a14_memory
+    "Plugins" -> R.string.a14_plugins
+    "Models" -> R.string.a14_models_advanced
+    "Files" -> R.string.a14_files
+    "Voice" -> R.string.a14_voice
+    else -> R.string.a14_settings
+}
+
+/**
+ * One gateway workspace page (Files and Memory from Work; Models, Plugins and Voice from Settings; the server
+ * settings from System), with the profile under its title, switched from there.
+ */
 @Composable
-fun ParityScreen(repo: HermesRepository, profile: String, initialTab: String = "Memory", onBack: () -> Unit) {
+fun ParityScreen(
+    repo: HermesRepository, profile: String, tab: String = "Memory",
+    profiles: List<String> = emptyList(),
+    onProfile: (String) -> Unit = {},
+    onMenu: () -> Unit = {}
+) {
     val scope = rememberCoroutineScope()
     val c = remember(repo, profile) { ParityController(repo, profile, scope) }
-    var tab by remember { mutableStateOf(initialTab) }
     DisposableEffect(c) { onDispose { c.dispose() } }
     LaunchedEffect(c, tab) { c.load(tab) }
-    BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-            Column(Modifier.weight(1f)) { Text(stringResource(R.string.ui_87bb59ba2f), style = MaterialTheme.typography.titleLarge); Text(profile, style = MaterialTheme.typography.labelMedium) }
-            IconButton(onClick = { c.load(tab) }, enabled = !c.busy) { Icon(Icons.Default.Refresh, "Refresh") }
-        }
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Memory", "Plugins", "Models", "Files", "Voice", "Settings").forEach { name ->
-                FilterChip(tab == name, { tab = name }, label = { Text(stringResource(when(name) { "Memory" -> R.string.a14_memory; "Plugins" -> R.string.a14_plugins; "Models" -> R.string.a14_models_advanced; "Files" -> R.string.a14_files; "Voice" -> R.string.a14_voice; else -> R.string.a14_settings })) })
-            }
-        }
+        HermesTopBar(
+            stringResource(workspaceTabTitle(tab)),
+            // A page, not a drill-down: the menu, like every other page (system back still returns to where it was opened).
+            leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
+            subtitleContent = { ProfileSwitcher(profile, profiles, onProfile) },
+            actions = { IconButton(onClick = { c.load(tab) }, enabled = !c.busy) { Icon(Icons.Default.Refresh, stringResource(R.string.i18n_refresh)) } }
+        )
+        DashedDivider(color = MaterialTheme.hermes.line)
         if (c.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         c.message?.let { message -> Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(message, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+            Text(shown(message), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = { c.message = null }) { Text(stringResource(R.string.ui_48845bff33)) }
         } }
         when(tab) {
@@ -90,7 +115,7 @@ fun FeatureCard(title: String, subtitle: String = "", content: @Composable Colum
 }
 
 @Composable
-private fun Availability(c: ParityController, key: String) { c.unavailable[key]?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
+private fun Availability(c: ParityController, key: String) { c.unavailable[key]?.let { Text(shown(it), color = MaterialTheme.colorScheme.error) } }
 
 @Composable
 private fun MemoryPage(c: ParityController) {
@@ -109,48 +134,95 @@ private fun MemoryPage(c: ParityController) {
             }
         }
     }
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { FeatureCard(stringResource(R.string.ui_c3963aedaa), "Active provider: ${memory?.optString("active").orEmpty()}") { Availability(c,"memory") } }
-        items(memory?.rows("providers").orEmpty()) { p ->
-            FeatureCard(p.optString("name"), p.optString("description")) {
-                Text(if (p.optBoolean("configured")) "Configured" else "Setup required", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { c.fetch("provider") { c.api("/api/memory/providers/${encoded(p.optString("name"))}/config?surface=declared").also { config ->
-                        try { c.data["memory-oauth:${p.optString("name")}"] = c.api("/api/memory/providers/${encoded(p.optString("name"))}/oauth/status") }
-                        catch(e:com.nousresearch.hermesmobile.data.HermesHttpException) { if(e.status !in listOf(404,405,501))throw e }
-                        provider = config
-                    } } }, enabled = !c.busy) { Text(stringResource(R.string.ui_6defafa2ca)) }
-                    TextButton(onClick = { c.action("Memory") { c.api("/api/memory/provider", "PUT", json("provider" to p.optString("name"))) } }, enabled = !c.busy && p.optString("name") != memory?.optString("active")) { Text(stringResource(R.string.ui_d086d26f17)) }
-                }
-            }
-        }
-        item { c.data["curator"]?.let { curator -> FeatureCard(stringResource(R.string.ui_61c91d9953), "Last run: ${curator.optString("last_run_at", "Never")} · Interval: ${curator.optString("interval_hours")} h") {
-            Text(if (curator.optBoolean("enabled")) "Enabled" else "Disabled in backend settings")
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.ui_e159b06187), Modifier.weight(1f)); Switch(curator.optBoolean("paused"), { paused -> c.action("Memory") { c.api("/api/curator/paused", "PUT", json("paused" to paused)) } }, enabled = !c.busy)
-            }
-            TextButton(onClick = { c.action("Memory") { c.api("/api/curator/run", "POST", JSONObject()) } }, enabled = !c.busy) { Text(stringResource(R.string.ui_0991397702)) }
-        } }; Availability(c, "curator") }
-        item { Text(stringResource(R.string.ui_eac3c5fa75), style = MaterialTheme.typography.headlineSmall); Availability(c,"graph")
-            OutlinedTextField(query, { query = it }, label = { Text(stringResource(R.string.ui_cf9d3e368d)) }, modifier = Modifier.fillMaxWidth()) }
-        items(graph?.rows("nodes").orEmpty().filter { it.toString().contains(query, true) }, key = { it.optString("id") }) { n ->
-            val related = edgesById[n.optString("id")].orEmpty().size
-            FeatureCard(n.optString("label"), "${n.optString("kind")} · ${n.optString("category")} · ${n.optInt("useCount")} uses · $related links") {
-                TextButton(onClick = { c.fetch("node") { c.api("/api/learning/node?id=${encoded(n.optString("id"))}").put("id",n.optString("id")).also { node = it } } }, enabled = !c.busy) { Text(stringResource(R.string.ui_9214dc738b)) }
-                edgesById[n.optString("id")].orEmpty().forEach { edge ->
-                    val otherId = if (edge.optString("source") == n.optString("id")) edge.optString("target") else edge.optString("source")
-                    val other = nodesById[otherId]
-                    TextButton(enabled = !c.busy, onClick = { c.fetch("node") { c.api("/api/learning/node?id=${encoded(otherId)}").put("id", otherId).also { node = it } } }) {
-                        Text("${edge.optString("kind", "Related")}: ${other?.optString("label") ?: otherId}")
+    val loadProvider: (JSONObject) -> Unit = { p -> c.fetch("provider") { c.api("/api/memory/providers/${encoded(p.optString("name"))}/config?surface=declared").also { config ->
+        try { c.data["memory-oauth:${p.optString("name")}"] = c.api("/api/memory/providers/${encoded(p.optString("name"))}/oauth/status") }
+        catch(e:com.nousresearch.hermesmobile.data.HermesHttpException) { if(e.status !in listOf(404,405,501))throw e }
+        provider = config
+    } } }
+    val openNode: (String) -> Unit = { id -> c.fetch("node") { c.api("/api/learning/node?id=${encoded(id)}").put("id", id).also { node = it } } }
+    val confirmReset = stringResource(R.string.i18n_mem_reset_confirm)
+    val confirmDeleteNode = stringResource(R.string.i18n_confirm_delete_forever)
+    LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+        // Where memories are kept: one provider is active, the others can be configured and switched to.
+        item { SectionLabel(stringResource(R.string.i18n_mem_providers)); Availability(c, "memory") }
+        items(memory?.rows("providers").orEmpty(), key = { "provider:" + it.optString("name") }) { p ->
+            val active = p.optString("name") == memory?.optString("active")
+            FlatRow(
+                leading = { StateDot(good = active, warning = !p.optBoolean("configured")) },
+                trailing = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (active) StatusPill(stringResource(R.string.i18n_mem_in_use), good = true)
+                        else TextButton(onClick = { c.action("Memory") { c.api("/api/memory/provider", "PUT", json("provider" to p.optString("name"))) } }, enabled = !c.busy) { Text(stringResource(R.string.ui_d086d26f17)) }
                     }
+                },
+                onClick = { if (!c.busy) loadProvider(p) }
+            ) {
+                Text(p.optString("name"), style = MaterialTheme.typography.bodyLarge)
+                Text(listOf(stringResource(if (p.optBoolean("configured")) R.string.i18n_mem_configured else R.string.i18n_mem_setup_needed), p.optString("description"))
+                    .filter { it.isNotBlank() }.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        // The curator: Hermes' background pass that tidies what it has learned.
+        c.data["curator"]?.let { curator ->
+            item {
+                SectionLabel(stringResource(R.string.ui_61c91d9953))
+                FlatRow(
+                    trailing = { Switch(!curator.optBoolean("paused"), { on -> c.action("Memory") { c.api("/api/curator/paused", "PUT", json("paused" to !on)) } }, enabled = !c.busy && curator.optBoolean("enabled")) }
+                ) {
+                    Text(stringResource(if (!curator.optBoolean("enabled")) R.string.i18n_mem_curator_off else if (curator.optBoolean("paused")) R.string.ui_e159b06187 else R.string.i18n_mem_curator_on), style = MaterialTheme.typography.bodyLarge)
+                    Text(stringResource(R.string.i18n_mem_curator_meta, curator.optString("last_run_at").ifBlank { stringResource(R.string.i18n_never) }, curator.optString("interval_hours")),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                TextButton(onClick = { c.action("Memory") { c.api("/api/curator/run", "POST", JSONObject()) } }, enabled = !c.busy, modifier = Modifier.padding(start = 8.dp)) {
+                    Icon(Icons.Default.PlayArrow, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(stringResource(R.string.ui_0991397702))
                 }
             }
         }
-        item { FeatureCard(stringResource(R.string.ui_5fb1482d49), "Permanent deletion for profile ${c.profile}. Built-in memory: ${memory?.optJSONObject("builtin_files")?.optInt("memory") ?: 0} bytes") {
-            Row(Modifier.horizontalScroll(rememberScrollState())) { listOf("memory", "user", "all").forEach { target ->
-                TextButton(onClick = { c.confirm("Delete $target memory for ${c.profile}?") { c.api("/api/memory/reset", "POST", json("target" to target)) } }) { Text("Reset $target") }
-            } }
-        } }
+        item { Availability(c, "curator") }
+        // What Hermes has learned: memories and skills, and how they connect.
+        item {
+            val count = graph?.rows("nodes").orEmpty().size
+            SectionLabel(stringResource(R.string.ui_eac3c5fa75), count.takeIf { it > 0 }?.toString())
+            Availability(c, "graph")
+            HermesSearchField(query, { query = it }, stringResource(R.string.ui_cf9d3e368d), Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+        }
+        items(graph?.rows("nodes").orEmpty().filter { it.toString().contains(query, true) }, key = { "node:" + it.optString("id") }) { n ->
+            val links = edgesById[n.optString("id")].orEmpty()
+            var expanded by remember(n.optString("id")) { mutableStateOf(false) }
+            FlatRow(
+                leading = { Icon(if (n.optString("kind") == "skill") Icons.Default.AutoFixHigh else Icons.Default.Lightbulb, null, tint = MaterialTheme.colorScheme.primary) },
+                trailing = { if (links.isNotEmpty()) IconButton(onClick = { expanded = !expanded }) { Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) } },
+                onClick = { if (!c.busy) openNode(n.optString("id")) }
+            ) {
+                Text(n.optString("label"), style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(listOf(n.optString("kind"), n.optString("category"),
+                    pluralStringResource(R.plurals.i18n_mem_uses, n.optInt("useCount"), n.optInt("useCount")),
+                    pluralStringResource(R.plurals.i18n_mem_links, links.size, links.size)).filter { it.isNotBlank() }.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (expanded) links.forEach { edge ->
+                val otherId = if (edge.optString("source") == n.optString("id")) edge.optString("target") else edge.optString("source")
+                Text(
+                    "${edge.optString("kind").ifBlank { stringResource(R.string.i18n_mem_related) }} → ${nodesById[otherId]?.optString("label") ?: otherId}",
+                    Modifier.fillMaxWidth().clickable(enabled = !c.busy) { openNode(otherId) }.padding(start = 56.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        // Wiping memory is permanent, so it sits apart, at the end.
+        item {
+            SectionLabel(stringResource(R.string.ui_5fb1482d49))
+            Text(stringResource(R.string.i18n_mem_reset_hint, c.profile, memory?.optJSONObject("builtin_files")?.optInt("memory") ?: 0),
+                Modifier.padding(horizontal = 18.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp)) {
+                listOf("memory" to R.string.i18n_mem_reset_memory, "user" to R.string.i18n_mem_reset_user, "all" to R.string.i18n_mem_reset_all).forEach { (target, label) ->
+                    val name = stringResource(label)
+                    TextButton(onClick = { c.confirm(confirmReset.format(name, c.profile)) { c.api("/api/memory/reset", "POST", json("target" to target)) } },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(name) }
+                }
+            }
+        }
     }
     provider?.let { p -> SchemaDialog(p.optString("label"), p.rows("fields"), onDismiss = { provider = null }, onSave = { values ->
         c.action("Memory") { c.api("/api/memory/providers/${encoded(p.optString("name"))}/config?surface=declared", "PUT", json("values" to values)) }; provider = null
@@ -166,11 +238,14 @@ private fun MemoryPage(c: ParityController) {
     }) }
     node?.let { n -> TextEditorDialog(n.optString("label"), n.optString("content"), { node = null }, { content ->
         c.action("Memory") { val latest = c.api("/api/learning/node?id=${encoded(n.optString("id"))}"); check(latest.optString("content") == n.optString("content")) { "This node changed. Reopen it before saving." }; c.api("/api/learning/node", "PUT", json("id" to n.optString("id"), "content" to content, "profile" to c.profile)) }; node = null
-    }, onDelete = { c.confirm("Permanently delete ${n.optString("label")}?") { c.api("/api/learning/node", "DELETE", json("id" to n.optString("id"), "profile" to c.profile)) }; node = null }) }
+    }, onDelete = { c.confirm(confirmDeleteNode.format(n.optString("label"))) { c.api("/api/learning/node", "DELETE", json("id" to n.optString("id"), "profile" to c.profile)) }; node = null }) }
 }
 
 @Composable
 private fun PluginsPage(c: ParityController) {
+    val confirmRemove = stringResource(R.string.i18n_plg_remove_confirm)
+    val confirmInstall = stringResource(R.string.i18n_plg_install_confirm)
+    val confirmInstallCustom = stringResource(R.string.i18n_plg_install_custom_confirm)
     var settings by remember(c) { mutableStateOf<JSONObject?>(null) }
     var query by remember { mutableStateOf("") }
     var custom by remember { mutableStateOf("") }
@@ -186,11 +261,11 @@ private fun PluginsPage(c: ParityController) {
                     TextButton(enabled = !c.busy && key.isNotBlank(), onClick = { c.action("Plugins") { c.plugins("toggle", json("key" to key, "enable" to (p.optString("status") != "enabled"))) } }) { Text(if(p.optString("status") == "enabled") "Disable" else "Enable") }
                     if (p.rows("settings_schema").isNotEmpty()) TextButton(onClick = { settings = p }) { Text(stringResource(R.string.ui_74a883a037)) }
                     if (p.optBoolean("update_available")) TextButton(onClick = { c.action("Plugins") { c.updatePlugin(p.optString("name")) } }, enabled = !c.busy) { Text(stringResource(R.string.ui_c1c1009d3f)) }
-                    if (p.optString("source") in listOf("user","git")) TextButton(onClick = { c.confirm("Remove ${p.optString("name")} from ${c.profile}?") { c.plugins("remove", json("name" to p.optString("name"))) } }) { Text(stringResource(R.string.ui_c3812fc4ac)) }
+                    if (p.optString("source") in listOf("user","git")) TextButton(onClick = { c.confirm(confirmRemove.format(p.optString("name"), c.profile)) { c.plugins("remove", json("name" to p.optString("name"))) } }) { Text(stringResource(R.string.ui_c3812fc4ac)) }
                 }
             }
         }
-        item { FeatureCard(stringResource(R.string.ui_8fe8b73b1f), "Profile ${c.profile}") {
+        item { FeatureCard(stringResource(R.string.ui_8fe8b73b1f), stringResource(R.string.i18n_profile_named, c.profile)) {
             Availability(c,"hub")
             ChoiceField(stringResource(R.string.ui_8e75ebbdb2), providers?.optString("context_engine").orEmpty(), providers?.rows("context_options").orEmpty().map { it.optString("name") }) { value -> c.action("Plugins") { c.api("/api/dashboard/plugin-providers", "PUT", json("context_engine" to value)) } }
         } }
@@ -198,14 +273,14 @@ private fun PluginsPage(c: ParityController) {
         items(c.data["catalog"]?.rows("entries").orEmpty().filter { it.toString().contains(query,true) }) { p ->
             FeatureCard(p.optString("title").ifBlank { p.optString("name") }, p.optString("description")) {
                 Text(p.opt("capability_summary")?.toString().orEmpty(), style=MaterialTheme.typography.bodySmall)
-                TextButton(enabled = !c.busy, onClick = { c.confirm("Install ${p.optString("name")} on profile ${c.profile}?\n${p.optString("repo")}\nReviewed commit: ${p.optString("sha")}\n${p.opt("capability_summary")}") {
+                TextButton(enabled = !c.busy, onClick = { c.confirm(confirmInstall.format(p.optString("name"), c.profile, p.optString("repo"), p.optString("sha"), p.opt("capability_summary")?.toString().orEmpty())) {
                     c.plugins("install", json("identifier" to p.optString("repo"), "catalog_name" to p.optString("name"), "enable" to true))
                 } }) { Text(stringResource(R.string.ui_3eec9eadf3)) }
             }
         }
-        item { FeatureCard(stringResource(R.string.ui_7b1192bdd3), "Install a repository or package supported by the gateway") {
+        item { FeatureCard(stringResource(R.string.ui_7b1192bdd3), stringResource(R.string.i18n_plg_custom_hint)) {
             OutlinedTextField(custom, { custom=it }, label={Text(stringResource(R.string.ui_9ecc632f10))}, modifier=Modifier.fillMaxWidth())
-            TextButton(enabled=custom.isNotBlank() && !c.busy, onClick={c.confirm("Install and enable $custom on ${c.profile}?") { c.plugins("install", json("identifier" to custom.trim(), "enable" to true)) }}) {Text(stringResource(R.string.ui_569ca49f4a))}
+            TextButton(enabled=custom.isNotBlank() && !c.busy, onClick={c.confirm(confirmInstallCustom.format(custom, c.profile)) { c.plugins("install", json("identifier" to custom.trim(), "enable" to true)) }}) {Text(stringResource(R.string.ui_569ca49f4a))}
         } }
     }
     settings?.let { plugin -> SchemaDialog(plugin.optString("name"), plugin.rows("settings_schema"), { settings=null }, { values ->
@@ -226,8 +301,8 @@ fun ChoiceField(label: String, value: String, choices: List<String>, onValue: (S
     Column {
         Text(label, style=MaterialTheme.typography.labelMedium)
         Box {
-            OutlinedButton(onClick={expanded=true}, modifier=Modifier.fillMaxWidth()) {Text(value.ifBlank {"Inherit"})}
-            DropdownMenu(expanded, {expanded=false}) { choices.distinct().forEach { choice -> DropdownMenuItem(text={Text(choice.ifBlank {"Inherit"})}, onClick={onValue(choice);expanded=false}) } }
+            OutlinedButton(onClick={expanded=true}, modifier=Modifier.fillMaxWidth()) {Text(value.ifBlank {stringResource(R.string.i18n_inherit)})}
+            DropdownMenu(expanded, {expanded=false}) { choices.distinct().forEach { choice -> DropdownMenuItem(text={Text(choice.ifBlank {stringResource(R.string.i18n_inherit)})}, onClick={onValue(choice);expanded=false}) } }
         }
     }
 }

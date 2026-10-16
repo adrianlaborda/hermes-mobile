@@ -83,6 +83,7 @@ fun ChatScreen(
     onSteer: (String) -> Unit,
     onBack: () -> Unit,
     onMenu: () -> Unit = {},
+    routines: RoutineActions? = null,
     listHeader: @Composable () -> Unit = {}
 ) {
     var showNew by remember { mutableStateOf(false) }
@@ -116,7 +117,8 @@ fun ChatScreen(
         activeKey = active?.let { "${it.profile}:${it.storedSessionId}" },
         actions = listActions,
         listHeader = listHeader,
-        modifier = modifier
+        modifier = modifier,
+        routines = routines
     )
 
     @Composable

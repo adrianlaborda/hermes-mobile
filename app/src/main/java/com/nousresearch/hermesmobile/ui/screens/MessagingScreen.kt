@@ -3,6 +3,7 @@
 package com.nousresearch.hermesmobile.ui.screens
 
 import com.nousresearch.hermesmobile.R
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -58,7 +59,8 @@ fun MessagingScreen(
     onWebhookEnabled: (WebhookRoute, Boolean) -> Unit,
     onDeleteWebhook: (WebhookRoute) -> Unit,
     onDismissWebhookReceipt: () -> Unit,
-    onRestartGateway: () -> Unit
+    onRestartGateway: () -> Unit,
+    onMenu: () -> Unit = {}
 ) {
     var tab by remember { mutableStateOf(MessagingTab.CHANNELS) }
     var configure by remember { mutableStateOf<MessagingPlatform?>(null) }
@@ -70,24 +72,15 @@ fun MessagingScreen(
     Column(Modifier.fillMaxSize()) {
         HermesTopBar(
             stringResource(R.string.a14_connections),
-            "$selected · ${messaging.size} platforms",
+            subtitleContent = { com.nousresearch.hermesmobile.ui.components.ProfileSwitcher(selected, profiles.map { it.name }, onProfile) },
+            leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
             actions = {
                 IconButton(onClick = { confirmRestart = true }) {
-                    Icon(Icons.Default.RestartAlt, "Restart messaging gateway")
+                    Icon(Icons.Default.RestartAlt, stringResource(R.string.i18n_msg_restart))
                 }
             }
         )
         DashedDivider(color = MaterialTheme.hermes.line)
-
-        SectionLabel(stringResource(R.string.ui_d696a35bdd))
-        LazyRow(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(profiles, key = { it.name }) { p ->
-                FilterChip(selected == p.name, { onProfile(p.name) }, { Text(p.label) })
-            }
-        }
 
         SecondaryTabRow(selectedTabIndex = tab.ordinal) {
             Tab(tab == MessagingTab.CHANNELS, { tab = MessagingTab.CHANNELS }, text = { Text(stringResource(R.string.ui_4c8906cf76)) }, icon = { Icon(Icons.Default.Hub, null) })
@@ -164,7 +157,7 @@ private fun ChannelsList(
     val telegram = messaging.firstOrNull { it.id == "telegram" }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         if (messaging.isEmpty()) {
-            item { EmptyState(Icons.Default.Hub, "No channels exposed", "This gateway did not return a messaging-platform catalog.") }
+            item { EmptyState(Icons.Default.Hub, stringResource(R.string.i18n_msg_no_channels), stringResource(R.string.i18n_msg_no_channels_hint)) }
         } else {
             item { SectionLabel(stringResource(R.string.ui_0155d01cec), messaging.size.toString()) }
             items(messaging, key = { it.id }) { platform ->
@@ -200,11 +193,11 @@ private fun ChannelsList(
             item {
                 Column(Modifier.padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     Text(
-                        "Use Hermes' guided Telegram onboarding or configure the bot token directly from the channel form.",
+                        stringResource(R.string.i18n_msg_telegram_hint),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    HermesTextField(botName, onBotName, "Bot name (optional)")
+                    HermesTextField(botName, onBotName, stringResource(R.string.i18n_msg_bot_name))
                     OutlinedButton(onClick = { onStartTelegram(botName) }) {
                         Icon(Icons.Default.QrCode, null)
                         Spacer(Modifier.width(7.dp))
@@ -225,15 +218,15 @@ private fun ChannelsList(
                         val status = onboarding.status.lowercase()
                         Text(
                             when (status) {
-                                "ready" -> "Ready to apply"
-                                "expired" -> "Pairing expired"
-                                "failed", "error" -> "Pairing failed"
-                                else -> "Waiting for Telegram"
+                                "ready" -> stringResource(R.string.i18n_msg_tg_ready)
+                                "expired" -> stringResource(R.string.i18n_msg_tg_expired)
+                                "failed", "error" -> stringResource(R.string.i18n_msg_tg_failed)
+                                else -> stringResource(R.string.i18n_msg_tg_waiting)
                             },
                             style = MaterialTheme.typography.titleSmall
                         )
                         onboarding.botUsername?.let { Text("@$it") }
-                        if (onboarding.expiresAt.isNotBlank()) Text("Expires ${onboarding.expiresAt}", style = MaterialTheme.typography.bodySmall)
+                        if (onboarding.expiresAt.isNotBlank()) Text(stringResource(R.string.i18n_msg_expires, onboarding.expiresAt), style = MaterialTheme.typography.bodySmall)
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             if (onboarding.deepLink.isNotBlank()) Button(onClick = { onOpenUri(onboarding.deepLink) }) { Text(stringResource(R.string.ui_b86620b43d)) }
                             if (status == "ready") Button(onClick = { onApplyTelegram(listOfNotNull(onboarding.ownerUserId).filter(String::isNotBlank)) }) { Text(stringResource(R.string.ui_31e392d1c0)) }
@@ -246,14 +239,15 @@ private fun ChannelsList(
     }
 }
 
+@Composable
 private fun channelDescription(platform: MessagingPlatform): String = buildList {
     add(
         platform.state.ifBlank {
             when {
-                platform.gatewayRunning -> "connected"
-                platform.enabled && platform.configured -> "enabled"
-                platform.configured -> "configured"
-                else -> "not configured"
+                platform.gatewayRunning -> stringResource(R.string.i18n_msg_connected)
+                platform.enabled && platform.configured -> stringResource(R.string.i18n_msg_enabled)
+                platform.configured -> stringResource(R.string.i18n_msg_configured)
+                else -> stringResource(R.string.i18n_msg_not_configured)
             }
         }
     )
@@ -268,10 +262,11 @@ private fun PlatformConfigDialog(
     onOpenDocs: () -> Unit,
     onSave: (Map<String, String>, List<String>) -> Unit
 ) {
+    val tokenLabel = stringResource(R.string.i18n_msg_bot_token)
     val fields = remember(platform) {
         if (platform.setupFields.isNotEmpty()) platform.setupFields
         else if (platform.id == "telegram") listOf(
-            MessagingSetupField("TELEGRAM_BOT_TOKEN", "Bot token", required = true, secret = true, configured = platform.configured)
+            MessagingSetupField("TELEGRAM_BOT_TOKEN", tokenLabel, required = true, secret = true, configured = platform.configured)
         ) else emptyList()
     }
     val values = remember(platform.id) { mutableStateMapOf<String, String>().apply { fields.forEach { put(it.key, "") } } }
@@ -279,7 +274,7 @@ private fun PlatformConfigDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Configure ${platform.name}") },
+        title = { Text(stringResource(R.string.i18n_msg_configure, platform.name)) },
         text = {
             Column(
                 Modifier.fillMaxWidth().heightIn(max = 570.dp).verticalScroll(rememberScrollState()),
@@ -288,7 +283,7 @@ private fun PlatformConfigDialog(
                 if (platform.description.isNotBlank()) Text(platform.description, style = MaterialTheme.typography.bodyMedium)
                 if (fields.isEmpty()) {
                     Text(
-                        "This gateway did not expose editable setup fields for this channel. You can still enable/disable and test it.",
+                        stringResource(R.string.i18n_msg_no_fields),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -299,7 +294,7 @@ private fun PlatformConfigDialog(
                         onValueChange = { values[field.key] = it; if (it.isNotBlank()) clear[field.key] = false },
                         label = field.label + if (field.required) " *" else "",
                         placeholder = when {
-                            field.configured && field.secret -> "Configured — blank keeps current value"
+                            field.configured && field.secret -> stringResource(R.string.i18n_msg_secret_kept)
                             field.valueHint.isNotBlank() -> field.valueHint
                             else -> field.placeholder
                         },
@@ -322,7 +317,7 @@ private fun PlatformConfigDialog(
                     }
                 }
                 Text(
-                    "Blank fields keep their existing value. Secrets are never rehydrated into the form.",
+                    stringResource(R.string.i18n_msg_blank_keeps),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -365,8 +360,8 @@ private fun PairingList(
         } else {
             items(pending, key = { "${it.platform}:${it.code ?: it.requestId ?: it.userId}" }) { user ->
                 FlatRow(
-                    title = user.userName.ifBlank { user.userId.ifBlank { user.code ?: "Pairing request" } },
-                    description = listOf(user.platform, user.code?.let { "code $it" }.orEmpty(), user.createdAt).filter(String::isNotBlank).joinToString(" · "),
+                    title = user.userName.ifBlank { user.userId.ifBlank { user.code ?: stringResource(R.string.i18n_msg_pairing_request) } },
+                    description = listOf(user.platform, user.code?.let { stringResource(R.string.i18n_msg_code, it) }.orEmpty(), user.createdAt).filter(String::isNotBlank).joinToString(" · "),
                     trailing = { Button(onClick = { onApprove(user) }) { Text(stringResource(R.string.ui_6007acbe30)) } }
                 )
             }
@@ -380,7 +375,7 @@ private fun PairingList(
                 FlatRow(
                     title = user.userName.ifBlank { user.userId },
                     description = listOf(user.platform, user.userId).filter(String::isNotBlank).joinToString(" · "),
-                    trailing = { IconButton(onClick = { onRevoke(user) }) { Icon(Icons.Default.PersonRemove, "Revoke") } }
+                    trailing = { IconButton(onClick = { onRevoke(user) }) { Icon(Icons.Default.PersonRemove, stringResource(R.string.i18n_msg_revoke)) } }
                 )
             }
         }
@@ -396,16 +391,15 @@ private fun WebhooksList(
 ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
-            HermesTopBar(
-                "Webhook subscriptions",
-                if (webhooks.platformEnabled) "Webhook channel enabled" else "Enable the webhook channel first",
-                actions = { IconButton(onClick = onCreate) { Icon(Icons.Default.Add, stringResource(R.string.ui_d58b5d6489)) } }
-            )
+            // A tab of this page: its own small bar, not a second page header.
+            com.nousresearch.hermesmobile.ui.components.SubBar(
+                stringResource(if (webhooks.platformEnabled) R.string.i18n_wh_enabled else R.string.i18n_wh_enable_first)
+            ) { IconButton(onClick = onCreate) { Icon(Icons.Default.Add, stringResource(R.string.ui_d58b5d6489)) } }
         }
         if (!webhooks.platformEnabled) {
             item {
                 Text(
-                    "Hermes will reject incoming routes until the webhook messaging platform is enabled in Channels.",
+                    stringResource(R.string.i18n_wh_rejected),
                     Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -456,13 +450,13 @@ private fun WebhookCreateDialog(onDismiss: () -> Unit, onCreate: (WebhookDraft) 
         title = { Text(stringResource(R.string.ui_d58b5d6489)) },
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                HermesTextField(name, { name = it }, "Route name")
-                HermesTextField(description, { description = it }, "Description")
-                HermesTextField(events, { events = it }, "Event filter", placeholder = "push,issue.created or blank for all")
-                HermesTextField(prompt, { prompt = it }, "Agent prompt", singleLine = false, placeholder = "Payload references may use the gateway's template syntax")
-                HermesTextField(deliver, { deliver = it }, "Delivery target", placeholder = "log / telegram / discord / …")
-                HermesTextField(skills, { skills = it }, "Skills", placeholder = "optional, comma separated")
-                HermesTextField(cronJob, { cronJob = it }, "Existing cron job", placeholder = "optional job id")
+                HermesTextField(name, { name = it }, stringResource(R.string.i18n_wh_route))
+                HermesTextField(description, { description = it }, stringResource(R.string.i18n_description))
+                HermesTextField(events, { events = it }, stringResource(R.string.i18n_wh_events), placeholder = stringResource(R.string.i18n_wh_events_hint))
+                HermesTextField(prompt, { prompt = it }, stringResource(R.string.i18n_wh_prompt), singleLine = false, placeholder = stringResource(R.string.i18n_wh_prompt_hint))
+                HermesTextField(deliver, { deliver = it }, stringResource(R.string.i18n_wh_target), placeholder = "log / telegram / discord / …")
+                HermesTextField(skills, { skills = it }, stringResource(R.string.i18n_skills), placeholder = stringResource(R.string.i18n_wh_skills_hint))
+                HermesTextField(cronJob, { cronJob = it }, stringResource(R.string.i18n_wh_cron), placeholder = stringResource(R.string.i18n_wh_cron_hint))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(deliverOnly, { deliverOnly = it })
                     Spacer(Modifier.width(10.dp))
@@ -473,14 +467,14 @@ private fun WebhookCreateDialog(onDismiss: () -> Unit, onCreate: (WebhookDraft) 
                 }
                 if (directDeliveryNeedsTarget) {
                     Text(
-                        "Direct delivery cannot use the local log target; choose a messaging delivery target.",
+                        stringResource(R.string.i18n_wh_direct_needs_target),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
                 }
                 if (conflictingModes) {
                     Text(
-                        "Direct delivery and an existing cron job are mutually exclusive.",
+                        stringResource(R.string.i18n_wh_exclusive),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )

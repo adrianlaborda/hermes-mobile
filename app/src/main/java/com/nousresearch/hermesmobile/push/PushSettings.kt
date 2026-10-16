@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
@@ -53,7 +54,7 @@ fun PushSettings(
     config: GatewayConfig?,
     initialProfile: String,
     profiles: List<String>,
-    onBack: () -> Unit,
+    onMenu: () -> Unit,
     onOpen: (JSONObject) -> Unit,
     onAskHermes: (profile: String, prompt: String) -> Unit,
     runCommand: suspend (profile: String, name: String, arg: String) -> String
@@ -64,8 +65,6 @@ fun PushSettings(
     val res = androidx.compose.ui.platform.LocalResources.current
     val scope = rememberCoroutineScope()
     var selectedEvent by remember { mutableStateOf<JSONObject?>(null) }
-    // Drawn outside the main Scaffold: system back must close this screen, not the app.
-    androidx.activity.compose.BackHandler(onBack = onBack)
     selectedEvent?.let { event ->
         AlertDialog(onDismissRequest = { selectedEvent = null }, title = { Text(event.optString("title", "Hermes")) },
             text = { Box(Modifier.heightIn(max = 500.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
@@ -235,25 +234,17 @@ fun PushSettings(
     // A Surface (not just a background) so untinted text gets the theme's content color.
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
     LazyColumn(
-        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing),
+        Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            HermesTopBar(stringResource(R.string.push_title), "${config?.displayLabel.orEmpty()} · $profile", leading = {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+            HermesTopBar(stringResource(R.string.push_title), subtitleContent = {
+                com.nousresearch.hermesmobile.ui.components.ProfileSwitcher(profile, profiles) { name -> profile = name; error = null; info = null }
+            }, leading = {
+                IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) }
             })
-        }
-        if (profiles.size > 1) item {
-            androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(profiles) { name ->
-                    val paired = accounts.any { it.connection == config?.id && it.profile == name }
-                    FilterChip(selected = name == profile, onClick = { profile = name; error = null; info = null },
-                        label = { Text(name) },
-                        leadingIcon = if (paired) ({ Icon(Icons.Default.Check, stringResource(R.string.a25_paired), Modifier.size(16.dp)) }) else null)
-                }
-            }
+            com.nousresearch.hermesmobile.ui.components.DashedDivider(color = MaterialTheme.hermes.line)
         }
         if (account != null) {
             item {

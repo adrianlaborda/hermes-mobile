@@ -30,6 +30,10 @@ fun SettingsPage(c:ParityController){
     var mcpOriginal by remember{mutableStateOf<JSONObject?>(null)}
     val fields=c.data["schema"]?.optJSONObject("fields") ?: JSONObject()
     val config=c.data["config"] ?: JSONObject()
+    val changedElsewhere=stringResource(R.string.i18n_set_changed_elsewhere)
+    val invalidJson=stringResource(R.string.i18n_set_invalid_json)
+    val confirmMcp=stringResource(R.string.i18n_set_mcp_confirm)
+    val mcpChanged=stringResource(R.string.i18n_set_mcp_changed)
     LazyColumn(contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
         item { FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(R.string.a14_settings, R.string.a14_operations, R.string.a14_usage).forEachIndexed { index, label ->
@@ -37,8 +41,8 @@ fun SettingsPage(c:ParityController){
             }
         } }
         if (section == 0) {
-        item{FeatureCard(stringResource(R.string.ui_eb67fa8c89), "Changes apply to ${c.profile}. Fields are declared by the connected backend."){
-            c.unavailable["config"]?.let{Text(it)};c.unavailable["schema"]?.let{Text(it)}
+        item{FeatureCard(stringResource(R.string.ui_eb67fa8c89), stringResource(R.string.i18n_set_hint, c.profile)){
+            c.unavailable["config"]?.let{Text(shown(it))};c.unavailable["schema"]?.let{Text(shown(it))}
             OutlinedTextField(query,{query=it},label={Text(stringResource(R.string.ui_556e14934a))},modifier=Modifier.fillMaxWidth())
         }}
         items(fields.keys().asSequence().filter{key-> !key.startsWith("desktop.") && !sensitiveSetting(key, fields.optJSONObject(key)) && (key.contains(query,true) || fields.optJSONObject(key)?.optString("description")?.contains(query,true)==true)}.toList(),key={it}){key->
@@ -48,14 +52,14 @@ fun SettingsPage(c:ParityController){
                 TextButton(onClick={editing=key to field}){Text(stringResource(R.string.ui_464c4ffd01))}
             }
         }
-        item{FeatureCard(stringResource(R.string.ui_f0a06c9b34), "OAuth uses your system browser and a loopback callback on this phone."){
+        item{FeatureCard(stringResource(R.string.ui_f0a06c9b34), stringResource(R.string.i18n_set_oauth_hint)){
             c.data["mcp"]?.rows("servers").orEmpty().forEach{server->McpOAuthButton(c,server.optString("name"))}
             TextButton(onClick={val servers=config.optJSONObject("mcp_servers") ?: JSONObject();mcpOriginal=JSONObject(servers.toString());mcpEditor=servers.toString(2)}){Text(stringResource(R.string.ui_f81ff93586))}
         }}
         }
         if (section == 1) {
-        item{FeatureCard(stringResource(R.string.ui_e28773da31), "Actions run on profile ${c.profile} of the connected gateway."){
-            listOf("doctor" to "Diagnostics","security-audit" to "Security audit","backup" to "Create backup").forEach{(action,label)->
+        item{FeatureCard(stringResource(R.string.ui_e28773da31), stringResource(R.string.i18n_set_ops_hint, c.profile)){
+            listOf("doctor" to stringResource(R.string.i18n_set_doctor),"security-audit" to stringResource(R.string.i18n_set_audit),"backup" to stringResource(R.string.i18n_set_backup)).forEach{(action,label)->
                 TextButton(enabled=!c.busy,onClick={c.fetch("operation"){c.api("/api/ops/$action","POST",JSONObject())}}){Text(label)}
             }
             c.data["operation"]?.let{result->
@@ -75,16 +79,16 @@ fun SettingsPage(c:ParityController){
         }
         if (section == 2) {
         item{FeatureCard(stringResource(R.string.ui_727030f3ee)) {
-            c.unavailable["usage"]?.let { Text(it) }
+            c.unavailable["usage"]?.let { Text(shown(it)) }
             c.data["usage"]?.optJSONObject("totals")?.let { totals ->
-                Text("${totals.optLong("total_sessions")} sessions · ${totals.optLong("total_api_calls")} API calls")
-                Text("Tokens: ${totals.optLong("total_input")} input · ${totals.optLong("total_output")} output")
-                Text("Estimated cost: USD ${"%.4f".format(totals.optDouble("total_estimated_cost",0.0))}")
+                Text(stringResource(R.string.i18n_set_usage_sessions, totals.optLong("total_sessions"), totals.optLong("total_api_calls")))
+                Text(stringResource(R.string.i18n_set_usage_tokens, totals.optLong("total_input"), totals.optLong("total_output")))
+                Text(stringResource(R.string.i18n_set_usage_cost, "%.4f".format(totals.optDouble("total_estimated_cost",0.0))))
             }
         }}
         items(c.data["usage"]?.rows("by_model").orEmpty()) { model -> FeatureCard(model.optString("model")) {
-            Text("${model.optLong("input_tokens") + model.optLong("output_tokens")} tokens · ${model.optLong("api_calls")} calls")
-            Text("Estimated cost: USD ${"%.4f".format(model.optDouble("estimated_cost",0.0))}")
+            Text(stringResource(R.string.i18n_set_usage_model, model.optLong("input_tokens") + model.optLong("output_tokens"), model.optLong("api_calls")))
+            Text(stringResource(R.string.i18n_set_usage_cost, "%.4f".format(model.optDouble("estimated_cost",0.0))))
         } }
         }
     }
@@ -92,22 +96,22 @@ fun SettingsPage(c:ParityController){
         val initial=configValue(config,key)
         val field=JSONObject(schema.toString()).put("key",key).put("label",key.replace('_',' ')).put("value",initial ?: "")
         if(field.optString("type")=="select") {field.put("type","enum");field.put("choices",field.optJSONArray("options") ?: JSONArray())}
-        SchemaDialog("Edit setting",listOf(field),{editing=null},{values->
+        SchemaDialog(stringResource(R.string.i18n_set_edit),listOf(field),{editing=null},{values->
             c.action("Settings"){
                 val latest=c.api("/api/config")
-                check(jsonEquivalent(configValue(latest,key),initial)){"This setting changed in another client. Refresh before saving."}
+                check(jsonEquivalent(configValue(latest,key),initial)){changedElsewhere}
                 var value=values.opt(key)
                 if(schema.optString("type")=="list") value=JSONArray(value?.toString().orEmpty())
                 c.api("/api/config","PUT",json("config" to configPatch(key,value)))
             };editing=null
         })
     }
-    mcpEditor?.let{initial->TextEditorDialog("MCP server map",initial,{mcpEditor=null},{text->
+    mcpEditor?.let{initial->TextEditorDialog(stringResource(R.string.i18n_set_mcp_map),initial,{mcpEditor=null},{text->
         val parsed=runCatching{JSONObject(text)}
-        if(parsed.isFailure)c.message="Invalid JSON: ${parsed.exceptionOrNull()?.message}"else{
-            c.confirm("Replace the MCP server map for ${c.profile}? Servers removed from this map will be removed from its configuration."){
+        if(parsed.isFailure)c.message=invalidJson.format(parsed.exceptionOrNull()?.message.orEmpty())else{
+            c.confirm(confirmMcp.format(c.profile)){
                 val latest=c.api("/api/config").optJSONObject("mcp_servers") ?: JSONObject()
-                check(jsonEquivalent(latest,mcpOriginal)){"MCP configuration changed. Refresh before saving."}
+                check(jsonEquivalent(latest,mcpOriginal)){mcpChanged}
                 c.api("/api/mcp/servers","PUT",json("servers" to parsed.getOrThrow()))
             };mcpEditor=null
         }

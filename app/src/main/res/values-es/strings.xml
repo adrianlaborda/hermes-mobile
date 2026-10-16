@@ -74,4 +74,17 @@
     <string name="chat_section_collapse">Plegar %1$s</string>
     <string name="bot_offline">Sin conexión</string>
     <string name="chat_change_profile">Cambiar perfil</string>
+    <string name="routines_show_more">Mostrar %1$d más</string>
+    <string name="routines_show_runs">Ver ejecuciones</string>
+    <string name="routines_hide_runs">Ocultar ejecuciones</string>
+    <string name="routines_run_now">Ejecutar ahora</string>
+    <string name="routines_pause">Pausar</string>
+    <string name="routines_resume">Reanudar</string>
+    <string name="routines_manage">Gestionar</string>
+    <string name="routines_no_runs">Aún no se ha ejecutado</string>
+    <string name="routines_state_paused">En pausa</string>
+    <string name="routines_state_completed">Terminada</string>
+    <string name="routines_state_disabled">Desactivada</string>
+    <string name="routines_state_error">Falló</string>
+    <string name="routines_delete_title">¿Eliminar esta rutina?</string>
 </resources>

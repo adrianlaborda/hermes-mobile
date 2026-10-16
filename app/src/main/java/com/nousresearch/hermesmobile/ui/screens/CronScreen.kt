@@ -1,6 +1,7 @@
 package com.nousresearch.hermesmobile.ui.screens
 
 import com.nousresearch.hermesmobile.R
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -39,7 +40,8 @@ fun CronScreen(
     onTrigger: (CronJob) -> Unit,
     onDelete: (CronJob) -> Unit,
     onLoadRuns: (CronJob) -> Unit,
-    onInstantiateBlueprint: (String, AutomationBlueprint, Map<String, String>) -> Unit
+    onInstantiateBlueprint: (String, AutomationBlueprint, Map<String, String>) -> Unit,
+    onMenu: () -> Unit = {}
 ) {
     var editorJob by remember { mutableStateOf<CronJob?>(null) }
     var create by remember { mutableStateOf(false) }
@@ -57,8 +59,9 @@ fun CronScreen(
 
     Column(Modifier.fillMaxSize()) {
         HermesTopBar(
-            "Routines",
-            "Gateway cron · ${jobs.size}",
+            stringResource(R.string.ui_61b7bb44e2),
+            subtitleContent = { com.nousresearch.hermesmobile.ui.components.ProfileSwitcher(selectedProfile, profiles.map { it.name }, onProfile) },
+            leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
             actions = {
                 if (blueprints.isNotEmpty()) {
                     IconButton(onClick = { blueprint = blueprints.first() }) { Icon(Icons.Default.AutoAwesome, stringResource(R.string.ui_a398de9c57)) }
@@ -68,30 +71,21 @@ fun CronScreen(
         )
         DashedDivider(color = MaterialTheme.hermes.line)
 
-        SectionLabel(stringResource(R.string.ui_d696a35bdd), "delivery + blueprints")
-        LazyRow(
-            Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(profiles, key = { it.name }) { p ->
-                FilterChip(selectedProfile == p.name, { onProfile(p.name) }, { Text(p.label) })
-            }
-        }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(8.dp))
         HermesTextField(
             value = search,
             onValueChange = { search = it },
-            label = "Search routines",
+            label = stringResource(R.string.i18n_cron_search),
             modifier = Modifier.padding(horizontal = 14.dp)
         )
         Spacer(Modifier.height(8.dp))
 
         if (jobs.isEmpty()) {
-            EmptyState(Icons.Default.Schedule, "No routines", "Schedule prompts on the remote Hermes gateway.") {
+            EmptyState(Icons.Default.Schedule, stringResource(R.string.i18n_cron_empty), stringResource(R.string.i18n_cron_empty_hint)) {
                 Button(onClick = { create = true }) { Text(stringResource(R.string.ui_d5e520f554)) }
             }
         } else if (filtered.isEmpty()) {
-            EmptyState(Icons.Default.SearchOff, "No matches", "Try another routine name, profile, schedule or prompt.")
+            EmptyState(Icons.Default.SearchOff, stringResource(R.string.a22_no_results), stringResource(R.string.i18n_cron_no_matches_hint))
         } else {
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                 items(filtered, key = { "${it.profile}:${it.id}" }) { job ->
@@ -106,7 +100,7 @@ fun CronScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(onClick = { onTrigger(job) }) { Icon(Icons.Default.PlayArrow, stringResource(R.string.ui_0991397702)) }
                                 IconButton(onClick = { if (job.enabled) onPause(job) else onResume(job) }) {
-                                    Icon(if (job.enabled) Icons.Default.Pause else Icons.Default.PlayCircle, "Pause or resume")
+                                    Icon(if (job.enabled) Icons.Default.Pause else Icons.Default.PlayCircle, stringResource(if (job.enabled) R.string.routines_pause else R.string.routines_resume))
                                 }
                                 IconButton(onClick = {
                                     editorJob = job
@@ -119,7 +113,7 @@ fun CronScreen(
                             onLoadRuns(job)
                         }
                     ) {
-                        Text(job.name.ifBlank { "Routine" }, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(job.name.ifBlank { stringResource(R.string.i18n_cron_routine) }, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             listOf(job.profile, job.scheduleDisplay.ifBlank { job.schedule }, job.deliver)
                                 .filter(String::isNotBlank).joinToString(" · "),
@@ -235,7 +229,7 @@ private fun CronEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (job == null) "New routine" else "Edit routine") },
+        title = { Text(stringResource(if (job == null) R.string.i18n_cron_new else R.string.i18n_cron_edit)) },
         text = {
             Column(
                 Modifier.fillMaxWidth().heightIn(max = 590.dp).verticalScroll(rememberScrollState()),
@@ -250,11 +244,11 @@ private fun CronEditorDialog(
                         }
                     }
                 } else {
-                    Text("Profile: $profile", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.i18n_profile_named, profile), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                HermesTextField(name, { name = it }, "Name")
-                HermesTextField(prompt, { prompt = it }, "Prompt", singleLine = false)
-                HermesTextField(schedule, { schedule = it }, "Schedule", placeholder = "0 8 * * * or natural schedule")
+                HermesTextField(name, { name = it }, stringResource(R.string.i18n_name))
+                HermesTextField(prompt, { prompt = it }, stringResource(R.string.i18n_cron_prompt), singleLine = false)
+                HermesTextField(schedule, { schedule = it }, stringResource(R.string.i18n_cron_schedule), placeholder = stringResource(R.string.i18n_cron_schedule_hint))
 
                 Text(stringResource(R.string.ui_52bfe584a5), style = MaterialTheme.typography.labelMedium)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -272,21 +266,21 @@ private fun CronEditorDialog(
                         )
                     }
                 }
-                HermesTextField(deliver, { deliver = it }, "Delivery targets", placeholder = "local,telegram")
+                HermesTextField(deliver, { deliver = it }, stringResource(R.string.i18n_cron_targets), placeholder = "local,telegram")
 
                 TextButton(onClick = { advanced = !advanced }) {
                     Icon(if (advanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
                     Spacer(Modifier.width(6.dp))
-                    Text(if (advanced) "Hide advanced" else "Advanced")
+                    Text(stringResource(if (advanced) R.string.i18n_hide_advanced else R.string.i18n_advanced))
                 }
                 if (advanced) {
-                    HermesTextField(model, { model = it }, "Model override", placeholder = "optional")
-                    HermesTextField(provider, { provider = it }, "Provider override", placeholder = "optional")
-                    HermesTextField(reasoning, { reasoning = it }, "Reasoning effort", placeholder = "optional")
-                    HermesTextField(skills, { skills = it }, "Skills", placeholder = "skill-a, skill-b")
-                    HermesTextField(script, { script = it }, "Pre-run script", placeholder = "path on gateway")
-                    HermesTextField(workdir, { workdir = it }, "Working directory", placeholder = "optional")
-                    HermesTextField(repeat, { repeat = it.filter(Char::isDigit) }, "Repeat count", placeholder = "unlimited when blank")
+                    HermesTextField(model, { model = it }, stringResource(R.string.i18n_cron_model), placeholder = stringResource(R.string.i18n_optional))
+                    HermesTextField(provider, { provider = it }, stringResource(R.string.i18n_cron_provider), placeholder = stringResource(R.string.i18n_optional))
+                    HermesTextField(reasoning, { reasoning = it }, stringResource(R.string.i18n_cron_reasoning), placeholder = stringResource(R.string.i18n_optional))
+                    HermesTextField(skills, { skills = it }, stringResource(R.string.i18n_skills), placeholder = "skill-a, skill-b")
+                    HermesTextField(script, { script = it }, stringResource(R.string.i18n_cron_script), placeholder = stringResource(R.string.i18n_cron_script_hint))
+                    HermesTextField(workdir, { workdir = it }, stringResource(R.string.i18n_cron_workdir), placeholder = stringResource(R.string.i18n_optional))
+                    HermesTextField(repeat, { repeat = it.filter(Char::isDigit) }, stringResource(R.string.i18n_cron_repeat), placeholder = stringResource(R.string.i18n_cron_repeat_hint))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(noAgent, { noAgent = it })
                         Spacer(Modifier.width(10.dp))
@@ -297,7 +291,7 @@ private fun CronEditorDialog(
                     }
                     if (noAgent && script.isBlank()) {
                         Text(
-                            "No-agent mode requires a pre-run script.",
+                            stringResource(R.string.i18n_cron_no_agent_needs_script),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -327,7 +321,7 @@ private fun CronEditorDialog(
                         )
                     )
                 }
-            ) { Text(if (job == null) "Create" else "Save") }
+            ) { Text(stringResource(if (job == null) R.string.i18n_create else R.string.i18n_save)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ui_19766ed6cc)) } }
     )
@@ -346,22 +340,22 @@ private fun CronDetailDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(job.name.ifBlank { "Routine" }) },
+        title = { Text(job.name.ifBlank { stringResource(R.string.i18n_cron_routine) }) },
         text = {
             Column(
                 Modifier.fillMaxWidth().heightIn(max = 590.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                DetailLine("Profile", job.profile)
-                DetailLine("State", job.state.ifBlank { if (job.enabled) "enabled" else "paused" })
-                DetailLine("Schedule", job.scheduleDisplay.ifBlank { job.schedule })
-                DetailLine("Delivery", job.deliver)
-                if (job.model.isNotBlank() || job.provider.isNotBlank()) DetailLine("Model", listOf(job.provider, job.model).filter(String::isNotBlank).joinToString(" / "))
-                if (job.skills.isNotEmpty()) DetailLine("Skills", job.skills.joinToString(", "))
-                job.repeat?.let { DetailLine("Repeat", "${job.completedRuns}/$it") }
-                job.nextRunAt?.let { DetailLine("Next run", formatEpoch(it)) }
-                job.lastRunAt?.let { DetailLine("Last run", formatEpoch(it)) }
-                if (job.lastStatus.isNotBlank()) DetailLine("Last status", job.lastStatus)
+                DetailLine(stringResource(R.string.ui_d696a35bdd), job.profile)
+                DetailLine(stringResource(R.string.i18n_state), job.state.ifBlank { stringResource(if (job.enabled) R.string.i18n_enabled else R.string.routines_state_paused) })
+                DetailLine(stringResource(R.string.i18n_cron_schedule), job.scheduleDisplay.ifBlank { job.schedule })
+                DetailLine(stringResource(R.string.i18n_cron_delivery), job.deliver)
+                if (job.model.isNotBlank() || job.provider.isNotBlank()) DetailLine(stringResource(R.string.i18n_model), listOf(job.provider, job.model).filter(String::isNotBlank).joinToString(" / "))
+                if (job.skills.isNotEmpty()) DetailLine(stringResource(R.string.i18n_skills), job.skills.joinToString(", "))
+                job.repeat?.let { DetailLine(stringResource(R.string.i18n_cron_repeats), "${job.completedRuns}/$it") }
+                job.nextRunAt?.let { DetailLine(stringResource(R.string.i18n_cron_next_run), formatEpoch(it)) }
+                job.lastRunAt?.let { DetailLine(stringResource(R.string.i18n_cron_last_run), formatEpoch(it)) }
+                if (job.lastStatus.isNotBlank()) DetailLine(stringResource(R.string.i18n_cron_last_status), job.lastStatus)
                 if (job.lastError.isNotBlank()) {
                     Text(stringResource(R.string.ui_5488d837f5), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                     Text(job.lastError, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
@@ -373,7 +367,7 @@ private fun CronDetailDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.ui_addf321bfa), style = MaterialTheme.typography.titleSmall)
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = onRefreshRuns) { Icon(Icons.Default.Refresh, "Refresh runs") }
+                    IconButton(onClick = onRefreshRuns) { Icon(Icons.Default.Refresh, stringResource(R.string.i18n_refresh)) }
                 }
                 if (runs.isEmpty()) {
                     Text(stringResource(R.string.ui_9a80852174), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -383,7 +377,7 @@ private fun CronDetailDialog(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 StateDot(good = run.status.lowercase() in setOf("complete", "completed", "success", "done"), warning = run.status.lowercase() in setOf("running", "queued"))
                                 Spacer(Modifier.width(8.dp))
-                                Text(run.title.ifBlank { run.id.ifBlank { "Run" } }, style = MaterialTheme.typography.bodyMedium)
+                                Text(run.title.ifBlank { run.id.ifBlank { stringResource(R.string.i18n_cron_run) } }, style = MaterialTheme.typography.bodyMedium)
                             }
                             val meta = listOf(run.status, run.startedAt?.let(::formatEpoch).orEmpty()).filter(String::isNotBlank).joinToString(" · ")
                             if (meta.isNotBlank()) Text(meta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -396,7 +390,7 @@ private fun CronDetailDialog(
         confirmButton = {
             Row {
                 TextButton(onClick = onRun) { Text(stringResource(R.string.ui_00d60e31a4)) }
-                TextButton(onClick = onPauseResume) { Text(if (job.enabled) "Pause" else "Resume") }
+                TextButton(onClick = onPauseResume) { Text(stringResource(if (job.enabled) R.string.routines_pause else R.string.routines_resume)) }
                 TextButton(onClick = onEdit) { Text(stringResource(R.string.ui_464c4ffd01)) }
             }
         },
@@ -436,7 +430,7 @@ private fun BlueprintDialog(
                 Modifier.fillMaxWidth().heightIn(max = 560.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(9.dp)
             ) {
-                Text("Profile: $profile", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.i18n_profile_named, profile), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (allBlueprints.size > 1) {
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         items(allBlueprints, key = { it.id }) { candidate ->

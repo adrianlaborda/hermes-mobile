@@ -31,24 +31,16 @@ import com.nousresearch.hermesmobile.ui.theme.hermes
 fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
     HermesTheme {
         val s = vm.uiState
-        var showPush by remember { mutableStateOf(false) }
         var workspaceTab by remember { mutableStateOf("Memory") }
         val drawerState = androidx.compose.material3.rememberDrawerState(androidx.compose.material3.DrawerValue.Closed)
         val scope = androidx.compose.runtime.rememberCoroutineScope()
         val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
-        LaunchedEffect(vm.notificationInboxRequested) { if (vm.notificationInboxRequested) { showPush = true; vm.notificationInboxRequested = false } }
+        LaunchedEffect(vm.notificationInboxRequested) { if (vm.notificationInboxRequested) { vm.switchSection(MainSection.NOTIFICATIONS); vm.notificationInboxRequested = false } }
         // Lets the push service skip a turn notice for the chat the user is reading right now.
         val openChat = if (s.section == MainSection.CHAT) s.activeChat?.storedSessionId else null
         DisposableEffect(openChat) {
             com.nousresearch.hermesmobile.push.AppPresence.openSessionId = openChat
             onDispose { com.nousresearch.hermesmobile.push.AppPresence.openSessionId = null }
-        }
-        if (showPush) {
-            com.nousresearch.hermesmobile.push.PushSettings(s.savedConfig, s.selectedProfile, s.profiles.map { it.name },
-                onBack = { showPush = false }, onOpen = { event -> showPush = false; vm.openNotification(event) },
-                onAskHermes = { profile, prompt -> showPush = false; vm.askHermes(prompt, profile) },
-                runCommand = { profile, name, arg -> vm.pluginCommand(profile, name, arg) })
-            return@HermesTheme
         }
         val uriHandler = LocalUriHandler.current
         androidx.compose.runtime.LaunchedEffect(s.authLaunchUrl) {
@@ -79,15 +71,9 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
             return@HermesTheme
         }
 
-        // Home is the start destination: system back from any other top-level page returns to it
-        // (screens with their own back stack — an open chat, sub-pages — register deeper handlers that win).
-        androidx.activity.compose.BackHandler(enabled = s.section != MainSection.HOME) {
-            vm.switchSection(when (s.section) {
-                MainSection.CRON -> MainSection.WORK
-                MainSection.PROFILES -> MainSection.MORE
-                else -> MainSection.HOME
-            })
-        }
+        // System back returns to the page visited before, then to Home, the start destination (screens with
+        // their own back stack — an open chat, sub-pages — register deeper handlers that win).
+        androidx.activity.compose.BackHandler(enabled = s.section != MainSection.HOME || vm.canNavigateBack) { vm.navigateBack() }
         val wide = LocalWindowInfo.current.containerSize.width / LocalDensity.current.density >= 720f
         androidx.compose.material3.ModalNavigationDrawer(
             drawerState = drawerState,
@@ -98,10 +84,10 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                     gatewayLabel = s.savedConfig?.displayLabel.orEmpty(),
                     onSelect = vm::switchSection,
                     onNewChat = { vm.newChat() },
-                    onNotifications = { showPush = true },
+                    onNotifications = { vm.switchSection(MainSection.NOTIFICATIONS) },
                     onClose = { scope.launch { drawerState.close() } },
                     recentSessions = remember(s.sessions) {
-                        s.sessions.filter { !it.hidden && !it.archived }
+                        s.sessions.filter { !it.hidden && !it.archived && !it.isRoutineRun }
                             .sortedWith(compareByDescending<com.nousresearch.hermesmobile.data.HermesSession> { it.pinned }.thenByDescending { it.lastActive })
                     },
                     activeSessionId = s.activeChat?.storedSessionId,
@@ -191,7 +177,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                     MainSection.HOME -> ExperienceHome(s, openDrawer, vm::switchSection, { vm.newChat() }, vm::openSession)
                     MainSection.WORK -> WorkHub(openDrawer, { vm.switchSection(MainSection.CRON) }, { workspaceTab = "Files"; vm.switchSection(MainSection.WORKSPACE) }, { workspaceTab = "Memory"; vm.switchSection(MainSection.WORKSPACE) })
                     MainSection.SYSTEM -> vm.featureRepository()?.let { repo -> key(repo, s.selectedProfile) {
-                        SystemPage(repo, s.selectedProfile) { workspaceTab = "Settings"; vm.switchSection(MainSection.WORKSPACE) }
+                        SystemPage(repo, s.selectedProfile, s.profiles.map { it.name }, vm::selectProfile, onMenu = openDrawer) { workspaceTab = "Settings"; vm.switchSection(MainSection.WORKSPACE) }
                     } }
                     MainSection.CHAT -> ChatRoute(vm, s, openDrawer)
                     MainSection.BOTS -> BotsScreen(
@@ -232,6 +218,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         onDisbandGroup = vm::disbandGroup
                     )
                     MainSection.CRON -> CronScreen(
+                        onMenu = openDrawer,
                         profiles = s.profiles,
                         selectedProfile = s.selectedProfile,
                         jobs = s.cronJobs,
@@ -249,6 +236,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         onInstantiateBlueprint = vm::instantiateCronBlueprint
                     )
                     MainSection.MESSAGING -> MessagingScreen(
+                        onMenu = openDrawer,
                         profiles = s.profiles,
                         selected = s.selectedProfile,
                         messaging = s.messaging,
@@ -283,7 +271,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         skillDetail = s.capabilitySkillDetail,
                         toolsetConfig = s.capabilityToolsetConfig,
                         oauthFlow = s.capabilityOAuthFlow,
-                        onBack = { vm.switchSection(MainSection.MORE) },
+                        onMenu = openDrawer,
                         onProfile = vm::selectCapabilityProfile,
                         onRefresh = { vm.refreshCapabilities() },
                         onSetModel = vm::setCapabilityModel,
@@ -318,7 +306,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         profiles = s.profiles,
                         busy = s.profileActionBusy,
                         lastExport = s.lastProfileExport,
-                        onBack = { vm.switchSection(MainSection.MORE) },
+                        onMenu = openDrawer,
                         onCreate = vm::createManagedProfile,
                         onRename = vm::renameManagedProfile,
                         onDelete = vm::deleteManagedProfile,
@@ -326,13 +314,21 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         onImport = vm::importManagedProfile
                     )
                     MainSection.WORKSPACE -> {
-                        Column {
-                            ChoiceField(stringResource(R.string.ui_d696a35bdd), s.selectedProfile, s.profiles.map { it.name }) { vm.selectProfile(it) }
-                            vm.featureRepository()?.let { repo -> key(repo, s.selectedProfile) {
-                                ParityScreen(repo, s.selectedProfile, workspaceTab) { vm.switchSection(MainSection.MORE) }
-                            } }
-                        }
+                        vm.featureRepository()?.let { repo -> key(repo, s.selectedProfile) {
+                            ParityScreen(
+                                repo, s.selectedProfile, workspaceTab,
+                                profiles = s.profiles.map { it.name }, onProfile = vm::selectProfile,
+                                onMenu = openDrawer
+                            )
+                        } }
                     }
+                    MainSection.NOTIFICATIONS -> com.nousresearch.hermesmobile.push.PushSettings(
+                        s.savedConfig, s.selectedProfile, s.profiles.map { it.name },
+                        onMenu = openDrawer,
+                        onOpen = vm::openNotification,
+                        onAskHermes = { profile, prompt -> vm.askHermes(prompt, profile) },
+                        runCommand = { profile, name, arg -> vm.pluginCommand(profile, name, arg) }
+                    )
                     MainSection.MORE -> MoreScreen(
                         onMenu = openDrawer,
                         config = s.savedConfig,
@@ -341,7 +337,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         profileCount = s.profiles.size,
                         profileNames = s.profiles.map { it.name },
                         sessionCount = s.sessions.size,
-                        onNotifications = { showPush = true },
+                        onNotifications = { vm.switchSection(MainSection.NOTIFICATIONS) },
                         onSystem = { vm.switchSection(MainSection.SYSTEM) },
                         onConnections = { vm.switchSection(MainSection.MESSAGING) },
                         onFeature = { tab -> workspaceTab = tab; vm.switchSection(MainSection.WORKSPACE) },
@@ -427,10 +423,12 @@ private fun ChatRoute(vm: HermesViewModel, s: HermesUiState, onMenu: () -> Unit)
         Column {
             com.nousresearch.hermesmobile.ui.components.HermesTopBar(
                 stringResource(R.string.ui_ef5b4049bb),
-                leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } }
+                leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
+                subtitleContent = {
+                    com.nousresearch.hermesmobile.ui.components.ProfileSwitcher(s.selectedProfile, s.profiles.map { it.name }, vm::selectProfile)
+                }
             )
             viewTabs()
-            ChoiceField(stringResource(R.string.ui_d696a35bdd), s.selectedProfile, s.profiles.map { it.name }) { vm.selectProfile(it) }
             key(repo, s.selectedProfile) {
                 if (chatView == 2) ProjectsPage(repo, s.selectedProfile, vm::openSession, vm::newWorkspaceChat)
                 else LocalFolders(repo.config.id, s.selectedProfile, s.sessions, vm::openSession)
@@ -461,7 +459,7 @@ private fun ChatContent(vm: HermesViewModel, s: HermesUiState, onMenu: () -> Uni
                 Column {
                     TextButton(onClick = { artifact = null }) { Text(stringResource(R.string.ui_5978844cb6)) }
                     if (features.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-                    features.message?.let { message -> Text(message, Modifier.padding(16.dp)) }
+                    features.message?.let { message -> Text(com.nousresearch.hermesmobile.features.shown(message), Modifier.padding(16.dp)) }
                     FilesPage(features, artifact, chat.storedSessionId)
                     FeatureConsent(features)
                 }
@@ -542,7 +540,23 @@ private fun ChatContent(vm: HermesViewModel, s: HermesUiState, onMenu: () -> Uni
         onSteer = vm::steer,
         onBack = vm::closeActiveChat,
         onMenu = onMenu,
-        listHeader = listHeader
+        listHeader = listHeader,
+        routines = com.nousresearch.hermesmobile.ui.screens.RoutineActions(
+            jobs = s.cronJobs,
+            runs = s.cronRuns,
+            onLoadRuns = vm::loadCronRuns,
+            onTrigger = vm::triggerCron,
+            onPause = vm::pauseCron,
+            onResume = vm::resumeCron,
+            onManage = { vm.switchSection(MainSection.CRON) },
+            onDelete = vm::deleteCron,
+            // The run lives in the profile that owns the job, which the server names on each run.
+            onOpenRun = { job, run ->
+                vm.openSession(com.nousresearch.hermesmobile.data.HermesSession(
+                    id = run.id, title = run.title, profile = run.profile.ifBlank { job.profile }, source = "cron"
+                ))
+            }
+        )
     )
     }
 }

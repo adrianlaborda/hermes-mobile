@@ -72,7 +72,7 @@ fun BotsScreen(
     val hiddenCount = remember(allBots) { allBots.count { it.profile.botHidden } }
     val bots = remember(allBots, showHidden, search) {
         allBots.filter { (showHidden || !it.profile.botHidden) && (it.label.contains(search, true) || it.profile.name.contains(search, true)) }
-            .sortedWith(compareByDescending<RoutedBot> { it.profile.botPinned }.thenBy { it.connectionLabel.lowercase() }.thenBy { it.label.lowercase() })
+            .sortedWith(botRosterOrder)
     }
 
     if (activeGroup != null) {
@@ -94,7 +94,7 @@ fun BotsScreen(
                     IconButton(onClick = { showHidden = !showHidden }) {
                         Icon(
                             if (showHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            if (showHidden) "Hide hidden bots" else "Show hidden bots"
+                            stringResource(if (showHidden) R.string.i18n_bots_hide_hidden else R.string.i18n_bots_show_hidden)
                         )
                     }
                 }
@@ -103,8 +103,8 @@ fun BotsScreen(
         )
         DashedDivider(color = MaterialTheme.hermes.line)
         SecondaryTabRow(selectedTabIndex = page) {
-            Tab(selected = page == 0, onClick = { page = 0 }, text = { Text("Bots (${allBots.count { !it.profile.botHidden }})") })
-            Tab(selected = page == 1, onClick = { page = 1; onRefreshGroups() }, text = { Text("Groups (${groupRooms.size})") })
+            Tab(selected = page == 0, onClick = { page = 0 }, text = { Text(stringResource(R.string.i18n_bots_tab, allBots.count { !it.profile.botHidden })) })
+            Tab(selected = page == 1, onClick = { page = 1; onRefreshGroups() }, text = { Text(stringResource(R.string.i18n_groups_tab, groupRooms.size)) })
         }
         if (page == 0) com.nousresearch.hermesmobile.ui.components.HermesSearchField(search, { search = it }, stringResource(R.string.a14_search), Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
         if (botRosterLoading && page == 0) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -115,7 +115,7 @@ fun BotsScreen(
                 onSendGroup, onReplyGroupThread, onRenameGroup, onStopGroup, onRetryGroup, onApproveGroup, onDisbandGroup
             )
         } else if (bots.isEmpty()) {
-            EmptyState(Icons.Default.SmartToy, "No visible bots", "Create a profile-backed Hermes bot.") {
+            EmptyState(Icons.Default.SmartToy, stringResource(R.string.i18n_bots_empty), stringResource(R.string.i18n_bots_empty_hint)) {
                 Button(onClick = { create = true }) { Text(stringResource(R.string.ui_b23572a604)) }
             }
         } else {
@@ -174,7 +174,7 @@ fun BotsScreen(
                 ) {
                     CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(14.dp))
-                    Text("Loading $editorLoadingProfile configuration…")
+                    Text(stringResource(R.string.i18n_bots_loading_config, editorLoadingProfile))
                 }
             }
         }
@@ -183,11 +183,10 @@ fun BotsScreen(
     deleteCandidate?.let { profile ->
         AlertDialog(
             onDismissRequest = { deleteCandidate = null },
-            title = { Text("Delete ${profile.label}?") },
+            title = { Text(stringResource(R.string.i18n_delete_named, profile.label)) },
             text = {
                 Text(
-                    "This removes the Hermes profile and its stored Bot Chat from the gateway. " +
-                        "This action is not offered for the default profile."
+                    stringResource(R.string.i18n_bots_delete_body)
                 )
             },
             confirmButton = {
@@ -249,8 +248,9 @@ private fun BotRow(
                     Icon(Icons.Default.VisibilityOff, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
+            // Like Desktop's roster: the newest message of the bot's conversation; its role until there is one.
             Text(
-                profile.description.ifBlank { profile.name },
+                previewLine(profile.activityPreview).ifBlank { profile.description.ifBlank { profile.name } },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -258,7 +258,7 @@ private fun BotRow(
             )
             val offline = if (routed.reachable && profile.gatewayRunning) "" else " · " + stringResource(R.string.bot_offline)
             Text(
-                (if (routed.activeConnection) "${routed.connectionLabel} · this gateway" else routed.connectionLabel) + offline,
+                (if (routed.activeConnection) stringResource(R.string.i18n_bots_this_gateway, routed.connectionLabel) else routed.connectionLabel) + offline,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -267,19 +267,19 @@ private fun BotRow(
         if (!(routed.reachable && profile.gatewayRunning)) {
             Icon(Icons.Default.CloudOff, stringResource(R.string.bot_offline), Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         } else if (!routed.activeConnection) {
-            Icon(Icons.Default.Cloud, "Remote gateway", Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.Cloud, stringResource(R.string.i18n_remote_gateway), Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(3.dp))
         // A bot on another gateway says what a tap does: it switches the app to that gateway.
         if (!routed.activeConnection) {
-            TextButton(onClick = onSwitchConnection, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("Switch") }
+            TextButton(onClick = onSwitchConnection, contentPadding = PaddingValues(horizontal = 8.dp)) { Text(stringResource(R.string.i18n_bots_switch)) }
         }
         Box {
-            IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Bot actions") }
+            IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.i18n_bots_actions)) }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 if (!routed.activeConnection) {
                     DropdownMenuItem(
-                        text = { Text("Switch to ${routed.connectionLabel}") },
+                        text = { Text(stringResource(R.string.i18n_bots_switch_to, routed.connectionLabel)) },
                         leadingIcon = { Icon(Icons.Default.Dns, null) },
                         onClick = { menu = false; onSwitchConnection() }
                     )
@@ -330,16 +330,16 @@ private fun CreateBotDialog(
         title = { Text(stringResource(R.string.ui_b23572a604)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                HermesTextField(name, { name = it }, "Profile name", placeholder = "researcher")
+                HermesTextField(name, { name = it }, stringResource(R.string.i18n_prof_name), placeholder = "researcher")
                 if (name.isNotBlank() && !valid) {
                     Text(
-                        if (profiles.any { it.name == slug }) "That profile already exists." else "Use 1–64 lowercase letters, numbers, _ or -.",
+                        stringResource(if (profiles.any { it.name == slug }) R.string.i18n_bots_exists else R.string.i18n_bots_name_rule),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
                 }
-                HermesTextField(title, { title = it }, "Display name", placeholder = "Researcher")
-                HermesTextField(description, { description = it }, "Description", singleLine = false)
+                HermesTextField(title, { title = it }, stringResource(R.string.i18n_display_name), placeholder = "Researcher")
+                HermesTextField(description, { description = it }, stringResource(R.string.i18n_description), singleLine = false)
                 Text(stringResource(R.string.ui_6e31e77621), style = MaterialTheme.typography.labelMedium)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(clone == null, { clone = null })

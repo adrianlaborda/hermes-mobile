@@ -18,20 +18,21 @@ import org.json.JSONObject
 fun ModelsPage(c: ParityController) {
     var slot by remember(c) { mutableStateOf<JSONObject?>(null) }
     var moaOpen by remember { mutableStateOf(false) }
+    val confirmReset = stringResource(R.string.i18n_models_reset_confirm)
     LazyColumn(contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item { FeatureCard(stringResource(R.string.ui_92495347c5), "Profile defaults for background tasks. Chat model selections remain scoped to their session.") {
-            c.unavailable["auxiliary"]?.let {Text(it)}
-            Text("Main: ${c.data["auxiliary"]?.optJSONObject("main")?.optString("provider").orEmpty()} / ${c.data["auxiliary"]?.optJSONObject("main")?.optString("model").orEmpty()}")
-            TextButton(onClick={c.confirm("Reset every auxiliary slot to inherit from the main model?") {c.assignModel(json("scope" to "auxiliary","task" to "__reset__","provider" to "auto","model" to "","reasoning_effort" to null))}}) {Text(stringResource(R.string.ui_fc7c61a646))}
+        item { FeatureCard(stringResource(R.string.ui_92495347c5), stringResource(R.string.i18n_models_hint)) {
+            c.unavailable["auxiliary"]?.let {Text(shown(it))}
+            Text(stringResource(R.string.i18n_models_main, c.data["auxiliary"]?.optJSONObject("main")?.optString("provider").orEmpty(), c.data["auxiliary"]?.optJSONObject("main")?.optString("model").orEmpty()))
+            TextButton(onClick={c.confirm(confirmReset) {c.assignModel(json("scope" to "auxiliary","task" to "__reset__","provider" to "auto","model" to "","reasoning_effort" to null))}}) {Text(stringResource(R.string.ui_fc7c61a646))}
         } }
         items(c.data["auxiliary"]?.rows("tasks").orEmpty(),key={it.optString("task")}) { task ->
-            FeatureCard(task.optString("task"), "${task.optString("provider")} / ${task.optString("model").ifBlank {"Inherit"}}") {
-                Text("Reasoning: ${task.optString("reasoning_effort").takeUnless {it=="null" || it.isBlank()} ?: "Inherit"}",style=MaterialTheme.typography.bodySmall)
+            FeatureCard(task.optString("task"), "${task.optString("provider")} / ${task.optString("model").ifBlank {stringResource(R.string.i18n_inherit)}}") {
+                Text(stringResource(R.string.i18n_vm_reasoning, task.optString("reasoning_effort").takeUnless {it=="null" || it.isBlank()} ?: stringResource(R.string.i18n_inherit)),style=MaterialTheme.typography.bodySmall)
                 TextButton(onClick={slot=task},enabled=!c.busy){Text(stringResource(R.string.ui_6defafa2ca))}
             }
         }
         item { FeatureCard(stringResource(R.string.ui_c30a5a6849), "Reference models generate answers; the aggregator combines them.") {
-            c.unavailable["moa"]?.let {Text(it)}
+            c.unavailable["moa"]?.let {Text(shown(it))}
             c.data["moa"]?.let { Text("Default preset: ${it.optString("default_preset")}\nActive: ${it.optString("active_preset")}");TextButton(onClick={moaOpen=true}) {Text(stringResource(R.string.ui_d78fb41c2d))} }
         } }
     }

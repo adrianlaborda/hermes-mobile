@@ -105,14 +105,14 @@ fun HermesDrawer(
 
             DrawerSection(stringResource(R.string.a21_agent))
             DrawerItem(Icons.Default.Psychology, stringResource(R.string.a14_intelligence), current == MainSection.CAPABILITIES) { onClose(); onSelect(MainSection.CAPABILITIES) }
-            DrawerItem(Icons.Default.Schedule, stringResource(R.string.a14_work), current == MainSection.WORK || current == MainSection.CRON) { onClose(); onSelect(MainSection.WORK) }
-            DrawerItem(Icons.Default.FolderOpen, stringResource(R.string.ui_87bb59ba2f), current == MainSection.WORKSPACE) { onClose(); onSelect(MainSection.WORKSPACE) }
+            // Files, Routines and Memory open from Work; Models, Plugins and Voice from Settings.
+            DrawerItem(Icons.Default.Schedule, stringResource(R.string.a14_work), current == MainSection.WORK || current == MainSection.CRON || current == MainSection.WORKSPACE) { onClose(); onSelect(MainSection.WORK) }
 
             DrawerSection(stringResource(R.string.a21_gateway))
             DrawerItem(Icons.Default.MonitorHeart, stringResource(R.string.a14_system), current == MainSection.SYSTEM) { onClose(); onSelect(MainSection.SYSTEM) }
             DrawerItem(Icons.Default.Hub, stringResource(R.string.a14_connections), current == MainSection.MESSAGING) { onClose(); onSelect(MainSection.MESSAGING) }
             DrawerItem(Icons.Default.ManageAccounts, stringResource(R.string.ui_535e52e4a2), current == MainSection.PROFILES) { onClose(); onSelect(MainSection.PROFILES) }
-            DrawerItem(Icons.Default.NotificationsNone, stringResource(R.string.push_title), false, onClick = { onClose(); onNotifications() })
+            DrawerItem(Icons.Default.NotificationsNone, stringResource(R.string.push_title), current == MainSection.NOTIFICATIONS, onClick = { onClose(); onNotifications() })
 
             Spacer(Modifier.height(14.dp))
             DashedDivider(color = MaterialTheme.hermes.line)

@@ -1,6 +1,8 @@
 package com.nousresearch.hermesmobile.ui.screens
 
 import com.nousresearch.hermesmobile.R
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
@@ -79,18 +81,18 @@ fun GroupsPanel(
         ) {
             Column(Modifier.weight(1f)) {
                 val subtitle = when {
-                    capabilities == null -> "Hosted Group Chats on this gateway"
-                    capabilities.driver && capabilities.roomLink.enabled -> "Gateway-hosted · RoomLink ready for multi-gateway Bots"
-                    capabilities.driver && capabilities.persistentProcess -> "Gateway-hosted · persistent driver"
-                    capabilities.driver -> "Gateway-hosted · room driver active"
-                    else -> "Gateway supports rooms, but its driver is unavailable"
+                    capabilities == null -> stringResource(R.string.i18n_grp_sub_default)
+                    capabilities.driver && capabilities.roomLink.enabled -> stringResource(R.string.i18n_grp_sub_roomlink)
+                    capabilities.driver && capabilities.persistentProcess -> stringResource(R.string.i18n_grp_sub_persistent)
+                    capabilities.driver -> stringResource(R.string.i18n_grp_sub_driver)
+                    else -> stringResource(R.string.i18n_grp_sub_no_driver)
                 }
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (!error.isNullOrBlank()) {
                     Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 }
             }
-            IconButton(onClick = onRefresh, enabled = !loading) { Icon(Icons.Default.Refresh, "Refresh groups") }
+            IconButton(onClick = onRefresh, enabled = !loading) { Icon(Icons.Default.Refresh, stringResource(R.string.i18n_refresh)) }
             IconButton(
                 onClick = { create = true },
                 enabled = capabilities?.driver == true && capabilities.methods.contains("groups.create") && routedBots.size >= 2
@@ -101,13 +103,13 @@ fun GroupsPanel(
             loading && rooms.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             capabilities == null && !error.isNullOrBlank() -> EmptyState(
                 Icons.Default.Groups,
-                "Group Chats unavailable",
-                "Update/start a Hermes gateway that exposes the hosted groups.* protocol."
+                stringResource(R.string.i18n_grp_unavailable),
+                stringResource(R.string.i18n_grp_unavailable_hint)
             ) { TextButton(onClick = onRefresh) { Text(stringResource(R.string.ui_942087cc2d)) } }
             rooms.isEmpty() -> EmptyState(
                 Icons.Default.Groups,
-                "No Group Chats",
-                "Create a room with 2–6 Bots. The gateway owns its durable log and turn scheduling."
+                stringResource(R.string.i18n_grp_empty),
+                stringResource(R.string.i18n_grp_empty_hint)
             ) { Button(onClick = { create = true }, enabled = capabilities?.driver == true && routedBots.size >= 2) { Text(stringResource(R.string.ui_7888b00075)) } }
             else -> LazyColumn(Modifier.fillMaxSize()) {
                 items(rooms, key = { it.roomId }) { room ->
@@ -174,7 +176,7 @@ private fun CreateGroupDialog(
         title = { Text(stringResource(R.string.ui_7888b00075)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                HermesTextField(name, { name = it }, "Room name", placeholder = "Project review")
+                HermesTextField(name, { name = it }, stringResource(R.string.i18n_grp_room_name), placeholder = stringResource(R.string.i18n_grp_room_name_hint))
                 Text(stringResource(R.string.ui_2745ea8b0f), style = MaterialTheme.typography.labelMedium)
                 LazyColumn(Modifier.heightIn(max = 320.dp)) {
                     items(bots, key = { it.routeKey }) { bot ->
@@ -196,17 +198,17 @@ private fun CreateGroupDialog(
                             Column(Modifier.weight(1f)) {
                                 Text(profile.label)
                                 Text(
-                                    "@${bot.handle} · ${bot.connectionLabel}${if (bot.activeConnection) " · this gateway" else if (!allowRemote) " · RoomLink unavailable" else ""}",
+                                    "@${bot.handle} · ${bot.connectionLabel}${if (bot.activeConnection) " · " + stringResource(R.string.i18n_this_gateway) else if (!allowRemote) " · " + stringResource(R.string.i18n_grp_roomlink_na) else ""}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            if (!bot.activeConnection) Icon(Icons.Default.Cloud, "Remote gateway", Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (!bot.activeConnection) Icon(Icons.Default.Cloud, stringResource(R.string.i18n_remote_gateway), Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
                 Text(
-                    "Bots may come from different saved gateways. Hermes RoomLink negotiates a scoped grant for each remote member; the room remains hosted by the active gateway.",
+                    stringResource(R.string.i18n_grp_roomlink_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -216,7 +218,7 @@ private fun CreateGroupDialog(
             TextButton(
                 enabled = !busy && name.trim().isNotBlank() && selected.size in 2..6,
                 onClick = { onCreate(name.trim(), selected) }
-            ) { Text(if (busy) "Creating…" else "Create") }
+            ) { Text(stringResource(if (busy) R.string.i18n_creating else R.string.i18n_create)) }
         },
         dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text(stringResource(R.string.ui_19766ed6cc)) } }
     )
@@ -256,22 +258,22 @@ private fun GroupRoomView(
         }
     }
 
+    // An open room is a view inside Bots: back closes it, it doesn't leave the page.
+    androidx.activity.compose.BackHandler(onBack = onBack)
     Column(Modifier.fillMaxSize().imePadding()) {
         HermesTopBar(
             active.room.name,
-            buildString {
-                append(active.room.members.size).append(" Bots")
-                when {
-                    active.driver.working -> append(" · working")
-                    active.driver.blocked -> append(" · needs attention")
-                    active.driver.running -> append(" · driver ready")
-                }
+            pluralStringResource(R.plurals.i18n_bots_count, active.room.members.size, active.room.members.size) + when {
+                active.driver.working -> " · " + stringResource(R.string.i18n_grp_working)
+                active.driver.blocked -> " · " + stringResource(R.string.i18n_grp_attention)
+                active.driver.running -> " · " + stringResource(R.string.i18n_grp_ready)
+                else -> ""
             },
-            leading = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+            leading = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.a21_back)) } },
             actions = {
-                if (active.driver.working) IconButton(onClick = onStop, enabled = !actionBusy) { Icon(Icons.Default.StopCircle, "Stop group work") }
+                if (active.driver.working) IconButton(onClick = onStop, enabled = !actionBusy) { Icon(Icons.Default.StopCircle, stringResource(R.string.i18n_grp_stop)) }
                 Box {
-                    IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Group actions") }
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, stringResource(R.string.i18n_grp_actions)) }
                     DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.ui_3064d79a29)) },
@@ -345,8 +347,8 @@ private fun GroupRoomView(
             ) {
                 Icon(Icons.Default.Forum, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(6.dp))
-                Text("Replying in thread $thread", Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                IconButton(onClick = { onReplyThread(null) }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Close, "Cancel thread", Modifier.size(16.dp)) }
+                Text(stringResource(R.string.i18n_grp_replying, thread), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                IconButton(onClick = { onReplyThread(null) }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.Close, stringResource(R.string.i18n_grp_cancel_thread), Modifier.size(16.dp)) }
             }
         }
         Row(
@@ -366,7 +368,7 @@ private fun GroupRoomView(
             FilledIconButton(
                 enabled = input.trim().isNotBlank() && !actionBusy,
                 onClick = { val value = input.trim(); input = ""; onSend(value) }
-            ) { Icon(Icons.AutoMirrored.Filled.Send, "Send") }
+            ) { Icon(Icons.AutoMirrored.Filled.Send, stringResource(R.string.i18n_send)) }
         }
     }
 
@@ -375,7 +377,7 @@ private fun GroupRoomView(
         AlertDialog(
             onDismissRequest = { rename = false },
             title = { Text(stringResource(R.string.ui_14fbfb5329)) },
-            text = { HermesTextField(value, { value = it }, "Name") },
+            text = { HermesTextField(value, { value = it }, stringResource(R.string.i18n_name)) },
             confirmButton = { TextButton(enabled = value.trim().isNotBlank() && !actionBusy, onClick = { rename = false; onRename(value) }) { Text(stringResource(R.string.ui_3064d79a29)) } },
             dismissButton = { TextButton(onClick = { rename = false }) { Text(stringResource(R.string.ui_19766ed6cc)) } }
         )
@@ -383,7 +385,7 @@ private fun GroupRoomView(
     if (disband) {
         AlertDialog(
             onDismissRequest = { disband = false },
-            title = { Text("Disband ${active.room.name}?") },
+            title = { Text(stringResource(R.string.i18n_grp_disband, active.room.name)) },
             text = { Text(stringResource(R.string.ui_71f2b5e341)) },
             confirmButton = { TextButton(enabled = !actionBusy, onClick = { disband = false; onDisband() }) { Text(stringResource(R.string.ui_f2a9142052)) } },
             dismissButton = { TextButton(onClick = { disband = false }) { Text(stringResource(R.string.ui_19766ed6cc)) } }
@@ -421,14 +423,14 @@ private fun RoomEventRow(
                             TextButton(onClick = onReplyThread, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text(stringResource(R.string.ui_a236732715), style = MaterialTheme.typography.labelSmall) }
                         }
                         if (!user && member != null) {
-                            TextButton(onClick = { onReplyTo(member.handle) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text("Reply to @${member.handle}", style = MaterialTheme.typography.labelSmall) }
+                            TextButton(onClick = { onReplyTo(member.handle) }, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text(stringResource(R.string.i18n_grp_reply_to, member.handle), style = MaterialTheme.typography.labelSmall) }
                         }
                     }
                 }
             }
         }
     } else {
-        val label = roomEventStatusText(event) ?: return
+        val label = roomEventStatusText(event, LocalContext.current) ?: return
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text(
                 label,
@@ -452,7 +454,7 @@ private fun PendingRoomActionCard(
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             when (action.kind) {
                 "approval" -> {
-                    Text("Approval · @${member?.handle ?: action.memberId}", style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.i18n_grp_approval, member?.handle ?: action.memberId), style = MaterialTheme.typography.titleSmall)
                     if (action.command.isNotBlank()) Text(action.command, style = MaterialTheme.typography.bodySmall, fontFamily = com.nousresearch.hermesmobile.ui.theme.HermesMono)
                     if (action.description.isNotBlank()) Text(action.description, style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -465,7 +467,7 @@ private fun PendingRoomActionCard(
                     Text(action.taskId, style = MaterialTheme.typography.bodySmall, fontFamily = com.nousresearch.hermesmobile.ui.theme.HermesMono)
                     Button(enabled = !busy, onClick = { onRetry(action) }) { Text(stringResource(R.string.ui_942087cc2d)) }
                 }
-                else -> Text("Room action: ${action.kind}", style = MaterialTheme.typography.bodySmall)
+                else -> Text(stringResource(R.string.i18n_grp_action, action.kind), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -476,12 +478,12 @@ private fun shouldRenderRoomEvent(event: GroupEvent): Boolean = when (event.kind
     else -> false
 }
 
-private fun roomEventStatusText(event: GroupEvent): String? = when (event.kind) {
-    "turn.failed" -> "Turn failed: ${event.payload.optString("error").ifBlank { "unknown error" }}"
-    "turn.cancelled" -> "Turn cancelled: ${event.payload.optString("reason")}".trimEnd(':', ' ')
-    "turn.deferred" -> "Turn deferred: ${event.payload.optString("reason")}".trimEnd(':', ' ')
-    "room.activity" -> event.payload.optString("status").takeIf { it.isNotBlank() }?.let { "Room $it" }
-    "room.stop_requested" -> "Stop requested"
+private fun roomEventStatusText(event: GroupEvent, context: android.content.Context): String? = when (event.kind) {
+    "turn.failed" -> context.getString(R.string.i18n_grp_turn_failed, event.payload.optString("error").ifBlank { context.getString(R.string.i18n_unknown_error) })
+    "turn.cancelled" -> context.getString(R.string.i18n_grp_turn_cancelled, event.payload.optString("reason")).trimEnd(':', ' ')
+    "turn.deferred" -> context.getString(R.string.i18n_grp_turn_deferred, event.payload.optString("reason")).trimEnd(':', ' ')
+    "room.activity" -> event.payload.optString("status").takeIf { it.isNotBlank() }?.let { context.getString(R.string.i18n_grp_room_status, it) }
+    "room.stop_requested" -> context.getString(R.string.i18n_grp_stop_requested)
     else -> null
 }
 

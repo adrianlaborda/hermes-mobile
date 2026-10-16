@@ -388,7 +388,8 @@ if not capabilities_ui_path.exists():
 else:
     capabilities_ui = capabilities_ui_path.read_text()
     capabilities_ui = with_resource_labels(capabilities_ui)
-    for required in ('MODELS("Models")', 'SKILLS("Skills")', 'TOOLS("Tools")', 'MCP("MCP")', 'KEYS("Keys")',
+    for required in ('MODELS(R.string.i18n_caps_models)', 'SKILLS(R.string.i18n_skills)', 'TOOLS(R.string.i18n_caps_tools)',
+                     'MCP(R.string.i18n_caps_mcp)', 'KEYS(R.string.i18n_caps_keys)',
                      'Custom endpoints', 'Provider accounts', 'Search Skills Hub', 'Add MCP server', 'Provider and tool credentials'):
         if required not in capabilities_ui:
             errors.append(f'alpha8 Capabilities UI invariant missing: {required}')
@@ -430,7 +431,7 @@ if '/api/auth/me' not in (auth if auth_path.exists() else '') or 'validatePasswo
 if connection_ui_path.exists():
     connection_ui = connection_ui_path.read_text()
     connection_ui = with_resource_labels(connection_ui)
-    for required in ('KeyboardCapitalization.None', 'autoCorrectEnabled = false', 'KeyboardType.Ascii', 'KeyboardType.Password', 'VisibilityOff', 'sent exactly as typed'):
+    for required in ('KeyboardCapitalization.None', 'autoCorrectEnabled = false', 'KeyboardType.Ascii', 'KeyboardType.Password', 'VisibilityOff', 'sent exactly as you type'):
         if required not in connection_ui:
             errors.append(f'alpha8.1 credential-input invariant missing: {required}')
 

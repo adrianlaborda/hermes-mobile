@@ -12,6 +12,20 @@ import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
+import com.nousresearch.hermesmobile.ui.components.EmptyState
+import com.nousresearch.hermesmobile.ui.theme.HermesMono
+import com.nousresearch.hermesmobile.ui.theme.hermes
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -140,58 +154,144 @@ fun FilesPage(c:ParityController,initialPath:String?=null,sessionId:String?=null
             try{c.repo.rest.uploadFile(c.profile,parent.trimEnd('/')+"/"+name,file,context.contentResolver.getType(uri) ?: "application/octet-stream").also { refreshListing() }}finally{file.delete()}
         }
     }}
-    LazyColumn(contentPadding=PaddingValues(16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        item{FeatureCard(stringResource(R.string.ui_abc7e98928), "Profile: ${c.profile}"+(sessionId?.let{" · Session: ${it.take(12)}"} ?: "")){
-            Row{
-                TextButton(enabled=!c.busy,onClick={browse("",true)}){Text(stringResource(R.string.ui_19d199c7e1))}
-                TextButton(enabled=!c.busy,onClick={c.action(null){val cwd=c.api("/api/fs/default-cwd").optString("cwd");val result=c.api("/api/fs/list?path=${encoded(cwd)}");listing=result;path=cwd;managed=false;preview=null;result}}){Text(stringResource(R.string.ui_87bb59ba2f))}
-            }
-            Text(stringResource(if(managed) R.string.a14_managed_files else R.string.a14_workspace_files),style=MaterialTheme.typography.bodySmall)
-            OutlinedTextField(path,{path=it},label={Text(stringResource(R.string.ui_23a2e8047d))},modifier=Modifier.fillMaxWidth())
-            Row{TextButton(enabled=!c.busy,onClick={browse(path)}){Text(stringResource(R.string.ui_6cc8519b91))};TextButton(enabled=managed && !c.busy,onClick={showFolder=true}){Text(stringResource(R.string.ui_cf28f49ec5))};TextButton(enabled=managed && path.isNotBlank() && !c.busy,onClick={upload.launch(arrayOf("*/*"))}){Text(stringResource(R.string.ui_865e89de78))}}
-        }}
-        val p=preview
-        if(p!=null){
-            item{FeatureCard(p.optString("path").substringAfterLast('/'),"${p.optLong("byteSize")} bytes · ${p.optString("mimeType")}"){
-                if(!p.optBoolean("binary")){
-                    var text by remember(p){mutableStateOf(p.optString("text"))}
-                    val truncated=p.optBoolean("truncated")
-                    if(truncated)Text(stringResource(R.string.ui_c39d0fc75b))
-                    OutlinedTextField(text,{text=it},readOnly=truncated,modifier=Modifier.fillMaxWidth().heightIn(min=180.dp,max=380.dp))
-                    TextButton(enabled=!truncated && !c.busy && text!=p.optString("text"),onClick={val captured=text;c.action(null){val latest=readPreview(p.optString("path"));check(latest.optString("text")==p.optString("text") && !latest.optBoolean("truncated")){"File changed on the gateway. Reopen before saving."};(if(managed)c.api("/api/files/upload","POST",json("path" to p.optString("path"),"data_url" to "data:text/plain;base64,"+java.util.Base64.getEncoder().encodeToString(captured.toByteArray(Charsets.UTF_8)),"overwrite" to true)) else c.api("/api/fs/write-text","POST",json("path" to p.optString("path"),"content" to captured))).also{preview=JSONObject(p.toString()).put("text",captured)}}}){Text(stringResource(R.string.ui_793017feec))}
-                }else Text(stringResource(R.string.ui_c2236b2c86))
-                val bitmap by produceState<android.graphics.Bitmap?>(null,exported){
-                    value=withContext(Dispatchers.IO){exported?.takeIf{it.mime.startsWith("image/") && it.file.length()<16*1024*1024}?.let{e->
-                        val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true};BitmapFactory.decodeFile(e.file.path,bounds)
-                        val options=BitmapFactory.Options().apply{inSampleSize=((maxOf(bounds.outWidth,bounds.outHeight)+1599)/1600).coerceAtLeast(1)}
-                        BitmapFactory.decodeFile(e.file.path,options)
-                    }}
-                }
-                exported?.let { DocumentPreview(it) }
-                bitmap?.let{Image(it.asImageBitmap(),"File preview",Modifier.fillMaxWidth().heightIn(max=300.dp))}
-                Row{
-                    TextButton(enabled=!c.busy,onClick={download(p.optString("path"))}){Text(stringResource(R.string.ui_d6eafe8235))}
-                    TextButton(enabled=!c.busy,onClick={download(p.optString("path")){save.launch(it.displayName)}}){Text(stringResource(R.string.ui_06359c03b0))}
-                }
-                Row{
-                    TextButton(enabled=!c.busy,onClick={download(p.optString("path")){MobileFiles.share(context,it,true)}}){Text(stringResource(R.string.ui_ed077f3d81))}
-                    TextButton(enabled=!c.busy,onClick={download(p.optString("path")){MobileFiles.share(context,it,false)}}){Text(stringResource(R.string.ui_29887a5ff9))}
-                    TextButton(enabled=managed && !c.busy,onClick={c.confirm("Permanently delete ${p.optString("path")}?"){c.api("/api/files","DELETE",json("path" to p.optString("path"),"recursive" to false)).also{preview=null;exported=null;refreshListing()}}}){Text(stringResource(R.string.ui_e2d0a54968))}
-                }
-            }}
+    var editPath by remember{mutableStateOf<String?>(null)}
+    var deleteTarget by remember{mutableStateOf<JSONObject?>(null)}
+    val deleteFailed=stringResource(R.string.i18n_files_delete_failed)
+    val parent=listing?.optString("parent")?.takeUnless{it=="null" || it.isBlank()} ?: if(!managed)path.substringBeforeLast('/',"").takeIf{it.isNotBlank()}else null
+    // Back closes an open file, then climbs folder by folder (as far as this view started), then leaves the page.
+    var startedAt by remember(c){mutableStateOf<String?>(null)}
+    LaunchedEffect(listing){if(startedAt==null && listing!=null)startedAt=path}
+    androidx.activity.compose.BackHandler(enabled=preview!=null){preview=null;exported=null}
+    androidx.activity.compose.BackHandler(enabled=preview==null && initialPath==null && parent!=null && path.trimEnd('/')!=startedAt.orEmpty().trimEnd('/') && !c.busy){parent?.let{browse(it)}}
+    Column(Modifier.fillMaxSize()) {
+        // Where the files come from: Hermes' managed files or the profile's workspace (a chat artifact or a project
+        // opens straight on its file or folder, so it has no switch).
+        if(initialPath==null && initialDirectory==null) SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=8.dp)) {
+            SegmentedButton(selected=managed,onClick={if(!managed){startedAt=null;browse("",true)}},shape=SegmentedButtonDefaults.itemShape(0,2),enabled=!c.busy){Text(stringResource(R.string.ui_19d199c7e1),maxLines=1)}
+            SegmentedButton(selected=!managed,onClick={if(managed){startedAt=null;c.action(null){val cwd=c.api("/api/fs/default-cwd").optString("cwd");val result=c.api("/api/fs/list?path=${encoded(cwd)}");listing=result;path=cwd;managed=false;preview=null;exported=null;result}}},shape=SegmentedButtonDefaults.itemShape(1,2),enabled=!c.busy){Text(stringResource(R.string.ui_87bb59ba2f),maxLines=1)}
         }
-        val parent=listing?.optString("parent")?.takeUnless{it=="null" || it.isBlank()} ?: if(!managed)path.substringBeforeLast('/',"").takeIf{it.isNotBlank()}else null
-        if(parent!=null)item{TextButton(onClick={browse(parent)},enabled=!c.busy){Icon(Icons.Default.FolderOpen,null);Text(stringResource(R.string.ui_77a245c653))}}
-        items(listing?.rows("entries").orEmpty(),key={it.optString("path")}){entry->
-            val directory=entry.optBoolean("is_directory",entry.optBoolean("isDirectory"))
-            OutlinedCard(onClick={if(!c.busy){if(directory)browse(entry.optString("path"))else openFile(entry.optString("path"))}},modifier=Modifier.fillMaxWidth()){
-                Row(Modifier.padding(14.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                    Icon(if(directory)Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,null)
-                    Column(Modifier.weight(1f)){Text(entry.optString("name"));if(entry.has("size"))Text("${entry.optLong("size")} bytes",style=MaterialTheme.typography.labelSmall)}
-                    if(directory && managed)IconButton(enabled=!c.busy,onClick={c.confirm("Delete empty folder ${entry.optString("name")}?"){c.api("/api/files","DELETE",json("path" to entry.optString("path"),"recursive" to false)).also { refreshListing() }}}){Icon(Icons.Default.DeleteOutline,"Delete empty folder")}
-                }
+        val p=preview
+        if(p!=null) {
+            FilePreview(c,p,managed,exported,onClose={preview=null;exported=null},
+                onSave={captured->c.action(null){val latest=readPreview(p.optString("path"));check(latest.optString("text")==p.optString("text") && !latest.optBoolean("truncated")){"File changed on the gateway. Reopen before saving."};(if(managed)c.api("/api/files/upload","POST",json("path" to p.optString("path"),"data_url" to "data:text/plain;base64,"+java.util.Base64.getEncoder().encodeToString(captured.toByteArray(Charsets.UTF_8)),"overwrite" to true)) else c.api("/api/fs/write-text","POST",json("path" to p.optString("path"),"content" to captured))).also{preview=JSONObject(p.toString()).put("text",captured)}}},
+                onDownload={download(p.optString("path"))},
+                onSaveAs={download(p.optString("path")){save.launch(it.displayName)}},
+                onOpen={download(p.optString("path")){MobileFiles.share(context,it,true)}},
+                onShare={download(p.optString("path")){MobileFiles.share(context,it,false)}},
+                onDelete={deleteTarget=p})
+            return@Column
+        }
+        // The folder: up, where we are (tap to type a path), and what can be added here.
+        Row(Modifier.fillMaxWidth().padding(start=4.dp,end=4.dp),verticalAlignment=Alignment.CenterVertically) {
+            IconButton(onClick={parent?.let{browse(it)}},enabled=parent!=null && !c.busy){Icon(Icons.Default.ArrowUpward,stringResource(R.string.ui_77a245c653).trim())}
+            Text(path.ifBlank{"/"},Modifier.weight(1f).clip(MaterialTheme.shapes.small).clickable{editPath=path}.padding(vertical=8.dp,horizontal=4.dp),
+                style=MaterialTheme.typography.bodySmall.copy(fontFamily=HermesMono),color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1,overflow=TextOverflow.StartEllipsis)
+            if(managed){
+                IconButton(onClick={showFolder=true},enabled=!c.busy){Icon(Icons.Default.CreateNewFolder,stringResource(R.string.ui_cf28f49ec5))}
+                IconButton(onClick={upload.launch(arrayOf("*/*"))},enabled=path.isNotBlank() && !c.busy){Icon(Icons.Default.UploadFile,stringResource(R.string.ui_865e89de78))}
+            }
+        }
+        HorizontalDivider(color=MaterialTheme.hermes.line)
+        val entries=listing?.rows("entries").orEmpty()
+        if(listing!=null && entries.isEmpty()) {
+            EmptyState(Icons.Default.FolderOpen,stringResource(R.string.i18n_files_empty),stringResource(if(managed) R.string.a14_managed_files else R.string.a14_workspace_files))
+        } else LazyColumn(Modifier.fillMaxSize(),contentPadding=PaddingValues(bottom=24.dp)) {
+            items(entries,key={it.optString("path")}){entry->
+                val directory=entry.optBoolean("is_directory",entry.optBoolean("isDirectory"))
+                val size=entry.takeIf{it.has("size") && !directory}?.let{android.text.format.Formatter.formatShortFileSize(context,it.optLong("size"))}
+                // A long press deletes from Hermes' managed files (folders only when empty, as the gateway requires).
+                FileRow(entry.optString("name"),directory,size,
+                    onClick={if(!c.busy){if(directory)browse(entry.optString("path"))else openFile(entry.optString("path"))}},
+                    onLongClick=if(managed)({deleteTarget=entry}) else null)
             }
         }
     }
+    editPath?.let{current->
+        var value by remember{mutableStateOf(current)}
+        AlertDialog(onDismissRequest={editPath=null},title={Text(stringResource(R.string.ui_23a2e8047d))},
+            text={OutlinedTextField(value,{value=it},singleLine=true,textStyle=MaterialTheme.typography.bodyMedium.copy(fontFamily=HermesMono),modifier=Modifier.fillMaxWidth())},
+            confirmButton={TextButton(onClick={editPath=null;browse(value.trim())}){Text(stringResource(R.string.ui_6cc8519b91))}},
+            dismissButton={TextButton(onClick={editPath=null}){Text(stringResource(R.string.ui_19766ed6cc))}})
+    }
+    deleteTarget?.let{target->
+        val directory=target.optBoolean("is_directory",target.optBoolean("isDirectory"))
+        AlertDialog(onDismissRequest={deleteTarget=null},
+            icon={Icon(Icons.Default.DeleteOutline,null,tint=MaterialTheme.colorScheme.error)},
+            title={Text(stringResource(if(directory) R.string.i18n_files_delete_folder else R.string.i18n_files_delete_file))},
+            text={Text(target.optString("path").ifBlank{target.optString("name")})},
+            confirmButton={TextButton(colors=ButtonDefaults.textButtonColors(contentColor=MaterialTheme.colorScheme.error),onClick={
+                deleteTarget=null
+                c.action(null){runCatching{c.api("/api/files","DELETE",json("path" to target.optString("path"),"recursive" to false))}.getOrElse{c.message=deleteFailed;json()}.also{if(preview?.optString("path")==target.optString("path")){preview=null;exported=null};refreshListing()}}
+            }){Text(stringResource(R.string.ui_e2d0a54968))}},
+            dismissButton={TextButton(onClick={deleteTarget=null}){Text(stringResource(R.string.ui_19766ed6cc))}})
+    }
     if(showFolder)AlertDialog(onDismissRequest={showFolder=false},title={Text(stringResource(R.string.ui_cf28f49ec5))},text={OutlinedTextField(folder,{folder=it},label={Text(stringResource(R.string.ui_14d34edf50))})},confirmButton={TextButton(enabled=folder.isNotBlank() && '/' !in folder && '\\' !in folder && folder !in listOf(".",".."),onClick={val target=path.trimEnd('/')+"/"+folder;c.action(null){c.api("/api/files/mkdir","POST",json("path" to target)).also { refreshListing() }};showFolder=false;folder=""}){Text(stringResource(R.string.ui_4759498ac2))}},dismissButton={TextButton(onClick={showFolder=false}){Text(stringResource(R.string.ui_19766ed6cc))}})
+}
+
+/** One folder entry, in the list style of Chats and Bots. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun FileRow(name:String,directory:Boolean,size:String?,onClick:()->Unit,onLongClick:(()->Unit)?) {
+    Row(Modifier.fillMaxWidth().combinedClickable(onClick=onClick,onLongClick=onLongClick).padding(horizontal=16.dp,vertical=10.dp),
+        verticalAlignment=Alignment.CenterVertically) {
+        Box(Modifier.size(36.dp).background(if(directory)MaterialTheme.hermes.accentTint else MaterialTheme.colorScheme.surfaceContainerHigh,RoundedCornerShape(10.dp)),contentAlignment=Alignment.Center){
+            Icon(if(directory)Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,null,Modifier.size(18.dp),
+                tint=if(directory)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)){
+            Text(name,style=MaterialTheme.typography.bodyLarge,maxLines=1,overflow=TextOverflow.Ellipsis)
+            if(size!=null)Text(size,style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        if(directory)Icon(Icons.Default.ChevronRight,null,tint=MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** An open file: its name and actions on top, then its text (editable when complete) or image. */
+@Composable
+private fun FilePreview(
+    c:ParityController,p:JSONObject,managed:Boolean,exported:ExportedFile?,onClose:()->Unit,onSave:(String)->Unit,
+    onDownload:()->Unit,onSaveAs:()->Unit,onOpen:()->Unit,onShare:()->Unit,onDelete:()->Unit
+) {
+    val context=LocalContext.current
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(start=4.dp,end=4.dp),verticalAlignment=Alignment.CenterVertically) {
+            IconButton(onClick=onClose){Icon(Icons.Default.Close,stringResource(R.string.ui_19766ed6cc))}
+            Column(Modifier.weight(1f)){
+                Text(p.optString("path").substringAfterLast('/'),style=MaterialTheme.typography.titleSmall,maxLines=1,overflow=TextOverflow.Ellipsis)
+                Text(listOf(android.text.format.Formatter.formatShortFileSize(context,p.optLong("byteSize")).takeIf{p.has("byteSize")},p.optString("mimeType")).filterNotNull().filter{it.isNotBlank()}.joinToString(" · "),
+                    style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.onSurfaceVariant,maxLines=1)
+            }
+            IconButton(onClick=onOpen,enabled=!c.busy){Icon(Icons.AutoMirrored.Filled.OpenInNew,stringResource(R.string.ui_ed077f3d81))}
+            IconButton(onClick=onShare,enabled=!c.busy){Icon(Icons.Default.Share,stringResource(R.string.ui_29887a5ff9))}
+            var menu by remember{mutableStateOf(false)}
+            Box{
+                IconButton(onClick={menu=true}){Icon(Icons.Default.MoreVert,null)}
+                DropdownMenu(menu,{menu=false}){
+                    DropdownMenuItem(text={Text(stringResource(R.string.ui_d6eafe8235))},leadingIcon={Icon(Icons.Default.Download,null)},onClick={menu=false;onDownload()})
+                    DropdownMenuItem(text={Text(stringResource(R.string.ui_06359c03b0))},leadingIcon={Icon(Icons.Default.SaveAlt,null)},onClick={menu=false;onSaveAs()})
+                    if(managed)DropdownMenuItem(text={Text(stringResource(R.string.ui_e2d0a54968),color=MaterialTheme.colorScheme.error)},leadingIcon={Icon(Icons.Default.DeleteOutline,null,tint=MaterialTheme.colorScheme.error)},onClick={menu=false;onDelete()})
+                }
+            }
+        }
+        HorizontalDivider(color=MaterialTheme.hermes.line)
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+            if(!p.optBoolean("binary")){
+                var text by remember(p){mutableStateOf(p.optString("text"))}
+                val truncated=p.optBoolean("truncated")
+                if(truncated)Text(stringResource(R.string.ui_c39d0fc75b),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                OutlinedTextField(text,{text=it},readOnly=truncated,textStyle=MaterialTheme.typography.bodySmall.copy(fontFamily=HermesMono),modifier=Modifier.fillMaxWidth().heightIn(min=220.dp))
+                if(!truncated && text!=p.optString("text"))Button(onClick={onSave(text)},enabled=!c.busy){Text(stringResource(R.string.ui_793017feec))}
+            }else if(exported==null)Text(stringResource(R.string.ui_c2236b2c86),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            val bitmap by produceState<android.graphics.Bitmap?>(null,exported){
+                value=withContext(Dispatchers.IO){exported?.takeIf{it.mime.startsWith("image/") && it.file.length()<16*1024*1024}?.let{e->
+                    val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true};BitmapFactory.decodeFile(e.file.path,bounds)
+                    val options=BitmapFactory.Options().apply{inSampleSize=((maxOf(bounds.outWidth,bounds.outHeight)+1599)/1600).coerceAtLeast(1)}
+                    BitmapFactory.decodeFile(e.file.path,options)
+                }}
+            }
+            exported?.let{DocumentPreview(it)}
+            bitmap?.let{Image(it.asImageBitmap(),null,Modifier.fillMaxWidth().heightIn(max=420.dp))}
+        }
+    }
 }

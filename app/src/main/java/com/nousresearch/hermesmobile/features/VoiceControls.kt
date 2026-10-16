@@ -165,8 +165,8 @@ fun VoicePage(c:ParityController){
     Column(Modifier.padding(16.dp),verticalArrangement=Arrangement.spacedBy(16.dp)){
         FeatureCard(stringResource(R.string.ui_87bf2bc085), "Chained mode: Android microphone → gateway transcription → chat → gateway speech."){
             Text(stringResource(R.string.ui_9bc8e048c1))
-            c.data["voice"]?.let{Text("Gateway voice status: ${it.optString("provider").ifBlank {it.optString("status","available")}}",style=MaterialTheme.typography.bodySmall)}
-            c.unavailable["voice"]?.let{Text(it,style=MaterialTheme.typography.bodySmall)}
+            c.data["voice"]?.let{Text(stringResource(R.string.i18n_voice_status, it.optString("provider").ifBlank {it.optString("status","available")}),style=MaterialTheme.typography.bodySmall)}
+            c.unavailable["voice"]?.let{Text(shown(it),style=MaterialTheme.typography.bodySmall)}
         }
         OutlinedTextField(text,{text=it},label={Text(stringResource(R.string.ui_91a13515e5))},modifier=Modifier.fillMaxWidth().weight(1f))
         VoiceControls(c,{text=it},text)

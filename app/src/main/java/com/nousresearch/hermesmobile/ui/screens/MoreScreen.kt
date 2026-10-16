@@ -61,8 +61,8 @@ fun MoreScreen(
             SectionLabel(stringResource(R.string.a14_intelligence))
             FlatRow(stringResource(R.string.a14_intelligence_hint), leading = { Icon(Icons.Default.Psychology, null) }, onClick = onCapabilities)
             FlatRow(stringResource(R.string.a14_models_advanced), leading = { Icon(Icons.Default.Tune, null) }, onClick = { onFeature("Models") })
-            FlatRow(stringResource(R.string.a14_memory), leading = { Icon(Icons.Default.AutoAwesome, null) }, onClick = { onFeature("Memory") })
             FlatRow(stringResource(R.string.a14_plugins), leading = { Icon(Icons.Default.Extension, null) }, onClick = { onFeature("Plugins") })
+            FlatRow(stringResource(R.string.a14_voice), leading = { Icon(Icons.Default.RecordVoiceOver, null) }, onClick = { onFeature("Voice") })
             SectionLabel(stringResource(R.string.a14_system))
             FlatRow(stringResource(R.string.a14_system_hint), leading = { Icon(Icons.Default.MonitorHeart, null) }, onClick = onSystem)
             FlatRow(stringResource(R.string.a14_connections), leading = { Icon(Icons.Default.Hub, null) }, onClick = onConnections)
@@ -82,7 +82,7 @@ fun MoreScreen(
             }
             FlatRow(leading = { Icon(Icons.Default.Fingerprint, null) }) {
                 Text(stringResource(R.string.ui_19ff1c8c79))
-                Text(status?.installId?.ifBlank { "Unknown" } ?: "Unknown", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(status?.installId?.ifBlank { stringResource(R.string.i18n_unknown) } ?: stringResource(R.string.i18n_unknown), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             SectionLabel(stringResource(R.string.ui_307d5e40d4))
             FlatRow(leading = { Icon(Icons.Default.SmartToy, null) }) {
@@ -152,7 +152,7 @@ fun MoreScreen(
                     Text(stringResource(R.string.ui_5dec8319b4))
                 }
                 Text(
-                    "Disconnect keeps the encrypted connection for later. Sign out removes only this gateway's Hermes credentials and returns to its advertised login methods.",
+                    stringResource(R.string.i18n_more_disconnect_note),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -166,7 +166,7 @@ fun MoreScreen(
         AlertDialog(
             onDismissRequest = { confirmForget = null },
             title = { Text(stringResource(R.string.ui_0eff7e374f)) },
-            text = { Text("${connection.displayLabel} and its encrypted authentication material will be removed from this device.") },
+            text = { Text(stringResource(R.string.i18n_more_remove_note, connection.displayLabel)) },
             confirmButton = {
                 TextButton(onClick = { confirmForget = null; onForgetConnection(connection.id) }) { Text(stringResource(R.string.ui_a6bd489d95)) }
             },
@@ -214,10 +214,14 @@ private fun AboutSection() {
     )
 }
 
-private fun authLabel(config: GatewayConfig?): String = when (config?.authMode) {
-    GatewayAuthMode.NONE -> "None / gateway-local"
-    GatewayAuthMode.SESSION_TOKEN -> "Session token"
-    GatewayAuthMode.BASIC -> "Username/password${config.authProvider.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
-    GatewayAuthMode.NATIVE_PKCE -> "Native PKCE${config.authProvider.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()}"
-    null -> "Unknown"
+@Composable
+private fun authLabel(config: GatewayConfig?): String {
+    val provider = config?.authProvider?.takeIf { it.isNotBlank() }?.let { " · $it" }.orEmpty()
+    return when (config?.authMode) {
+        GatewayAuthMode.NONE -> stringResource(R.string.i18n_auth_none)
+        GatewayAuthMode.SESSION_TOKEN -> stringResource(R.string.i18n_auth_token)
+        GatewayAuthMode.BASIC -> stringResource(R.string.i18n_auth_basic) + provider
+        GatewayAuthMode.NATIVE_PKCE -> stringResource(R.string.i18n_auth_pkce) + provider
+        null -> stringResource(R.string.i18n_unknown)
+    }
 }

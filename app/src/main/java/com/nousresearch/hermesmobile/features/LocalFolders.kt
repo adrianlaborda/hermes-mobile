@@ -36,13 +36,11 @@ fun LocalFolders(connection: String, profile: String, sessions: List<HermesSessi
     val available = sessions.filter { it.profile == profile && !it.hidden }
     BackHandler(selected != null) { selected = null }
     Column {
-        HermesTopBar(folder?.optString("name") ?: stringResource(R.string.a14_folders), stringResource(R.string.a14_local_folders), actions = {
+        // Under the Chats header: the open folder's name and close, or what this view is.
+        SubBar(folder?.optString("name") ?: stringResource(R.string.a14_local_folders), onClose = if (selected != null) {{ selected = null }} else null) {
             if (selected == null) IconButton(onClick = { create = true }) { Icon(Icons.Default.Add, stringResource(R.string.a14_create)) }
-            else {
-                IconButton(onClick = { editing = true }) { Icon(Icons.Default.Edit, stringResource(R.string.a14_edit)) }
-                IconButton(onClick = { selected = null }) { Icon(Icons.Default.Close, stringResource(R.string.a14_back)) }
-            }
-        })
+            else IconButton(onClick = { editing = true }) { Icon(Icons.Default.Edit, stringResource(R.string.a14_edit)) }
+        }
         LazyColumn(contentPadding = PaddingValues(16.dp)) {
             if (folder == null) {
                 items(folders.keys().asSequence().toList(), key = { it }) { id ->

@@ -39,8 +39,8 @@ import com.nousresearch.hermesmobile.data.BotProfileConfig
 import com.nousresearch.hermesmobile.ui.components.HermesTextField
 import com.nousresearch.hermesmobile.ui.components.ProfileAvatar
 
-private enum class BotEditorTab(val label: String) {
-    GENERAL("General"), SOUL("SOUL"), CAPABILITIES("Capabilities")
+private enum class BotEditorTab(val label: Int) {
+    GENERAL(R.string.i18n_general), SOUL(R.string.i18n_soul), CAPABILITIES(R.string.i18n_caps_capabilities)
 }
 
 @Composable
@@ -108,7 +108,7 @@ fun BotEditorDialog(
                         Tab(
                             selected = tab == item,
                             onClick = { tab = item },
-                            text = { Text(item.label) }
+                            text = { Text(stringResource(item.label)) }
                         )
                     }
                 }
@@ -165,7 +165,7 @@ fun BotEditorDialog(
                             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                             Spacer(Modifier.width(8.dp))
                         }
-                        Text(if (saving) "Saving" else "Save")
+                        Text(stringResource(if (saving) R.string.i18n_saving else R.string.i18n_save))
                     }
                 }
             }
@@ -199,6 +199,7 @@ private fun GeneralBotEditor(
     val scope = rememberCoroutineScope()
     var avatarBusy by remember { mutableStateOf(false) }
     var avatarError by remember { mutableStateOf<String?>(null) }
+    val avatarFailed = stringResource(R.string.i18n_avatar_failed)
     val avatarPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             scope.launch {
@@ -206,7 +207,7 @@ private fun GeneralBotEditor(
                 avatarError = null
                 runCatching { avatarDataUrlFromUri(context, uri) }
                     .onSuccess(onAvatarDataUrl)
-                    .onFailure { avatarError = it.message ?: "Could not read this image" }
+                    .onFailure { avatarError = avatarFailed }
                 avatarBusy = false
             }
         }
@@ -222,13 +223,13 @@ private fun GeneralBotEditor(
             Column(Modifier.weight(1f)) {
                 Text(config.profile.name, style = MaterialTheme.typography.labelLarge)
                 Text(
-                    "Canonical Bot Chat follows this profile's current configuration.",
+                    stringResource(R.string.i18n_bot_chat_follows),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     TextButton(enabled = !avatarBusy, onClick = { avatarPicker.launch("image/*") }) {
-                        Text(if (avatarBusy) "Processing…" else if (avatarDataUrl == null) "Add photo" else "Change photo")
+                        Text(stringResource(if (avatarBusy) R.string.i18n_processing else if (avatarDataUrl == null) R.string.i18n_add_photo else R.string.i18n_change_photo))
                     }
                     if (avatarDataUrl != null) {
                         TextButton(enabled = !avatarBusy, onClick = { onAvatarDataUrl(null) }) { Text(stringResource(R.string.ui_c3812fc4ac)) }
@@ -237,11 +238,11 @@ private fun GeneralBotEditor(
                 avatarError?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
             }
         }
-        HermesTextField(title, onTitle, "Display name", placeholder = config.profile.name)
-        HermesTextField(description, onDescription, "Description", singleLine = false)
+        HermesTextField(title, onTitle, stringResource(R.string.i18n_display_name), placeholder = config.profile.name)
+        HermesTextField(description, onDescription, stringResource(R.string.i18n_description), singleLine = false)
 
         Text(stringResource(R.string.ui_5e2c614c23), style = MaterialTheme.typography.titleSmall)
-        HermesTextField(provider, onProvider, "Provider", placeholder = "nous / openrouter / custom")
+        HermesTextField(provider, onProvider, stringResource(R.string.i18n_provider), placeholder = "nous / openrouter / custom")
         if (config.modelProviders.isNotEmpty()) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 config.modelProviders.forEach { option ->
@@ -249,7 +250,7 @@ private fun GeneralBotEditor(
                 }
             }
         }
-        HermesTextField(model, onModel, "Model", placeholder = "provider/model")
+        HermesTextField(model, onModel, stringResource(R.string.i18n_model), placeholder = "provider/model")
         val models = config.modelProviders.firstOrNull { it.slug == provider }?.models.orEmpty()
         if (models.isNotEmpty()) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -260,11 +261,11 @@ private fun GeneralBotEditor(
         }
 
         Text(stringResource(R.string.ui_3907fa7f80), style = MaterialTheme.typography.titleSmall)
-        HermesTextField(shape, onShape, "Avatar shape", placeholder = "blobatar")
-        HermesTextField(color, onColor, "Avatar color", placeholder = "Optional")
+        HermesTextField(shape, onShape, stringResource(R.string.i18n_avatar_shape), placeholder = "blobatar")
+        HermesTextField(color, onColor, stringResource(R.string.i18n_avatar_color), placeholder = stringResource(R.string.i18n_optional))
 
-        SettingSwitch("Pinned in Bots", "Keep this bot prominent in the roster.", pinned, onPinned)
-        SettingSwitch("Hidden bot", "Hide from normal Bot Mode sections while preserving the profile and its chat.", hidden, onHidden)
+        SettingSwitch(stringResource(R.string.i18n_bot_pinned), stringResource(R.string.i18n_bot_pinned_hint), pinned, onPinned)
+        SettingSwitch(stringResource(R.string.i18n_bot_hidden), stringResource(R.string.i18n_bot_hidden_hint), hidden, onHidden)
     }
 }
 
@@ -273,7 +274,7 @@ private fun SoulEditor(value: String, onValue: (String) -> Unit) {
     Column(Modifier.fillMaxSize().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(stringResource(R.string.ui_bde0ac766b), style = MaterialTheme.typography.titleMedium)
         Text(
-            "The bot's persistent personality and instructions. Hermes injects the Bot Mode teammate protocol separately on current gateways.",
+            stringResource(R.string.i18n_soul_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -300,15 +301,15 @@ private fun CapabilitiesEditor(
     var section by remember { mutableIntStateOf(0) }
     Column(Modifier.fillMaxSize()) {
         SecondaryTabRow(selectedTabIndex = section) {
-            listOf("Skills (${skills.count { it.enabled }})", "Tools (${toolsets.count { it.enabled }})", "MCP (${mcp.count { it.enabled }})")
+            listOf(stringResource(R.string.i18n_tab_skills, skills.count { it.enabled }), stringResource(R.string.i18n_tab_tools, toolsets.count { it.enabled }), stringResource(R.string.i18n_tab_mcp, mcp.count { it.enabled }))
                 .forEachIndexed { index, label ->
                     Tab(selected = section == index, onClick = { section = index }, text = { Text(label) })
                 }
         }
         when (section) {
-            0 -> CapabilityChecklist(skills, onSkills, "Filter skills")
-            1 -> CapabilityChecklist(toolsets, onToolsets, "Filter toolsets")
-            else -> CapabilityChecklist(mcp, onMcp, "Filter MCP servers", mcpMode = true)
+            0 -> CapabilityChecklist(skills, onSkills, stringResource(R.string.i18n_filter_skills))
+            1 -> CapabilityChecklist(toolsets, onToolsets, stringResource(R.string.i18n_filter_tools))
+            else -> CapabilityChecklist(mcp, onMcp, stringResource(R.string.i18n_filter_mcp), mcpMode = true)
         }
     }
 }
@@ -357,7 +358,7 @@ private fun CapabilityChecklist(
                         Column(Modifier.weight(1f)) {
                             Text(item.label.ifBlank { item.name }, style = MaterialTheme.typography.bodyMedium)
                             val detail = when {
-                                needsSetup -> "Requires credential/OAuth setup before it can be enabled."
+                                needsSetup -> stringResource(R.string.i18n_needs_setup)
                                 item.description.isNotBlank() -> item.description
                                 item.transport.isNotBlank() -> item.transport
                                 else -> ""

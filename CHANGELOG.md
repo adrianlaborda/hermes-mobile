@@ -9,6 +9,56 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Added
+
+- **Bots show their last message.** Each bot in **Bots** shows the newest message of its conversation in one line, as
+  in Hermes Desktop, and keeps showing its description until there is one. The line follows when a reply finishes.
+
+### Changed
+
+- **Bots are ordered by activity.** Pinned bots come first, then the one you talked to most recently, as in Hermes
+  Desktop. Bots from other gateways are mixed in by activity instead of grouped at the end; the cloud on their row
+  still tells them apart.
+- **Chats has a Routines section, as in Hermes Desktop.** Each run of a scheduled job used to appear as a
+  conversation and top **Chats** every time one fired. Runs no longer appear among your chats, in the side menu or
+  on Home. Instead, a **Routines** section at the end of **Chats** lists the jobs, soonest first, with their state
+  and when they run next (three at first, more on demand). Tap a job to see its latest runs and open one; long-press
+  it for the same bottom sheet as a chat, to run it now, pause or resume it, manage or delete it. A run you pin
+  stays with your pinned chats, and search still finds every run.
+- **Every section in Chats folds**, as in Hermes Desktop: tap its header. Telegram and the other messaging platforms
+  and Routines start folded; Pinned and the date groups start open. The app remembers each one.
+- **Pages look and behave alike.** The profile is chosen the same way everywhere it matters: tap it under the page
+  title (Routines, Connections, Intelligence, System, Notifications, Files, Memory, Chats' folders and projects)
+  instead of a row of chips on some pages and a wide drop-down on others. Every page has the same dashed line under
+  its header. Notifications is now a page like the others rather than a screen laid over the app. The Webhooks tab
+  of Connections no longer stacks a second page header. Home and Chats use the same new-chat button as a chat.
+- **Back goes back.** The Android back gesture now returns to the page you came from (Settings → System → back is
+  Settings again; Work → Files → back is Work), and only then to Home. It used to jump to Home, or to Settings.
+  Inside a page it first closes what is open: a group room, an open file, then each folder up to where you started.
+- **Every page has the menu button.** Routines, Connections, Intelligence, System, Profiles, Notifications, Files
+  and Memory had none, or a back arrow to Settings. A back arrow or a close button now only closes something opened inside a
+  page: a chat, a group room, a file, the logs, a folder. In **Chats**, the Folders and Projects views no longer
+  stack a second header without the menu under the page's own, and the profile moved into the page header.
+- **No more duplicate workspace.** "Workspace" is gone from the side menu: its tabs were the same pages reached from
+  elsewhere. Files and Memory open from **Work**; Models, Plugins and now Voice from **Settings**; the server settings
+  from **System**. Each is a page of its own with the menu button and the profile under its title (tap it to
+  switch). **Files** lists folders and files like Chats lists conversations, with the path, new folder and upload in
+  one bar, a switch between Hermes' files and the workspace, and an open file shown on its own with open, share,
+  download and delete. **Memory** lists its providers, the curator, the knowledge map (searchable, with each item's
+  links) and the reset options apart at the end.
+- **System matches the rest of the app**: its header no longer sits indented, and the server, its resources (with a
+  bar each) and the links to logs and settings are rows like everywhere else.
+- **The whole app speaks your language.** Routines, Connections, Intelligence, Profiles, Bots, group chats, the
+  connection screen, the workspace pages and many notices still had English text, and a few notices were in Spanish
+  whatever the language. They now follow the app language, in English and Spanish.
+
+### Fixed
+
+- In a routine's runs, opening a run of a script-only job failed with "session not found": those runs have no
+  conversation behind them. They now show as plain text, as in Hermes Desktop.
+- **Files** and the other workspace pages showed a "Done" note with a close button every time they opened (each
+  folder read counted as an action). They now only show what the server reports, and a success note clears itself.
+
 ## [0.3.0-beta.6] - 2026-10-16
 
 ### Added

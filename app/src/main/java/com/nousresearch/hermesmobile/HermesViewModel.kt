@@ -28,7 +28,7 @@ import java.net.URI
 import java.net.ConnectException
 import java.util.UUID
 
-enum class MainSection { HOME, WORK, SYSTEM, CHAT, BOTS, CRON, MESSAGING, CAPABILITIES, PROFILES, WORKSPACE, MORE }
+enum class MainSection { HOME, WORK, SYSTEM, CHAT, BOTS, CRON, MESSAGING, CAPABILITIES, PROFILES, WORKSPACE, MORE, NOTIFICATIONS }
 
 data class PendingBotModelSave(
     val original: BotProfileConfig,
@@ -263,7 +263,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val discovery = uiState.connectionDiscovery ?: return
         val value = token.trim()
         if (value.isBlank()) {
-            uiState = uiState.copy(error = "Introduce el session token de Hermes")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_need_token))
             return
         }
         connect(discovery.draft.copy(authMode = GatewayAuthMode.SESSION_TOKEN, token = value))
@@ -276,7 +276,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             ?: discovery.status.authProviders.firstOrNull { it == "basic" }
             ?: "basic"
         if (username.isBlank() || password.isBlank()) {
-            uiState = uiState.copy(error = "Introduce usuario y contraseña")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_need_login))
             return
         }
         viewModelScope.launch {
@@ -297,7 +297,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     fun startNativeSignIn(provider: String? = null) {
         val discovery = uiState.connectionDiscovery ?: return
         if (!discovery.status.supportsNativePkce) {
-            uiState = uiState.copy(error = "Este gateway no anuncia native_pkce")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_no_pkce))
             return
         }
         nativeAuthJob?.cancel()
@@ -572,7 +572,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             activeConnectionId = snapshot.active?.id,
             selectedProfile = snapshot.active?.selectedProfile ?: "default",
             capabilityProfile = snapshot.active?.selectedProfile ?: "default",
-            snackbar = "Connection removed"
+            snackbar = string(R.string.i18n_vm_conn_removed)
         )
     }
 
@@ -678,10 +678,25 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             section = MainSection.CHAT
         )
         refreshSessions()
-        if (back != null) switchSection(back)
+        if (back != null) switchSection(back, record = false)
     }
 
-    fun switchSection(section: MainSection) {
+    /** The pages visited before this one, so system back returns to the previous page rather than to Home. */
+    private val sectionHistory = ArrayDeque<MainSection>()
+    val canNavigateBack: Boolean get() = sectionHistory.isNotEmpty() || uiState.section != MainSection.HOME
+
+    /** System back: the previous page, or Home (the start destination) once there is none. */
+    fun navigateBack() {
+        val previous = sectionHistory.removeLastOrNull() ?: MainSection.HOME.takeIf { uiState.section != MainSection.HOME } ?: return
+        switchSection(previous, record = false)
+    }
+
+    fun switchSection(section: MainSection, record: Boolean = true) {
+        if (record && section != uiState.section) {
+            sectionHistory.remove(section)
+            sectionHistory.addLast(uiState.section)
+            while (sectionHistory.size > 20) sectionHistory.removeFirst()
+        }
         chatReturnSection = null
         if (section != MainSection.BOTS) {
             // Hosted room work is gateway-owned and continues. Only retire the
@@ -695,8 +710,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                 // No asset revision is exposed by profiles.get_asset. Re-entering
                 // Bot Mode is therefore our explicit cross-device cache fence.
                 clearAvatarCache()
-                refreshProfiles()
-                refreshBotRoster()
+                // The roster is built from the profiles: rebuild it once they (and their latest messages) are in.
+                refreshProfiles(then = ::refreshBotRoster)
                 if (uiState.activeGroup != null) {
                     startGroupPolling(uiState.activeGroup!!.room.roomId, groupGeneration)
                 } else {
@@ -714,7 +729,9 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             MainSection.PROFILES -> refreshProfiles()
             // Home shows what is scheduled next.
             MainSection.HOME -> refreshCron()
-            MainSection.WORK, MainSection.SYSTEM, MainSection.CHAT, MainSection.WORKSPACE, MainSection.MORE -> Unit
+            // Chats lists the scheduled jobs in its Routines section.
+            MainSection.CHAT -> refreshCron()
+            MainSection.WORK, MainSection.SYSTEM, MainSection.WORKSPACE, MainSection.MORE, MainSection.NOTIFICATIONS -> Unit
         }
     }
 
@@ -860,7 +877,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                             )
                         )
                     } else {
-                        uiState = uiState.copy(capabilityActionBusy = null, snackbar = "Default model updated")
+                        uiState = uiState.copy(capabilityActionBusy = null, snackbar = string(R.string.i18n_vm_model_updated))
                         refreshCapabilities(profile)
                     }
                 }
@@ -878,7 +895,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             uiState = uiState.copy(pendingCapabilityModelChange = null)
             return
         }
-        capabilityMutation("model-confirm", "Default model updated") { repo, profile ->
+        capabilityMutation("model-confirm", string(R.string.i18n_vm_model_updated)) { repo, profile ->
             val result = repo.rest.setCapabilityModel(profile, pending.provider, pending.model, confirmExpensive = true)
             if (!result.optBoolean("ok", true)) error(result.optString("confirm_message").ifBlank { "Hermes rejected the model change" })
             uiState = uiState.copy(pendingCapabilityModelChange = null)
@@ -993,7 +1010,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun addCapabilityMcpServer(name: String, url: String, command: String, args: List<String>) {
         if (name.isBlank() || (url.isBlank() && command.isBlank())) {
-            uiState = uiState.copy(error = "MCP requires a name and either an HTTP URL or stdio command")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_mcp_needs))
             return
         }
         capabilityMutation("mcp-add", "MCP server added") { repo, profile ->
@@ -1018,7 +1035,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             val result = repo.rest.testCapabilityMcpServer(profile, server.name)
             if (!result.optBoolean("ok", false)) error(result.optString("error").ifBlank { "MCP test failed" })
             val count = (result.optJSONArray("tools") ?: org.json.JSONArray()).length()
-            uiState = uiState.copy(snackbar = "${server.name}: $count tools discovered")
+            uiState = uiState.copy(snackbar = string(R.string.i18n_vm_mcp_tools, server.name, count))
         }
     }
 
@@ -1043,7 +1060,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         existingId: String?, name: String, baseUrl: String, model: String, apiKey: String, apiMode: String, makeDefault: Boolean
     ) {
         if (name.isBlank() || baseUrl.isBlank() || model.isBlank()) {
-            uiState = uiState.copy(error = "Custom endpoint requires a name, base URL and model")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_endpoint_needs))
             return
         }
         capabilityMutation("custom-endpoint", "Custom endpoint saved") { repo, profile ->
@@ -1074,12 +1091,12 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     fun startCapabilityOAuth(provider: CapabilityOAuthProvider) {
         if (provider.flow == "device_code") {
             uiState = uiState.copy(
-                error = "Device-code provider sign-in is temporarily disabled on mobile because current Hermes gateways can mis-route a late authorization after expiry/cancel. Use an API key or Desktop/CLI for this provider."
+                error = string(R.string.i18n_vm_device_code)
             )
             return
         }
         if (provider.flow == "external") {
-            uiState = uiState.copy(error = "${provider.name} delegates authentication to an external CLI; configure it on the gateway host.")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_external_auth, provider.name))
             return
         }
         val repo = repository ?: return
@@ -1097,7 +1114,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         runCatching {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             getApplication<Application>().startActivity(intent)
-                        }.onFailure { uiState = uiState.copy(error = "Could not open provider sign-in: ${it.message}") }
+                        }.onFailure { uiState = uiState.copy(error = string(R.string.i18n_vm_oauth_open_failed, it.message.orEmpty())) }
                     }
                 }
                 .onFailure {
@@ -1142,7 +1159,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     fun receiveShare(intent: Intent?) {
         if (intent?.action !in setOf(Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE)) return
         if (importingShare || incomingShare != null) {
-            uiState = uiState.copy(error = "Add or discard the previous shared content first")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_share_pending))
             return
         }
         importingShare = true
@@ -1164,7 +1181,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val pending = incomingShare ?: return
         if (uiState.activeChat == null) return
         if (uiState.composerAttachments.size + pending.files.size > MAX_COMPOSER_ATTACHMENTS) {
-            uiState = uiState.copy(error = "A message supports up to six files. Remove an attachment first")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_six_files))
             return
         }
         uiState = uiState.copy(section = MainSection.CHAT,
@@ -1246,7 +1263,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val existing = uiState.composerAttachments
         val room = (MAX_COMPOSER_ATTACHMENTS - existing.size).coerceAtLeast(0)
         if (room == 0) {
-            uiState = uiState.copy(snackbar = "Maximum $MAX_COMPOSER_ATTACHMENTS attachments per message")
+            uiState = uiState.copy(snackbar = string(R.string.i18n_vm_max_attachments, MAX_COMPOSER_ATTACHMENTS))
             return
         }
         val added = uris.take(room).mapNotNull { uri ->
@@ -1343,7 +1360,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val chat = uiState.activeChat ?: return
         val repo = repository ?: return
         if (chat.running) {
-            uiState = uiState.copy(snackbar = "Stop the current turn before switching model")
+            uiState = uiState.copy(snackbar = string(R.string.i18n_vm_stop_before_model))
             return
         }
         viewModelScope.launch {
@@ -1367,7 +1384,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         uiState = uiState.copy(
                             loading = false,
                             activeChat = current.copy(provider = choice.provider, model = choice.model, reasoningEffort = reasoning),
-                            snackbar = "Model switched for this conversation"
+                            snackbar = string(R.string.i18n_vm_model_switched)
                         )
                         refreshSessionMeta()
                     }
@@ -1402,7 +1419,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         activeChat = current.copy(
                             provider = pending.provider, model = pending.model, reasoningEffort = pending.reasoning
                         ),
-                        snackbar = "Model switched for this conversation"
+                        snackbar = string(R.string.i18n_vm_model_switched)
                     )
                     refreshSessionMeta()
                 }
@@ -1452,7 +1469,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         sessionModelPins[chat.runtimeSessionId]?.let { pin ->
                             sessionModelPins[chat.runtimeSessionId] = pin.copy(reasoning = level)
                         }
-                        uiState = uiState.copy(activeChat = current.copy(reasoningEffort = level), snackbar = "Reasoning: $level")
+                        uiState = uiState.copy(activeChat = current.copy(reasoningEffort = level), snackbar = string(R.string.i18n_vm_reasoning, level))
                     }
                 }
                 .onFailure { uiState = uiState.copy(error = it.message) }
@@ -1587,7 +1604,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val webhooks: WebhookState
     )
 
-    private fun refreshProfiles() {
+    private fun refreshProfiles(then: () -> Unit = {}) {
         val repo = repository ?: return
         viewModelScope.launch {
             runCatching { repo.rpcProfiles() }.recoverCatching { repo.rest.profiles() }
@@ -1599,7 +1616,19 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         dropAvatarCache(it.name, markMissing = true)
                     }
                     uiState = uiState.copy(profiles = profiles, selectedProfile = selected)
+                    then()
                 }
+        }
+    }
+
+    private var botActivityJob: Job? = null
+
+    /** A turn ended while Bots is on screen: its rows' last message and order follow, batched over a burst. */
+    private fun refreshBotActivitySoon() {
+        botActivityJob?.cancel()
+        botActivityJob = viewModelScope.launch {
+            delay(1_500)
+            if (uiState.section == MainSection.BOTS && uiState.activeChat == null) refreshProfiles(then = ::refreshBotRoster)
         }
     }
 
@@ -1678,7 +1707,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             if (generation == connectionGeneration && uiState.activeConnectionId == activeId) {
                 uiState = uiState.copy(
                     botRoster = (immediate + remoteRows).distinctBy { it.routeKey }
-                        .sortedWith(compareByDescending<RoutedBot> { it.profile.botPinned }.thenBy { it.connectionLabel }.thenBy { it.label }),
+                        .sortedWith(botRosterOrder),
                     botRosterLoading = false
                 )
             }
@@ -1689,26 +1718,26 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val repo = repository ?: return
         val clean = name.trim().lowercase()
         if (!Regex("^[a-z0-9][a-z0-9_-]{0,63}$").matches(clean)) {
-            uiState = uiState.copy(error = "Profile name must use lowercase letters, numbers, _ or -")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_profile_name_rule))
             return
         }
         viewModelScope.launch {
             uiState = uiState.copy(profileActionBusy = true, error = null)
             runCatching { repo.rest.createProfile(clean, description.trim(), cloneFrom = cloneFrom) }
-                .onSuccess { uiState = uiState.copy(profileActionBusy = false, snackbar = "Profile created"); refreshProfiles() }
+                .onSuccess { uiState = uiState.copy(profileActionBusy = false, snackbar = string(R.string.i18n_vm_profile_created)); refreshProfiles() }
                 .onFailure { uiState = uiState.copy(profileActionBusy = false, error = it.message) }
         }
     }
 
     fun renameManagedProfile(profile: HermesProfile, newName: String) {
         val repo = repository ?: return
-        if (profile.isDefault) { uiState = uiState.copy(error = "The default profile cannot be renamed"); return }
+        if (profile.isDefault) { uiState = uiState.copy(error = string(R.string.i18n_vm_default_rename)); return }
         val clean = newName.trim().lowercase()
         if (!Regex("^[a-z0-9][a-z0-9_-]{0,63}$").matches(clean)) return
         viewModelScope.launch {
             uiState = uiState.copy(profileActionBusy = true, error = null)
             runCatching { repo.rest.renameProfile(profile.name, clean) }
-                .onSuccess { uiState = uiState.copy(profileActionBusy = false, snackbar = "Profile renamed"); refreshProfiles(); refreshAll(background = true) }
+                .onSuccess { uiState = uiState.copy(profileActionBusy = false, snackbar = string(R.string.i18n_vm_profile_renamed)); refreshProfiles(); refreshAll(background = true) }
                 .onFailure { uiState = uiState.copy(profileActionBusy = false, error = it.message) }
         }
     }
@@ -1719,7 +1748,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             uiState = uiState.copy(profileActionBusy = true, error = null)
             runCatching { repo.rest.deleteProfile(profile.name) }
-                .onSuccess { uiState = uiState.copy(profileActionBusy = false, snackbar = "Profile deleted"); refreshProfiles(); refreshAll(background = true) }
+                .onSuccess { uiState = uiState.copy(profileActionBusy = false, snackbar = string(R.string.i18n_vm_profile_deleted)); refreshProfiles(); refreshAll(background = true) }
                 .onFailure { uiState = uiState.copy(profileActionBusy = false, error = it.message) }
         }
     }
@@ -1731,7 +1760,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             runCatching { repo.rest.exportProfile(profile.name) }
                 .onSuccess { result ->
                     val archive = result.optString("archive")
-                    uiState = uiState.copy(profileActionBusy = false, lastProfileExport = archive, snackbar = if (archive.isBlank()) "Profile export completed" else "Exported to $archive")
+                    uiState = uiState.copy(profileActionBusy = false, lastProfileExport = archive, snackbar = if (archive.isBlank()) string(R.string.i18n_vm_export_done) else string(R.string.i18n_vm_exported_to, archive))
                 }
                 .onFailure { uiState = uiState.copy(profileActionBusy = false, error = it.message) }
         }
@@ -1743,7 +1772,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             uiState = uiState.copy(profileActionBusy = true, error = null)
             runCatching { repo.rest.importProfile(archive.trim(), name?.trim()?.takeIf { it.isNotBlank() }) }
-                .onSuccess { result -> uiState = uiState.copy(profileActionBusy = false, snackbar = "Imported ${result.optString("name").ifBlank { "profile" }}"); refreshProfiles(); refreshAll(background = true) }
+                .onSuccess { result -> uiState = uiState.copy(profileActionBusy = false, snackbar = string(R.string.i18n_vm_imported, result.optString("name").ifBlank { "profile" })); refreshProfiles(); refreshAll(background = true) }
                 .onFailure { uiState = uiState.copy(profileActionBusy = false, error = it.message) }
         }
     }
@@ -1775,7 +1804,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val repo = repository ?: return
         val members = uiState.botRoster.filter { it.routeKey in memberRouteKeys }
         if (members.size !in 2..6) {
-            uiState = uiState.copy(error = "Selecciona entre 2 y 6 Bots para el grupo")
+            uiState = uiState.copy(error = string(R.string.i18n_vm_group_size))
             return
         }
         val roomName = name.trim()
@@ -1797,7 +1826,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     uiState = uiState.copy(
                         groupActionBusy = false,
                         groupRooms = (listOf(room) + uiState.groupRooms).distinctBy { it.roomId },
-                        snackbar = "Group Chat creado"
+                        snackbar = string(R.string.i18n_vm_group_created)
                     )
                     openGroup(room)
                 }
@@ -1903,7 +1932,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         activeGroup = current?.takeIf { it.room.roomId == room.roomId }?.copy(room = room),
                         groupRooms = uiState.groupRooms.map { if (it.roomId == room.roomId) room else it },
                         groupActionBusy = false,
-                        snackbar = "Grupo renombrado"
+                        snackbar = string(R.string.i18n_vm_group_renamed)
                     )
                 }
                 .onFailure { uiState = uiState.copy(groupActionBusy = false, error = it.message) }
@@ -1916,7 +1945,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             uiState = uiState.copy(groupActionBusy = true)
             runCatching { repo.stopGroup(active.room.roomId) }
-                .onSuccess { uiState = uiState.copy(groupActionBusy = false, snackbar = "Trabajo del grupo detenido") }
+                .onSuccess { uiState = uiState.copy(groupActionBusy = false, snackbar = string(R.string.i18n_vm_group_stopped)) }
                 .onFailure { uiState = uiState.copy(groupActionBusy = false, error = it.message) }
         }
     }
@@ -1928,7 +1957,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             uiState = uiState.copy(groupActionBusy = true)
             runCatching { repo.retryGroupTask(active.room.roomId, action.taskId) }
-                .onSuccess { uiState = uiState.copy(groupActionBusy = false, snackbar = "Reintento solicitado") }
+                .onSuccess { uiState = uiState.copy(groupActionBusy = false, snackbar = string(R.string.i18n_vm_retry_requested)) }
                 .onFailure { uiState = uiState.copy(groupActionBusy = false, error = it.message) }
         }
     }
@@ -1939,7 +1968,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             uiState = uiState.copy(groupActionBusy = true)
             runCatching { repo.approveGroupTask(active.room.roomId, action, choice) }
-                .onSuccess { uiState = uiState.copy(groupActionBusy = false, snackbar = if (choice == "once") "Aprobado una vez" else "Acción denegada") }
+                .onSuccess { uiState = uiState.copy(groupActionBusy = false, snackbar = string(if (choice == "once") R.string.i18n_vm_approved_once else R.string.i18n_vm_denied)) }
                 .onFailure { uiState = uiState.copy(groupActionBusy = false, error = it.message) }
         }
     }
@@ -1957,7 +1986,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         activeGroup = null,
                         groupRooms = uiState.groupRooms.filterNot { it.roomId == active.room.roomId },
                         groupActionBusy = false,
-                        snackbar = "Group Chat eliminado"
+                        snackbar = string(R.string.i18n_vm_group_deleted)
                     )
                 }
                 .onFailure { uiState = uiState.copy(groupActionBusy = false, error = it.message) }
@@ -2318,7 +2347,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val repo = repository ?: return
         val chat = uiState.activeChat ?: return
         if (chat.running) {
-            uiState = uiState.copy(snackbar = "Stop the current turn before compressing")
+            uiState = uiState.copy(snackbar = string(R.string.i18n_vm_stop_before_compress))
             return
         }
         val generation = navigationGeneration
@@ -2334,7 +2363,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         activeChat = compressed.copy(streamingText = ""),
                         loading = false,
                         tools = emptyList(),
-                        snackbar = "Conversation compressed"
+                        snackbar = string(R.string.i18n_vm_compressed)
                     )
                     // Compression may rotate the durable session id. Keep the current draft/queue and
                     // re-key it to the compressed session instead of loading an empty composer state.
@@ -2360,7 +2389,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         resetStream(chat.streamingText)
                         uiState = uiState.copy(
                             loading = false,
-                            snackbar = "Bot ${profile.label} creado",
+                            snackbar = string(R.string.i18n_vm_bot_created, profile.label),
                             section = MainSection.CHAT,
                             selectedProfile = profile.name,
                             activeChat = chat.copy(title = profile.label, streamingText = ""),
@@ -2369,7 +2398,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         )
                         loadChatEnhancements(chat.copy(title = profile.label))
                     } else {
-                        uiState = uiState.copy(loading = false, snackbar = "Bot ${profile.label} creado")
+                        uiState = uiState.copy(loading = false, snackbar = string(R.string.i18n_vm_bot_created, profile.label))
                     }
                     refreshProfiles()
                     refreshSessions()
@@ -2433,7 +2462,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                             uiState = uiState.copy(
                                 botEditorSaving = false,
                                 botEditor = fresh ?: original,
-                                error = "El bot cambió en otro cliente. He recargado la versión del gateway para evitar sobrescribirla."
+                                error = string(R.string.i18n_vm_bot_conflict)
                             )
                         }
                         result.confirmRequired -> {
@@ -2462,7 +2491,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         }
                         result.applied.any { !it.value } -> {
                             val failed = result.applied.filterValues { !it }.keys.joinToString()
-                            uiState = uiState.copy(botEditorSaving = false, error = "No se pudieron guardar estas secciones: $failed")
+                            uiState = uiState.copy(botEditorSaving = false, error = string(R.string.i18n_vm_bot_sections_failed, failed))
                         }
                         else -> {
                             if (updated.avatarDataUrl.isNullOrBlank()) {
@@ -2474,7 +2503,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                                 botEditor = null,
                                 botEditorSaving = false,
                                 pendingBotModelSave = null,
-                                snackbar = "Bot ${updated.title.ifBlank { updated.profile.name }} actualizado"
+                                snackbar = string(R.string.i18n_vm_bot_updated, updated.title.ifBlank { updated.profile.name })
                             )
                             refreshProfiles()
                         }
@@ -2501,20 +2530,20 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         uiState = uiState.copy(
                             botEditorSaving = false,
                             pendingBotModelSave = null,
-                            error = "El bot cambió en otro cliente durante la confirmación. Vuelve a abrir el editor."
+                            error = string(R.string.i18n_vm_bot_conflict_confirm)
                         )
                     } else if (result.applied.any { !it.value }) {
                         uiState = uiState.copy(
                             botEditorSaving = false,
                             pendingBotModelSave = null,
-                            error = "Hermes rechazó una o más secciones de la configuración."
+                            error = string(R.string.i18n_vm_bot_rejected)
                         )
                     } else {
                         uiState = uiState.copy(
                             botEditor = null,
                             botEditorSaving = false,
                             pendingBotModelSave = null,
-                            snackbar = "Modelo y configuración del bot actualizados"
+                            snackbar = string(R.string.i18n_vm_bot_model_updated)
                         )
                         refreshProfiles()
                     }
@@ -2539,7 +2568,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     uiState = uiState.copy(
                         loading = false,
                         botEditor = null,
-                        snackbar = "Bot ${profile.label} eliminado"
+                        snackbar = string(R.string.i18n_vm_bot_deleted, profile.label)
                     )
                     refreshProfiles()
                     refreshSessions()
@@ -2568,7 +2597,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                 queuedPrompts = uiState.queuedPrompts + queued,
                 chatDraft = "",
                 composerAttachments = emptyList(),
-                snackbar = "Message queued"
+                snackbar = string(R.string.i18n_vm_queued)
             )
             persistComposerSoon(immediate = true)
             return
@@ -2839,7 +2868,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         if (value.isBlank()) return
         viewModelScope.launch {
             runCatching { repo.steer(chat.runtimeSessionId, chat.profile, value) }
-                .onSuccess { uiState = uiState.copy(snackbar = "Corrección enviada") }
+                .onSuccess { uiState = uiState.copy(snackbar = string(R.string.i18n_vm_steer_sent)) }
                 .onFailure { uiState = uiState.copy(error = it.message) }
         }
     }
@@ -2918,7 +2947,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             runCatching { repo.rest.createCron(profile, draft) }
                 .onSuccess {
-                    uiState = uiState.copy(snackbar = "Routine created")
+                    uiState = uiState.copy(snackbar = string(R.string.i18n_vm_routine_created))
                     refreshCron()
                 }
                 .onFailure { uiState = uiState.copy(error = it.message) }
@@ -2933,7 +2962,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     if (repository !== repo) return@onSuccess
                     uiState = uiState.copy(
                         cronJobs = uiState.cronJobs.map { if (it.id == updated.id && it.profile == updated.profile) updated else it },
-                        snackbar = "Routine updated"
+                        snackbar = string(R.string.i18n_vm_routine_updated)
                     )
                     loadCronRuns(updated)
                 }
@@ -2943,7 +2972,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun pauseCron(job: CronJob) = mutateCron { repo -> repo.rest.pauseCron(job.profile, job.id) }
     fun resumeCron(job: CronJob) = mutateCron { repo -> repo.rest.resumeCron(job.profile, job.id) }
-    fun triggerCron(job: CronJob) = mutateCron(message = "Routine queued") { repo -> repo.rest.triggerCron(job.profile, job.id) }
+    fun triggerCron(job: CronJob) = mutateCron(message = string(R.string.i18n_vm_routine_queued)) { repo -> repo.rest.triggerCron(job.profile, job.id) }
 
     fun deleteCron(job: CronJob) {
         val repo = repository ?: return
@@ -2975,7 +3004,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             runCatching { repo.rest.instantiateCronBlueprint(profile, blueprint.id, values) }
                 .onSuccess {
-                    uiState = uiState.copy(snackbar = "Automation created from ${blueprint.name}")
+                    uiState = uiState.copy(snackbar = string(R.string.i18n_vm_blueprint, blueprint.name))
                     refreshCron()
                 }
                 .onFailure { uiState = uiState.copy(error = it.message) }
@@ -3098,7 +3127,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val profile = uiState.selectedProfile
         viewModelScope.launch {
             runCatching { repo.rest.restartGateway(profile) }
-                .onSuccess { uiState = uiState.copy(snackbar = "Gateway restart requested") }
+                .onSuccess { uiState = uiState.copy(snackbar = string(R.string.i18n_vm_restart)) }
                 .onFailure { uiState = uiState.copy(error = it.message) }
         }
     }
@@ -3148,7 +3177,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             runCatching { repo.rest.applyTelegramOnboarding(profile, onboarding.pairingId, allowedUserIds.filter(String::isNotBlank)) }
                 .onSuccess {
-                    uiState = uiState.copy(telegramOnboarding = null, snackbar = "Telegram linked")
+                    uiState = uiState.copy(telegramOnboarding = null, snackbar = string(R.string.i18n_vm_telegram))
                     refreshMessagingAndPairing()
                 }
                 .onFailure { uiState = uiState.copy(error = it.message) }
@@ -3192,7 +3221,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         viewModelScope.launch {
             runCatching { repo.rest.clearPendingPairing(profile) }
                 .onSuccess {
-                    uiState = uiState.copy(snackbar = "Pending pairing requests cleared")
+                    uiState = uiState.copy(snackbar = string(R.string.i18n_vm_pairing_cleared))
                     refreshMessagingAndPairing()
                 }
                 .onFailure { uiState = uiState.copy(error = it.message) }
@@ -3210,7 +3239,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     val url = result.optString("url").ifBlank { result.optString("route_url").ifBlank { route?.optString("url").orEmpty() } }
                     uiState = uiState.copy(
                         webhookReceipt = if (secret.isNotBlank() || url.isNotBlank()) WebhookReceipt(draft.name, url, secret) else null,
-                        snackbar = if (secret.isBlank() && url.isBlank()) "Webhook created" else null
+                        snackbar = if (secret.isBlank() && url.isBlank()) string(R.string.i18n_vm_webhook) else null
                     )
                     refreshMessagingAndPairing()
                 }
@@ -3413,6 +3442,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                 val chat = uiState.activeChat
                 if (chat == null || !payloadSessionMatches(payload, chat)) liveSessionsPoke.trySend(Unit)
             }
+            if (type == "message.complete" && uiState.section == MainSection.BOTS) refreshBotActivitySoon()
             when (type) {
                 "message.start" -> {
                     val chat = uiState.activeChat ?: return@launch

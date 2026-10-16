@@ -128,7 +128,7 @@ fun ConnectionScreen(
                         HermesTextField(
                             url,
                             { url = it },
-                            "Gateway",
+                            stringResource(R.string.i18n_gateway),
                             placeholder = "https://hermes.example.com",
                             imeAction = ImeAction.Done
                         )
@@ -146,20 +146,20 @@ fun ConnectionScreen(
                             HermesTextField(
                                 label,
                                 { label = it },
-                                "Connection name (optional)",
-                                placeholder = "Automatically uses the gateway hostname",
+                                stringResource(R.string.i18n_conn_name),
+                                placeholder = stringResource(R.string.i18n_conn_name_hint),
                                 imeAction = ImeAction.Next
                             )
                             HermesTextField(
                                 headers,
                                 { headers = it },
-                                "Access-proxy headers (optional)",
+                                stringResource(R.string.i18n_conn_headers),
                                 placeholder = "CF-Access-Client-Id: …\nCF-Access-Client-Secret: …",
                                 singleLine = false,
                                 imeAction = ImeAction.Default
                             )
                             Text(
-                                "Only needed when a reverse proxy such as Cloudflare Access requires extra request headers.",
+                                stringResource(R.string.i18n_conn_headers_hint),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -248,7 +248,7 @@ private fun AuthStep(
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack, enabled = !busy) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                IconButton(onClick = onBack, enabled = !busy) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.a21_back)) }
                 Column {
                     Text(discovery.draft.displayLabel, style = MaterialTheme.typography.headlineSmall)
                     Text(discovery.draft.baseUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -258,7 +258,7 @@ private fun AuthStep(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AssistChip(onClick = {}, label = { Text("Hermes ${status.version.ifBlank { "gateway" }}") })
-                AssistChip(onClick = {}, label = { Text(if (status.authRequired) "Authentication required" else "Legacy/local auth") })
+                AssistChip(onClick = {}, label = { Text(stringResource(if (status.authRequired) R.string.i18n_conn_auth_required else R.string.i18n_conn_auth_local)) })
             }
         }
 
@@ -305,14 +305,14 @@ private fun AuthStep(
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
                                     if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    if (passwordVisible) "Hide password" else "Show password"
+                                    stringResource(if (passwordVisible) R.string.i18n_hide_password else R.string.i18n_show_password)
                                 )
                             }
                         },
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
                     )
                     Text(
-                        "Username is case-sensitive and both fields are sent exactly as typed; autocorrect and capitalization are disabled.",
+                        stringResource(R.string.i18n_conn_case_note),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

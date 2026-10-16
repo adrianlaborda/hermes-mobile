@@ -23,7 +23,7 @@ fun ProfilesScreen(
     profiles: List<HermesProfile>,
     busy: Boolean,
     lastExport: String?,
-    onBack: () -> Unit,
+    onMenu: () -> Unit,
     onCreate: (String, String, String?) -> Unit,
     onRename: (HermesProfile, String) -> Unit,
     onDelete: (HermesProfile) -> Unit,
@@ -37,11 +37,11 @@ fun ProfilesScreen(
 
     Column(Modifier.fillMaxSize()) {
         HermesTopBar(
-            "Profiles",
-            "Manage profile identity and portable archives",
-            leading = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+            stringResource(R.string.ui_535e52e4a2),
+            stringResource(R.string.i18n_prof_subtitle),
+            leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
             actions = {
-                IconButton(onClick = { showImport = true }) { Icon(Icons.Default.FileDownload, "Import profile") }
+                IconButton(onClick = { showImport = true }) { Icon(Icons.Default.FileDownload, stringResource(R.string.i18n_prof_import)) }
                 IconButton(onClick = { create = true }) { Icon(Icons.Default.Add, stringResource(R.string.ui_61d30d997d)) }
             }
         )
@@ -94,7 +94,7 @@ fun ProfilesScreen(
                         )
                     }
                     Box {
-                        IconButton(onClick = { menu = true }, enabled = !busy) { Icon(Icons.Default.MoreVert, "Profile actions") }
+                        IconButton(onClick = { menu = true }, enabled = !busy) { Icon(Icons.Default.MoreVert, stringResource(R.string.i18n_prof_actions)) }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             if (!profile.isDefault) DropdownMenuItem(
                                 text = { Text(stringResource(R.string.ui_3064d79a29)) },
@@ -131,7 +131,7 @@ fun ProfilesScreen(
         AlertDialog(
             onDismissRequest = { rename = null },
             title = { Text(stringResource(R.string.ui_c9aaa25628)) },
-            text = { HermesTextField(value, { value = it }, "New profile name") },
+            text = { HermesTextField(value, { value = it }, stringResource(R.string.i18n_prof_new_name)) },
             confirmButton = { TextButton(onClick = { rename = null; onRename(profile, value) }) { Text(stringResource(R.string.ui_3064d79a29)) } },
             dismissButton = { TextButton(onClick = { rename = null }) { Text(stringResource(R.string.ui_19766ed6cc)) } }
         )
@@ -139,7 +139,7 @@ fun ProfilesScreen(
     delete?.let { profile ->
         AlertDialog(
             onDismissRequest = { delete = null },
-            title = { Text("Delete ${profile.label}?") },
+            title = { Text(stringResource(R.string.i18n_delete_named, profile.label)) },
             text = { Text(stringResource(R.string.ui_e1b6e5a2b7)) },
             confirmButton = { TextButton(onClick = { delete = null; onDelete(profile) }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text(stringResource(R.string.ui_e2d0a54968)) } },
             dismissButton = { TextButton(onClick = { delete = null }) { Text(stringResource(R.string.ui_19766ed6cc)) } }
@@ -154,8 +154,8 @@ fun ProfilesScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(stringResource(R.string.ui_61b75fb595), style = MaterialTheme.typography.bodySmall)
-                    HermesTextField(archive, { archive = it }, "Gateway archive path", placeholder = "/home/hermes/profile.tar.gz")
-                    HermesTextField(name, { name = it }, "New name (optional)")
+                    HermesTextField(archive, { archive = it }, stringResource(R.string.i18n_prof_archive), placeholder = "/home/hermes/profile.tar.gz")
+                    HermesTextField(name, { name = it }, stringResource(R.string.i18n_prof_new_name_opt))
                 }
             },
             confirmButton = { TextButton(enabled = archive.isNotBlank(), onClick = { showImport = false; onImport(archive, name.ifBlank { null }) }) { Text(stringResource(R.string.ui_2cff9baabf)) } },
@@ -178,8 +178,8 @@ private fun ProfileCreateDialog(
         title = { Text(stringResource(R.string.ui_61d30d997d)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                HermesTextField(name, { name = it }, "Profile name", placeholder = "research")
-                HermesTextField(description, { description = it }, "Description", singleLine = false)
+                HermesTextField(name, { name = it }, stringResource(R.string.i18n_prof_name), placeholder = "research")
+                HermesTextField(description, { description = it }, stringResource(R.string.i18n_description), singleLine = false)
                 Text(stringResource(R.string.ui_5c56b5acdd), style = MaterialTheme.typography.labelMedium)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected = clone == null, onClick = { clone = null })
@@ -188,7 +188,7 @@ private fun ProfileCreateDialog(
                 profiles.take(12).forEach { profile ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(selected = clone == profile.name, onClick = { clone = profile.name })
-                        Text("Clone ${profile.label}")
+                        Text(stringResource(R.string.i18n_prof_clone, profile.label))
                     }
                 }
             }

@@ -42,4 +42,18 @@ class SessionGroupsTest {
         )
         assertEquals(listOf("now1", "now2"), sections[1].rows.map { it.id })
     }
+
+    @Test
+    fun routineRunsGoLastUnlessPinned() {
+        val sessions = listOf(
+            HermesSession(id = "run", source = "cron", lastActive = at(today, 18)),
+            HermesSession(id = "chat", source = "mobile", lastActive = at(today, 9)),
+            HermesSession(id = "tg", source = "telegram", lastActive = at(today)),
+            HermesSession(id = "kept", source = "cron", lastActive = at(today.minusDays(3)), pinned = true)
+        )
+        val sections = groupSessions(sessions, today, zone)
+        assertEquals(listOf("pinned", "bucket:TODAY", "channel:Telegram", "routines"), sections.map { it.key })
+        assertEquals(listOf("kept"), sections.first().rows.map { it.id })
+        assertEquals(listOf("run"), sections.last().rows.map { it.id })
+    }
 }

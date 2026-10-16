@@ -20,6 +20,7 @@ import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.AddComment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -77,16 +78,20 @@ internal fun SessionListPane(
     activeKey: String?,
     actions: SessionListActions,
     listHeader: @Composable () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    routines: RoutineActions? = null
 ) {
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var sheetTarget by remember { mutableStateOf<HermesSession?>(null) }
     var renameTarget by remember { mutableStateOf<HermesSession?>(null) }
     val context = LocalContext.current
     var deleteTarget by remember { mutableStateOf<HermesSession?>(null) }
-    // A view preference like the theme: kept on the device, so a long pinned list stays folded across launches.
+    // Every section folds, as in Desktop's sidebar. A view preference like the theme: kept on the device per section.
     val prefs = remember(context) { context.getSharedPreferences("appearance", android.content.Context.MODE_PRIVATE) }
-    var pinnedCollapsed by remember { mutableStateOf(prefs.getBoolean(PINNED_COLLAPSED, false)) }
+    val folded = remember { mutableStateMapOf<String, Boolean>() }
+    fun isFolded(section: SessionSection) = folded.getOrPut(section.key) { prefs.getBoolean(foldPref(section), foldedByDefault(section)) }
+    var routinesVisible by rememberSaveable { mutableIntStateOf(ROUTINES_INITIAL) }
+    var routinePeek by rememberSaveable { mutableStateOf<String?>(null) }
 
     val source = if (searchQuery.isBlank()) sessions else searchResults
     val visible = remember(source, includeArchived, selectedProfile) {
@@ -106,9 +111,10 @@ internal fun SessionListPane(
                             tint = if (showFilters) MaterialTheme.colorScheme.primary else LocalContentColor.current)
                     }
                 }
-                FilledTonalIconButton(onClick = actions.onNewChat) { Icon(Icons.Default.Edit, stringResource(R.string.ui_db18382a24)) }
+                FilledTonalIconButton(onClick = actions.onNewChat) { Icon(Icons.Outlined.AddComment, stringResource(R.string.ui_db18382a24)) }
             }
         )
+        DashedDivider(color = MaterialTheme.hermes.line)
         listHeader()
         SessionSearchBar(searchQuery, searchLoading, actions.onSearch)
         AnimatedVisibility(visible = showFilters) {
@@ -134,22 +140,27 @@ internal fun SessionListPane(
                 if (searchQuery.isBlank()) Button(onClick = actions.onNewChat) { Text(stringResource(R.string.ui_db18382a24)) }
             }
         } else {
-            val sections = remember(visible) { groupSessions(visible) }
+            // Like Desktop, the Routines section lists the jobs, and each job's runs open from it. A search lists the
+            // matching runs themselves.
+            val jobs = remember(routines?.jobs, selectedProfile) {
+                routines?.jobs.orEmpty().filter { selectedProfile == "all" || it.profile == selectedProfile }.sortedWith(cronJobOrder)
+            }
+            val showJobs = routines != null && searchQuery.isBlank()
+            val sections = remember(visible, showJobs) { groupSessions(visible).filterNot { showJobs && it.routines } }
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                 sections.forEach { section ->
                     // Search shows every match, folded or not.
-                    val collapsible = section.bucket == SessionBucket.PINNED && searchQuery.isBlank()
-                    val collapsed = collapsible && pinnedCollapsed
+                    val collapsed = searchQuery.isBlank() && isFolded(section)
                     item(key = "section:${section.key}", contentType = "header") {
                         ChatSectionHeader(
                             sessionSectionLabel(section), section.rows.size,
-                            collapsed = if (collapsible) collapsed else null,
+                            collapsed = if (searchQuery.isBlank()) collapsed else null,
                             // Folded, the header still says when a pinned chat is working or waiting.
                             dot = if (collapsed) section.rows.map { LiveSessions.dotFor(sessionDots, it.id, it.unread) }
                                 .minByOrNull { it.ordinal } ?: SessionDot.NONE else SessionDot.NONE,
                             onToggle = {
-                                pinnedCollapsed = !pinnedCollapsed
-                                prefs.edit().putBoolean(PINNED_COLLAPSED, pinnedCollapsed).apply()
+                                folded[section.key] = !collapsed
+                                prefs.edit().putBoolean(foldPref(section), !collapsed).apply()
                             },
                             modifier = Modifier.animateItem()
                         )
@@ -167,6 +178,21 @@ internal fun SessionListPane(
                             modifier = Modifier.animateItem()
                         )
                     }
+                }
+                if (showJobs && jobs.isNotEmpty()) {
+                    val section = SessionSection("routines", routines = true, rows = emptyList())
+                    val collapsed = isFolded(section)
+                    item(key = "section:routines", contentType = "header") {
+                        ChatSectionHeader(
+                            sessionSectionLabel(section), jobs.size, collapsed = collapsed,
+                            onToggle = {
+                                folded[section.key] = !collapsed
+                                prefs.edit().putBoolean(foldPref(section), !collapsed).apply()
+                            },
+                            modifier = Modifier.animateItem()
+                        )
+                    }
+                    if (!collapsed) routineItems(routines!!, jobs, routinesVisible, { routinesVisible = it }, routinePeek, { routinePeek = it })
                 }
                 if (searchQuery.isBlank() && hasMore) {
                     item(key = "more") {
@@ -216,15 +242,24 @@ internal fun SessionListPane(
 }
 
 @Composable
-private fun sessionSectionLabel(section: SessionSection): String = section.channel ?: stringResource(when (section.bucket) {
+private fun sessionSectionLabel(section: SessionSection): String = section.channel ?: stringResource(when {
+    section.routines -> R.string.ui_61b7bb44e2
+    else -> sessionBucketLabel(section.bucket)
+})
+
+private fun sessionBucketLabel(bucket: SessionBucket?): Int = when (bucket) {
     SessionBucket.PINNED -> R.string.a21_pinned
     SessionBucket.TODAY -> R.string.a21_today
     SessionBucket.YESTERDAY -> R.string.a21_yesterday
     SessionBucket.WEEK -> R.string.a21_week
     else -> R.string.a21_older
-})
+}
 
-private const val PINNED_COLLAPSED = "pinned_collapsed"
+/** Pinned keeps the key 0.3.0-beta.6 saved it under. */
+private fun foldPref(section: SessionSection) = if (section.bucket == SessionBucket.PINNED) "pinned_collapsed" else "fold:${section.key}"
+
+/** Desktop's defaults: messaging platforms and Cron start shut, Pinned and the date groups open. */
+private fun foldedByDefault(section: SessionSection) = section.channel != null || section.routines
 
 /** A section's label, dashed rule and count; [collapsed] non-null makes it a fold toggle with a chevron. */
 @Composable

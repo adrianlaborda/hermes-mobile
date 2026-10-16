@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.AddComment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +29,7 @@ import org.json.JSONObject
 @Composable
 fun ExperienceHome(s: HermesUiState, onMenu: () -> Unit, onNavigate: (MainSection) -> Unit, onNew: () -> Unit, onOpen: (HermesSession) -> Unit) {
     val connected = s.connectionState == GatewayConnectionState.CONNECTED
-    val visible = remember(s.sessions) { s.sessions.filterNot { it.hidden || it.archived } }
+    val visible = remember(s.sessions) { s.sessions.filterNot { it.hidden || it.archived || it.isRoutineRun } }
     val recent = remember(visible) { visible.sortedByDescending { it.lastActive }.take(5) }
     val upcoming = remember(s.cronJobs) { s.cronJobs.filter { it.enabled && (it.nextRunAt ?: 0L) > 0L }.sortedBy { it.nextRunAt }.take(3) }
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -35,8 +37,9 @@ fun ExperienceHome(s: HermesUiState, onMenu: () -> Unit, onNavigate: (MainSectio
             HermesTopBar(
                 stringResource(R.string.a14_home),
                 leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
-                actions = { FilledTonalIconButton(onClick = onNew, enabled = connected) { Icon(Icons.Default.Edit, stringResource(R.string.a14_new_chat)) } }
+                actions = { FilledTonalIconButton(onClick = onNew, enabled = connected) { Icon(Icons.Outlined.AddComment, stringResource(R.string.a14_new_chat)) } }
             )
+            DashedDivider(color = MaterialTheme.hermes.line)
         }
         item {
             Surface(
@@ -143,7 +146,10 @@ private fun nextRunLabel(at: Long?): String {
 @Composable
 fun WorkHub(onMenu: () -> Unit, onCron: () -> Unit, onFiles: () -> Unit, onMemory: () -> Unit) {
     LazyColumn {
-        item { HermesTopBar(stringResource(R.string.a14_work), stringResource(R.string.a14_work_hint), leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } }) }
+        item {
+            HermesTopBar(stringResource(R.string.a14_work), stringResource(R.string.a14_work_hint), leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } })
+            DashedDivider(color = MaterialTheme.hermes.line)
+        }
         item { FlatRow(stringResource(R.string.a14_files), stringResource(R.string.a14_files_hint), leading = { Icon(Icons.Default.FolderOpen, null) }, trailing = { Icon(Icons.Default.ChevronRight, null) }, onClick = onFiles) }
         item { FlatRow(stringResource(R.string.a14_scheduled), stringResource(R.string.a14_scheduled_hint), leading = { Icon(Icons.Default.Schedule, null) }, trailing = { Icon(Icons.Default.ChevronRight, null) }, onClick = onCron) }
         item { FlatRow(stringResource(R.string.a14_memory), stringResource(R.string.a14_memory_hint), leading = { Icon(Icons.Default.AutoAwesome, null) }, trailing = { Icon(Icons.Default.ChevronRight, null) }, onClick = onMemory) }
@@ -151,7 +157,10 @@ fun WorkHub(onMenu: () -> Unit, onCron: () -> Unit, onFiles: () -> Unit, onMemor
 }
 
 @Composable
-fun SystemPage(repo: HermesRepository, profile: String, onSettings: () -> Unit) {
+fun SystemPage(
+    repo: HermesRepository, profile: String, profiles: List<String> = emptyList(), onProfile: (String) -> Unit = {},
+    onMenu: () -> Unit = {}, onSettings: () -> Unit
+) {
     var logs by remember(repo, profile) { mutableStateOf(false) }
     if (logs) { ServerLogs(repo, profile) { logs = false }; return }
     var stats by remember(repo) { mutableStateOf<JSONObject?>(null) }
@@ -165,23 +174,66 @@ fun SystemPage(repo: HermesRepository, profile: String, onSettings: () -> Unit) 
         catch (e: CancellationException) { throw e } catch (e: Exception) { error = e.message }
         finally { loading = false }
     }
-    LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { HermesTopBar(stringResource(R.string.a14_system), profile, actions = { IconButton(onClick = { revision++ }, enabled = !loading) { Icon(Icons.Default.Refresh, stringResource(R.string.a14_refresh)) } }) }
-        if (loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-        error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
-        stats?.let { d ->
-            item { FeatureCard(d.optString("hostname"), listOf(d.optString("system"), d.optString("arch"), d.optString("hermes_version")).filter { it.isNotBlank() }.joinToString(" · ")) {
-                d.optLong("uptime_seconds", -1).takeIf { it >= 0 }?.let { Text(stringResource(R.string.a14_uptime, it / 3600)) }
-            } }
-            listOf(R.string.a14_cpu to d.optDouble("cpu_percent", Double.NaN), R.string.a14_ram to (d.optJSONObject("memory")?.optDouble("percent", Double.NaN) ?: Double.NaN), R.string.a14_disk to (d.optJSONObject("disk")?.optDouble("percent", Double.NaN) ?: Double.NaN)).forEach { (title, value) ->
-                item { FeatureCard(stringResource(title)) {
-                    if (value.isFinite()) { Text("${value.toInt()}%", style = MaterialTheme.typography.headlineSmall); LinearProgressIndicator(progress = { (value / 100).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth()) }
-                    else Text(stringResource(R.string.a14_unavailable))
-                } }
+    Column(Modifier.fillMaxSize()) {
+        HermesTopBar(stringResource(R.string.a14_system),
+            subtitleContent = { ProfileSwitcher(profile, profiles, onProfile) },
+            leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
+            actions = { IconButton(onClick = { revision++ }, enabled = !loading) { Icon(Icons.Default.Refresh, stringResource(R.string.a14_refresh)) } })
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth()) else DashedDivider(color = MaterialTheme.hermes.line)
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+            error?.let { item { Text(it, Modifier.padding(horizontal = 18.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) } }
+            stats?.let { d ->
+                item {
+                    SectionLabel(stringResource(R.string.i18n_sys_server))
+                    FlatRow(
+                        d.optString("hostname").ifBlank { stringResource(R.string.a14_system) },
+                        listOf(d.optString("system"), d.optString("arch"), d.optString("hermes_version").takeIf { it.isNotBlank() }?.let { "Hermes $it" }.orEmpty())
+                            .filter { it.isNotBlank() }.joinToString(" · "),
+                        leading = { Icon(Icons.Default.Dns, null) }
+                    )
+                    d.optLong("uptime_seconds", -1).takeIf { it >= 0 }?.let {
+                        FlatRow(stringResource(R.string.a14_uptime, it / 3600), leading = { Icon(Icons.Default.Schedule, null) })
+                    }
+                }
+                item { SectionLabel(stringResource(R.string.i18n_sys_resources)) }
+                listOf(
+                    Triple(R.string.a14_cpu, Icons.Default.Memory, d.optDouble("cpu_percent", Double.NaN)),
+                    Triple(R.string.a14_ram, Icons.Default.Storage, d.optJSONObject("memory")?.optDouble("percent", Double.NaN) ?: Double.NaN),
+                    Triple(R.string.a14_disk, Icons.Default.SdStorage, d.optJSONObject("disk")?.optDouble("percent", Double.NaN) ?: Double.NaN)
+                ).forEach { (title, icon, value) ->
+                    item { ResourceRow(stringResource(title), icon, value) }
+                }
+            }
+            item {
+                SectionLabel(stringResource(R.string.i18n_sys_more))
+                FlatRow(stringResource(R.string.a14_logs), leading = { Icon(Icons.AutoMirrored.Filled.Article, null) }, trailing = { Icon(Icons.Default.ChevronRight, null) }, onClick = { logs = true })
+                FlatRow(stringResource(R.string.a14_configuration_usage), leading = { Icon(Icons.Default.Tune, null) }, trailing = { Icon(Icons.Default.ChevronRight, null) }, onClick = onSettings)
             }
         }
-        item { OutlinedButton(onClick = { logs = true }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.a14_logs)) } }
-        item { OutlinedButton(onClick = onSettings, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.a14_configuration_usage)) } }
+    }
+}
+
+/** One server resource: its name and use, with a thin bar like the context ring's. */
+@Composable
+private fun ResourceRow(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, value: Double) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                Text(if (value.isFinite()) "${value.toInt()}%" else stringResource(R.string.a14_unavailable),
+                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (value.isFinite()) {
+                Spacer(Modifier.height(6.dp))
+                LinearProgressIndicator(
+                    progress = { (value / 100).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth().height(4.dp),
+                    color = if (value >= 90) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    drawStopIndicator = {}
+                )
+            }
+        }
     }
 }
 

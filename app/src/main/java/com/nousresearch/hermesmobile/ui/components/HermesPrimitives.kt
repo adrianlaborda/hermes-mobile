@@ -220,6 +220,8 @@ fun HermesTopBar(
     title: String,
     subtitle: String? = null,
     leading: (@Composable () -> Unit)? = null,
+    /** Replaces [subtitle] with something interactive, such as [ProfileSwitcher]. */
+    subtitleContent: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Row(
@@ -233,7 +235,8 @@ fun HermesTopBar(
         if (leading != null) Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (!subtitle.isNullOrBlank()) {
+            if (subtitleContent != null) subtitleContent()
+            else if (!subtitle.isNullOrBlank()) {
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.labelMedium,
@@ -244,6 +247,52 @@ fun HermesTopBar(
             }
         }
         actions()
+    }
+}
+
+/**
+ * The bar of a view inside a page (a folder, a project): smaller than [HermesTopBar], with a close button while
+ * something is open in it. The page's own top bar, with the menu, stays above.
+ */
+@Composable
+fun SubBar(title: String, onClose: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {}) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = if (onClose == null) 18.dp else 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (onClose != null) IconButton(onClick = onClose) { Icon(Icons.Default.Close, stringResource(R.string.ui_19766ed6cc)) }
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        actions()
+    }
+}
+
+/**
+ * A page's profile as its top bar subtitle: tapping it lists the others, as the chat header does for a new chat.
+ * Plain text when there is nothing to switch to.
+ */
+@Composable
+fun ProfileSwitcher(profile: String, profiles: List<String>, onProfile: (String) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val switchable = profiles.size > 1
+    Box {
+        Row(
+            (if (switchable) Modifier.clip(MaterialTheme.shapes.small)
+                .clickable(onClickLabel = stringResource(R.string.chat_change_profile)) { open = true } else Modifier),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(stringResource(R.string.i18n_profile_named, profile), style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (switchable) Icon(Icons.Default.UnfoldMore, null, Modifier.padding(start = 2.dp).size(14.dp), tint = MaterialTheme.colorScheme.primary)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            profiles.forEach { name ->
+                DropdownMenuItem(
+                    text = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    leadingIcon = { if (name == profile) Icon(Icons.Default.Check, null) },
+                    onClick = { open = false; if (name != profile) onProfile(name) }
+                )
+            }
+        }
     }
 }
 
