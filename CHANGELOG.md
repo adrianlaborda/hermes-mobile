@@ -9,6 +9,19 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Added
+
+- **Fold the pinned chats.** Tap the **Pinned** header in **Chats** to collapse or expand it, so a long pinned list
+  doesn't push the rest of your chats down. The app remembers the choice. While folded, the header still shows a
+  status dot when a pinned chat is working, waiting for you or has unread replies, and search still lists every
+  match.
+
+### Changed
+
+- **Bots: one green dot.** The green dot at the right of each bot, which meant its gateway was running, is gone: next
+  to the new status dot it looked like a second unread mark. A bot whose gateway is stopped or unreachable now shows
+  a crossed-out cloud and "Offline" instead.
+
 ## [0.3.0-beta.5] - 2026-10-16
 
 ### Added

@@ -70,4 +70,7 @@
     <string name="chat_pinned_context">Previous message · tap to return</string>
     <string name="chat_filters">Chat filters</string>
     <string name="connection_unavailable">Server unavailable</string>
+    <string name="chat_section_expand">Expand %1$s</string>
+    <string name="chat_section_collapse">Collapse %1$s</string>
+    <string name="bot_offline">Offline</string>
 </resources>

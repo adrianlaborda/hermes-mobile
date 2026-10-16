@@ -256,14 +256,19 @@ private fun BotRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            val offline = if (routed.reachable && profile.gatewayRunning) "" else " · " + stringResource(R.string.bot_offline)
             Text(
-                if (routed.activeConnection) "${routed.connectionLabel} · this gateway" else routed.connectionLabel,
+                (if (routed.activeConnection) "${routed.connectionLabel} · this gateway" else routed.connectionLabel) + offline,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        if (!routed.activeConnection) Icon(Icons.Default.Cloud, "Remote gateway", Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        StateDot(routed.reachable && profile.gatewayRunning)
+        // Only a problem is shown: green here would read as the status dot's "finished, unread".
+        if (!(routed.reachable && profile.gatewayRunning)) {
+            Icon(Icons.Default.CloudOff, stringResource(R.string.bot_offline), Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else if (!routed.activeConnection) {
+            Icon(Icons.Default.Cloud, "Remote gateway", Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         Spacer(Modifier.width(3.dp))
         // A bot on another gateway says what a tap does: it switches the app to that gateway.
         if (!routed.activeConnection) {

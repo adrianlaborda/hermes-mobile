@@ -82,7 +82,11 @@ internal fun SessionListPane(
     var showFilters by rememberSaveable { mutableStateOf(false) }
     var sheetTarget by remember { mutableStateOf<HermesSession?>(null) }
     var renameTarget by remember { mutableStateOf<HermesSession?>(null) }
+    val context = LocalContext.current
     var deleteTarget by remember { mutableStateOf<HermesSession?>(null) }
+    // A view preference like the theme: kept on the device, so a long pinned list stays folded across launches.
+    val prefs = remember(context) { context.getSharedPreferences("appearance", android.content.Context.MODE_PRIVATE) }
+    var pinnedCollapsed by remember { mutableStateOf(prefs.getBoolean(PINNED_COLLAPSED, false)) }
 
     val source = if (searchQuery.isBlank()) sessions else searchResults
     val visible = remember(source, includeArchived, selectedProfile) {
@@ -133,10 +137,24 @@ internal fun SessionListPane(
             val sections = remember(visible) { groupSessions(visible) }
             LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                 sections.forEach { section ->
+                    // Search shows every match, folded or not.
+                    val collapsible = section.bucket == SessionBucket.PINNED && searchQuery.isBlank()
+                    val collapsed = collapsible && pinnedCollapsed
                     item(key = "section:${section.key}", contentType = "header") {
-                        ChatSectionHeader(sessionSectionLabel(section), section.rows.size)
+                        ChatSectionHeader(
+                            sessionSectionLabel(section), section.rows.size,
+                            collapsed = if (collapsible) collapsed else null,
+                            // Folded, the header still says when a pinned chat is working or waiting.
+                            dot = if (collapsed) section.rows.map { LiveSessions.dotFor(sessionDots, it.id, it.unread) }
+                                .minByOrNull { it.ordinal } ?: SessionDot.NONE else SessionDot.NONE,
+                            onToggle = {
+                                pinnedCollapsed = !pinnedCollapsed
+                                prefs.edit().putBoolean(PINNED_COLLAPSED, pinnedCollapsed).apply()
+                            },
+                            modifier = Modifier.animateItem()
+                        )
                     }
-                    items(section.rows, key = { "${it.profile}:${it.id}" }, contentType = { "session" }) { session ->
+                    if (!collapsed) items(section.rows, key = { "${it.profile}:${it.id}" }, contentType = { "session" }) { session ->
                         SessionRow(
                             session = session,
                             dot = LiveSessions.dotFor(sessionDots, session.id, session.unread),
@@ -206,17 +224,42 @@ private fun sessionSectionLabel(section: SessionSection): String = section.chann
     else -> R.string.a21_older
 })
 
+private const val PINNED_COLLAPSED = "pinned_collapsed"
+
+/** A section's label, dashed rule and count; [collapsed] non-null makes it a fold toggle with a chevron. */
 @Composable
-private fun ChatSectionHeader(label: String, count: Int) {
+private fun ChatSectionHeader(
+    label: String,
+    count: Int,
+    collapsed: Boolean? = null,
+    dot: SessionDot = SessionDot.NONE,
+    onToggle: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val toggle = if (collapsed == null) Modifier else {
+        val description = stringResource(if (collapsed) R.string.chat_section_expand else R.string.chat_section_collapse, label)
+        Modifier.clickable(onClickLabel = description, role = Role.Button, onClick = onToggle)
+    }
     Row(
-        Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 4.dp),
+        modifier.fillMaxWidth().then(toggle).padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (dot != SessionDot.NONE) {
+            Spacer(Modifier.width(6.dp))
+            SessionStatusDot(dot)
+        }
         Spacer(Modifier.width(8.dp))
         DashedDivider(Modifier.weight(1f), horizontalPadding = 0.dp)
         Spacer(Modifier.width(8.dp))
         Text(count.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (collapsed != null) {
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                if (collapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess, null,
+                Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 

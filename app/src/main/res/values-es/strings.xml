@@ -70,4 +70,7 @@
     <string name="chat_pinned_context">Mensaje anterior · toca para volver</string>
     <string name="chat_filters">Filtros de chats</string>
     <string name="connection_unavailable">Servidor no disponible</string>
+    <string name="chat_section_expand">Desplegar %1$s</string>
+    <string name="chat_section_collapse">Plegar %1$s</string>
+    <string name="bot_offline">Sin conexión</string>
 </resources>
