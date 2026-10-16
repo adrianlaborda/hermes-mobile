@@ -9,6 +9,10 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Changed
+
+- **Bots:** tap anywhere on a bot to open its conversation, as in Chats; a long press shows its actions.
+
 ## [0.3.0-beta.4] - 2026-10-16
 
 ### Fixed

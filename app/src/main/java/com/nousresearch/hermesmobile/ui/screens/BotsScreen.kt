@@ -6,6 +6,7 @@ import com.nousresearch.hermesmobile.R
 import androidx.compose.ui.res.stringResource
 
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -212,8 +213,11 @@ private fun BotRow(
 ) {
     var menu by remember { mutableStateOf(false) }
     val profile = routed.profile
+    // Like a chat row: the whole row opens the bot (or switches to its gateway); a long press shows its actions.
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
+        Modifier.fillMaxWidth()
+            .combinedClickable(onClick = if (routed.activeConnection) onOpen else onSwitchConnection, onLongClick = { menu = true })
+            .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         ProfileAvatar(profile, size = 40, avatarDataUrl = avatarDataUrl)
@@ -252,8 +256,9 @@ private fun BotRow(
         if (!routed.activeConnection) Icon(Icons.Default.Cloud, "Remote gateway", Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         StateDot(routed.reachable && profile.gatewayRunning)
         Spacer(Modifier.width(3.dp))
-        TextButton(onClick = if (routed.activeConnection) onOpen else onSwitchConnection, contentPadding = PaddingValues(horizontal = 8.dp)) {
-            Text(if (routed.activeConnection) "Open" else "Switch")
+        // A bot on another gateway says what a tap does: it switches the app to that gateway.
+        if (!routed.activeConnection) {
+            TextButton(onClick = onSwitchConnection, contentPadding = PaddingValues(horizontal = 8.dp)) { Text("Switch") }
         }
         Box {
             IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, "Bot actions") }
