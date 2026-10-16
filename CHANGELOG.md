@@ -21,9 +21,22 @@ server plugin it needs for notifications.
 - **A clearer notification icon.** The status bar icon is redrawn from the Hermes logo as a bold silhouette (hair,
   face and headband) and is now a vector, so it stays sharp and recognisable at its small size.
 
+- **New chats start in your main profile.** A chat started from the side menu, Home or the floating button used the
+  profile of the last chat or bot you had opened, with no way to change it. It now goes to the gateway's default
+  profile, and until you send the first message you can move it to another one by tapping the profile under the
+  chat's title. **Chats** keeps starting new chats in the profile you filter by.
+
+- The new-chat button at the top right of a chat now shows a speech bubble with a plus instead of a pencil, which
+  read as "edit". In an empty chat it is greyed out, since that chat is already new.
+
 - **Bots: one green dot.** The green dot at the right of each bot, which meant its gateway was running, is gone: next
   to the new status dot it looked like a second unread mark. A bot whose gateway is stopped or unreachable now shows
   a crossed-out cloud and "Offline" instead.
+
+### Fixed
+
+- The suggestions in an empty chat (**Plan my day**, **Explain a concept**…) did nothing when tapped: the empty
+  message list lay over them and took the touch.
 
 ## [0.3.0-beta.5] - 2026-10-16
 

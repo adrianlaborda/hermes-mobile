@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.AddComment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -233,15 +234,17 @@ internal fun ChatThread(
                 onBack = actions.onBack,
                 onSwitcher = { showSwitcher = true },
                 onArtifacts = { showArtifacts = true },
-                onNewChat = { actions.onNew(chat.profile, "") }
+                onNewChat = { actions.onNew(chat.profile, "") },
+                // An empty chat is already a new one: the button stays, greyed out, so the header doesn't shift.
+                newChatEnabled = displayRows.isNotEmpty() || chat.hasOlderMessages || chat.running,
+                // Before the first message the profile can still change: that opens a fresh chat in the other one.
+                profiles = if (displayRows.isEmpty() && !chat.hasOlderMessages && !chat.running) profiles else emptyList(),
+                onProfile = { actions.onNew(it, chat.title) }
             )
 
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 // Desktop keeps a readable column on wide screens; the list still scrolls edge to edge.
                 val sideGutter = ((maxWidth - ReadableWidth) / 2).coerceAtLeast(0.dp)
-                if (displayRows.isEmpty() && !chat.hasOlderMessages) {
-                    ChatIntro(chat, onSuggestion = { actions.onDraftChange(it) })
-                }
                 LazyColumn(
                     Modifier.fillMaxSize(),
                     state = state,
@@ -286,6 +289,10 @@ internal fun ChatThread(
                             )
                         }
                     }
+                }
+                // Above the (empty) transcript, which would otherwise take every touch meant for the pills.
+                if (displayRows.isEmpty() && !chat.hasOlderMessages) {
+                    ChatIntro(chat, onSuggestion = { actions.onDraftChange(it) })
                 }
                 JumpToLatestButton(
                     visible = showJump,
@@ -438,7 +445,10 @@ private fun ChatThreadTopBar(
     onBack: () -> Unit,
     onSwitcher: () -> Unit,
     onArtifacts: () -> Unit,
-    onNewChat: () -> Unit
+    onNewChat: () -> Unit,
+    newChatEnabled: Boolean = true,
+    profiles: List<HermesProfile> = emptyList(),
+    onProfile: (String) -> Unit = {}
 ) {
     Column {
         Row(
@@ -459,7 +469,15 @@ private fun ChatThreadTopBar(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // The subtitle is its own target while the profile can change; the title still opens the switcher.
+                    val pickProfile = profiles.size > 1
+                    var profileMenu by remember { mutableStateOf(false) }
+                    Box {
+                    Row(
+                        if (pickProfile) Modifier.clip(MaterialTheme.shapes.small).clickable(onClickLabel = stringResource(R.string.chat_change_profile)) { profileMenu = true }
+                        else Modifier,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         if (chat.running) {
                             ThinkingIndicator(dotSize = 4.dp, spacing = 2.dp)
                             Spacer(Modifier.width(6.dp))
@@ -472,6 +490,18 @@ private fun ChatThreadTopBar(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        if (pickProfile) Icon(Icons.Default.UnfoldMore, null, Modifier.padding(start = 2.dp).size(14.dp),
+                            tint = MaterialTheme.colorScheme.primary)
+                    }
+                    DropdownMenu(expanded = profileMenu, onDismissRequest = { profileMenu = false }) {
+                        profiles.forEach { profile ->
+                            DropdownMenuItem(
+                                text = { Text(profile.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                leadingIcon = { if (profile.name == chat.profile) Icon(Icons.Default.Check, null) },
+                                onClick = { profileMenu = false; if (profile.name != chat.profile) onProfile(profile.name) }
+                            )
+                        }
+                    }
                     }
                 }
                 Icon(Icons.Default.ExpandMore, stringResource(R.string.a21_switch_session), Modifier.padding(start = 2.dp).size(18.dp),
@@ -482,7 +512,7 @@ private fun ChatThreadTopBar(
                     Icon(Icons.Default.FolderOpen, stringResource(R.string.a21_files))
                 }
             }
-            IconButton(onClick = onNewChat) { Icon(Icons.Default.Edit, stringResource(R.string.ui_db18382a24)) }
+            IconButton(onClick = onNewChat, enabled = newChatEnabled) { Icon(Icons.Outlined.AddComment, stringResource(R.string.ui_db18382a24)) }
         }
         HorizontalDivider(color = MaterialTheme.hermes.line)
     }

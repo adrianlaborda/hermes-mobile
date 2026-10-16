@@ -73,4 +73,5 @@
     <string name="chat_section_expand">Desplegar %1$s</string>
     <string name="chat_section_collapse">Plegar %1$s</string>
     <string name="bot_offline">Sin conexión</string>
+    <string name="chat_change_profile">Cambiar perfil</string>
 </resources>

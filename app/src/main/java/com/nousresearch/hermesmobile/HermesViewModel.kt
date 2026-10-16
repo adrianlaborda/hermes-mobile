@@ -2046,10 +2046,17 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
-    fun newChat(profile: String = uiState.selectedProfile, title: String = "") = newWorkspaceChat(profile, title, null)
+    /**
+     * Where a chat started from the side menu, Home or the button goes: the gateway's default profile. Not
+     * [UiState.selectedProfile], which follows the last chat or bot opened, so a new chat would land in that bot.
+     * An empty chat can still move to another profile from its intro.
+     */
+    private fun mainProfile(): String = uiState.profiles.firstOrNull { it.isDefault }?.name ?: "default"
+
+    fun newChat(profile: String = mainProfile(), title: String = "") = newWorkspaceChat(profile, title, null)
 
     /** Opens a fresh chat with [prompt] waiting in the composer (the user reviews and sends it). */
-    fun askHermes(prompt: String, profile: String = uiState.selectedProfile) = newWorkspaceChat(profile, "", null, draft = prompt)
+    fun askHermes(prompt: String, profile: String = mainProfile()) = newWorkspaceChat(profile, "", null, draft = prompt)
 
     /**
      * Runs a plugin slash command over the authenticated chat connection (`command.dispatch`), whose

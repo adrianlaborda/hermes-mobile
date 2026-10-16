@@ -73,4 +73,5 @@
     <string name="chat_section_expand">Expand %1$s</string>
     <string name="chat_section_collapse">Collapse %1$s</string>
     <string name="bot_offline">Offline</string>
+    <string name="chat_change_profile">Change profile</string>
 </resources>
