@@ -44,12 +44,12 @@ private fun workspaceTabTitle(name: String): Int = when (name) {
     "Models" -> R.string.a14_models_advanced
     "Files" -> R.string.a14_files
     "Voice" -> R.string.a14_voice
-    else -> R.string.a14_settings
+    else -> R.string.i18n_server_settings
 }
 
 /**
- * One gateway workspace page (Files and Memory from Work; Models, Plugins and Voice from Settings; the server
- * settings from System), with the profile under its title, switched from there.
+ * One page of the gateway's own settings and data (Files and Memory from the side menu; Models, Voice and the
+ * server configuration from Settings), with the profile under its title, switched from there.
  */
 @Composable
 fun ParityScreen(
@@ -71,19 +71,34 @@ fun ParityScreen(
             actions = { IconButton(onClick = { c.load(tab) }, enabled = !c.busy) { Icon(Icons.Default.Refresh, stringResource(R.string.i18n_refresh)) } }
         )
         DashedDivider(color = MaterialTheme.hermes.line)
-        if (c.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        c.message?.let { message -> Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(shown(message), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-            TextButton(onClick = { c.message = null }) { Text(stringResource(R.string.ui_48845bff33)) }
-        } }
-        when(tab) {
-            "Memory" -> MemoryPage(c)
-            "Plugins" -> PluginsPage(c)
-            "Models" -> ModelsPage(c)
-            "Files" -> FilesPage(c)
-            "Voice" -> VoicePage(c)
-            "Settings" -> SettingsPage(c)
-        }
+        WorkspaceBody(c, tab)
+    }
+}
+
+/** A workspace page's content under someone else's header: Capabilities shows Plugins this way, as a tab. */
+@Composable
+fun WorkspaceContent(repo: HermesRepository, profile: String, tab: String) {
+    val scope = rememberCoroutineScope()
+    val c = remember(repo, profile) { ParityController(repo, profile, scope) }
+    DisposableEffect(c) { onDispose { c.dispose() } }
+    LaunchedEffect(c, tab) { c.load(tab) }
+    Column(Modifier.fillMaxSize()) { WorkspaceBody(c, tab) }
+}
+
+@Composable
+private fun WorkspaceBody(c: ParityController, tab: String) {
+    if (c.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+    c.message?.let { message -> Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(shown(message), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+        TextButton(onClick = { c.message = null }) { Text(stringResource(R.string.ui_48845bff33)) }
+    } }
+    when(tab) {
+        "Memory" -> MemoryPage(c)
+        "Plugins" -> PluginsPage(c)
+        "Models" -> ModelsPage(c)
+        "Files" -> FilesPage(c)
+        "Voice" -> VoicePage(c)
+        "Settings" -> SettingsPage(c)
     }
     FeatureConsent(c, tab)
 }

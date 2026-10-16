@@ -144,19 +144,6 @@ private fun nextRunLabel(at: Long?): String {
 }
 
 @Composable
-fun WorkHub(onMenu: () -> Unit, onCron: () -> Unit, onFiles: () -> Unit, onMemory: () -> Unit) {
-    LazyColumn {
-        item {
-            HermesTopBar(stringResource(R.string.a14_work), stringResource(R.string.a14_work_hint), leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } })
-            DashedDivider(color = MaterialTheme.hermes.line)
-        }
-        item { FlatRow(stringResource(R.string.a14_files), stringResource(R.string.a14_files_hint), leading = { Icon(Icons.Default.FolderOpen, null) }, trailing = { Icon(Icons.Default.ChevronRight, null) }, onClick = onFiles) }
-        item { FlatRow(stringResource(R.string.a14_scheduled), stringResource(R.string.a14_scheduled_hint), leading = { Icon(Icons.Default.Schedule, null) }, trailing = { Icon(Icons.Default.ChevronRight, null) }, onClick = onCron) }
-        item { FlatRow(stringResource(R.string.a14_memory), stringResource(R.string.a14_memory_hint), leading = { Icon(Icons.Default.AutoAwesome, null) }, trailing = { Icon(Icons.Default.ChevronRight, null) }, onClick = onMemory) }
-    }
-}
-
-@Composable
 fun SystemPage(
     repo: HermesRepository, profile: String, profiles: List<String> = emptyList(), onProfile: (String) -> Unit = {},
     onMenu: () -> Unit = {}, onSettings: () -> Unit

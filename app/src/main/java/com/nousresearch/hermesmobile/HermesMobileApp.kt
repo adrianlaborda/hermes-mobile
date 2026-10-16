@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddComment
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,7 +32,6 @@ import com.nousresearch.hermesmobile.ui.theme.hermes
 fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
     HermesTheme {
         val s = vm.uiState
-        var workspaceTab by remember { mutableStateOf("Memory") }
         val drawerState = androidx.compose.material3.rememberDrawerState(androidx.compose.material3.DrawerValue.Closed)
         val scope = androidx.compose.runtime.rememberCoroutineScope()
         val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
@@ -93,6 +93,9 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                     activeSessionId = s.activeChat?.storedSessionId,
                     sessionDots = s.sessionDots,
                     onOpenSession = vm::openSession,
+                    profile = s.selectedProfile,
+                    profiles = s.profiles.map { it.name },
+                    onProfile = vm::selectProfile,
                     drawerState = drawerState
                 )
             }
@@ -153,31 +156,20 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                     // the full list (workspace, profiles, notifications) stays in the drawer.
                     FloatingActionButton(onClick = { vm.newChat() }, containerColor = MaterialTheme.hermes.accentTint,
                         contentColor = MaterialTheme.colorScheme.primary, elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp),
-                        modifier = Modifier.padding(top = 8.dp, bottom = 12.dp)) { Icon(Icons.Default.Edit, stringResource(R.string.ui_db18382a24)) }
+                        modifier = Modifier.padding(top = 8.dp, bottom = 12.dp)) { Icon(Icons.Outlined.AddComment, stringResource(R.string.ui_db18382a24)) }
                     listOf(MainSection.HOME to Icons.Default.SpaceDashboard, MainSection.CHAT to Icons.AutoMirrored.Filled.Chat, MainSection.BOTS to Icons.Default.SmartToy,
-                        MainSection.WORK to Icons.Default.Schedule,
-                        MainSection.SYSTEM to Icons.Default.MonitorHeart, MainSection.MORE to Icons.Default.Settings).forEach { (section, icon) ->
-                        NavigationRailItem(selected = s.section == section || (section == MainSection.WORK && s.section == MainSection.CRON), onClick = { if(section == MainSection.CHAT) vm.closeActiveChat() else vm.switchSection(section) },
-                            icon = { Icon(icon, null) }, label = { Text(stringResource(when (section) {
-                                MainSection.HOME -> R.string.a14_home
-                                MainSection.WORK -> R.string.a14_work
-                                MainSection.SYSTEM -> R.string.a14_system
-                                MainSection.CHAT -> R.string.ui_ef5b4049bb
-                                MainSection.BOTS -> R.string.ui_f17c0acbd8
-                                MainSection.CRON -> R.string.ui_61b7bb44e2
-                                MainSection.MESSAGING -> R.string.ui_4c8906cf76
-                                MainSection.WORKSPACE -> R.string.ui_87bb59ba2f
-                                else -> R.string.ui_d47d7cb0e4
-                            })) })
+                        MainSection.CAPABILITIES to Icons.Default.Psychology, MainSection.FILES to Icons.Default.FolderOpen,
+                        MainSection.CRON to Icons.Default.Schedule, MainSection.MORE to Icons.Default.Settings).forEach { (section, icon) ->
+                        NavigationRailItem(selected = s.section == section, onClick = { if(section == MainSection.CHAT) vm.closeActiveChat() else vm.switchSection(section) },
+                            icon = { Icon(icon, null) }, label = { Text(stringResource(sectionTitle(section))) })
                     }
                 }
                 Box(Modifier.weight(1f).fillMaxHeight()) {
 
                 when (s.section) {
                     MainSection.HOME -> ExperienceHome(s, openDrawer, vm::switchSection, { vm.newChat() }, vm::openSession)
-                    MainSection.WORK -> WorkHub(openDrawer, { vm.switchSection(MainSection.CRON) }, { workspaceTab = "Files"; vm.switchSection(MainSection.WORKSPACE) }, { workspaceTab = "Memory"; vm.switchSection(MainSection.WORKSPACE) })
                     MainSection.SYSTEM -> vm.featureRepository()?.let { repo -> key(repo, s.selectedProfile) {
-                        SystemPage(repo, s.selectedProfile, s.profiles.map { it.name }, vm::selectProfile, onMenu = openDrawer) { workspaceTab = "Settings"; vm.switchSection(MainSection.WORKSPACE) }
+                        SystemPage(repo, s.selectedProfile, s.profiles.map { it.name }, vm::selectProfile, onMenu = openDrawer) { vm.switchSection(MainSection.SERVER_SETTINGS) }
                     } }
                     MainSection.CHAT -> ChatRoute(vm, s, openDrawer)
                     MainSection.BOTS -> BotsScreen(
@@ -261,7 +253,13 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         onDismissWebhookReceipt = vm::dismissWebhookReceipt,
                         onRestartGateway = vm::restartMessagingGateway
                     )
-                    MainSection.CAPABILITIES -> CapabilitiesScreen(
+                    MainSection.CAPABILITIES, MainSection.PROVIDERS -> CapabilitiesScreen(
+                        providers = s.section == MainSection.PROVIDERS,
+                        pluginsContent = {
+                            vm.featureRepository()?.let { repo -> key(repo, s.capabilityProfile) {
+                                com.nousresearch.hermesmobile.features.WorkspaceContent(repo, s.capabilityProfile, "Plugins")
+                            } }
+                        },
                         profiles = s.profiles,
                         profile = s.capabilityProfile,
                         snapshot = s.capabilities,
@@ -313,15 +311,36 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         onExport = vm::exportManagedProfile,
                         onImport = vm::importManagedProfile
                     )
-                    MainSection.WORKSPACE -> {
-                        vm.featureRepository()?.let { repo -> key(repo, s.selectedProfile) {
+                    MainSection.FILES, MainSection.MEMORY, MainSection.MODELS, MainSection.VOICE, MainSection.SERVER_SETTINGS -> {
+                        val page = when (s.section) {
+                            MainSection.FILES -> "Files"
+                            MainSection.MEMORY -> "Memory"
+                            MainSection.MODELS -> "Models"
+                            MainSection.VOICE -> "Voice"
+                            else -> "Settings"
+                        }
+                        vm.featureRepository()?.let { repo -> key(repo, s.selectedProfile, page) {
                             ParityScreen(
-                                repo, s.selectedProfile, workspaceTab,
+                                repo, s.selectedProfile, page,
                                 profiles = s.profiles.map { it.name }, onProfile = vm::selectProfile,
                                 onMenu = openDrawer
                             )
                         } }
                     }
+                    MainSection.GATEWAYS -> GatewaysScreen(
+                        onMenu = openDrawer,
+                        config = s.savedConfig,
+                        connections = s.connections,
+                        status = s.status,
+                        profileCount = s.profiles.size,
+                        sessionCount = s.sessions.size,
+                        onRefresh = { vm.refreshAll() },
+                        onDisconnect = { vm.disconnect(clearSaved = false) },
+                        onSignOut = vm::signOutActive,
+                        onSwitchConnection = vm::switchConnection,
+                        onForgetConnection = vm::forgetConnection,
+                        onAddConnection = vm::addAnotherConnection
+                    )
                     MainSection.NOTIFICATIONS -> com.nousresearch.hermesmobile.push.PushSettings(
                         s.savedConfig, s.selectedProfile, s.profiles.map { it.name },
                         onMenu = openDrawer,
@@ -332,24 +351,9 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                     MainSection.MORE -> MoreScreen(
                         onMenu = openDrawer,
                         config = s.savedConfig,
-                        connections = s.connections,
                         status = s.status,
-                        profileCount = s.profiles.size,
                         profileNames = s.profiles.map { it.name },
-                        sessionCount = s.sessions.size,
-                        onNotifications = { vm.switchSection(MainSection.NOTIFICATIONS) },
-                        onSystem = { vm.switchSection(MainSection.SYSTEM) },
-                        onConnections = { vm.switchSection(MainSection.MESSAGING) },
-                        onFeature = { tab -> workspaceTab = tab; vm.switchSection(MainSection.WORKSPACE) },
-                        onRefresh = { vm.refreshAll() },
-                        onCapabilities = { vm.switchSection(MainSection.CAPABILITIES) },
-                        onProfiles = { vm.switchSection(MainSection.PROFILES) },
-                        onWorkspace = { vm.switchSection(MainSection.WORKSPACE) },
-                        onDisconnect = { vm.disconnect(clearSaved = false) },
-                        onSignOut = vm::signOutActive,
-                        onSwitchConnection = vm::switchConnection,
-                        onForgetConnection = vm::forgetConnection,
-                        onAddConnection = vm::addAnotherConnection
+                        onOpen = vm::switchSection
                     )
                 }
                 if (s.loading) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -571,4 +575,25 @@ private fun rememberHermesSnackbarHostState(message: String?, clear: () -> Unit)
         }
     }
     return host
+}
+
+/** A section's name, as the side menu and the navigation rail show it. */
+internal fun sectionTitle(section: MainSection): Int = when (section) {
+    MainSection.HOME -> R.string.a14_home
+    MainSection.CHAT -> R.string.ui_ef5b4049bb
+    MainSection.BOTS -> R.string.ui_f17c0acbd8
+    MainSection.CAPABILITIES -> R.string.i18n_capabilities
+    MainSection.MESSAGING -> R.string.i18n_messaging
+    MainSection.FILES -> R.string.a14_files
+    MainSection.CRON -> R.string.ui_61b7bb44e2
+    MainSection.MEMORY -> R.string.a14_memory
+    MainSection.MODELS -> R.string.i18n_set_models
+    MainSection.VOICE -> R.string.a14_voice
+    MainSection.SERVER_SETTINGS -> R.string.i18n_server_settings
+    MainSection.PROVIDERS -> R.string.i18n_providers
+    MainSection.GATEWAYS -> R.string.ui_dc27311748
+    MainSection.SYSTEM -> R.string.a14_system
+    MainSection.PROFILES -> R.string.ui_535e52e4a2
+    MainSection.NOTIFICATIONS -> R.string.push_title
+    MainSection.MORE -> R.string.a21_settings
 }

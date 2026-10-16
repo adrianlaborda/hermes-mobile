@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalUriHandler
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Chat
@@ -21,70 +22,110 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.nousresearch.hermesmobile.MainSection
 import com.nousresearch.hermesmobile.data.GatewayAuthMode
 import com.nousresearch.hermesmobile.data.GatewayConfig
 import com.nousresearch.hermesmobile.data.GatewayStatus
 import com.nousresearch.hermesmobile.ui.components.*
 import com.nousresearch.hermesmobile.ui.theme.hermes
 
+/**
+ * Settings, laid out like Hermes Desktop's: the agent (models, voice, configuration), where its models come from
+ * (providers), the gateways it runs on (connections, system, profiles), notifications and the app itself.
+ * Each row opens a page of its own; nothing here repeats an entry of the side menu.
+ */
 @Composable
 fun MoreScreen(
     onMenu: () -> Unit,
     config: GatewayConfig?,
-    connections: List<GatewayConfig>,
     status: GatewayStatus?,
-    profileCount: Int,
     profileNames: List<String> = emptyList(),
-    sessionCount: Int,
-    onNotifications: () -> Unit,
-    onSystem: () -> Unit,
-    onConnections: () -> Unit,
-    onFeature: (String) -> Unit,
-    onRefresh: () -> Unit,
-    onCapabilities: () -> Unit,
-    onProfiles: () -> Unit,
-    onWorkspace: () -> Unit,
-    onDisconnect: () -> Unit,
-    onSignOut: () -> Unit,
-    onSwitchConnection: (String) -> Unit,
-    onForgetConnection: (String) -> Unit,
-    onAddConnection: () -> Unit
+    onOpen: (MainSection) -> Unit
 ) {
-    var details by remember { mutableStateOf(false) }
-    var confirmForget by remember { mutableStateOf<GatewayConfig?>(null) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 22.dp)) {
         item {
             HermesTopBar(stringResource(R.string.a21_settings), listOfNotNull(config?.displayLabel, status?.version?.let { "Hermes $it" }).joinToString(" · ").ifBlank { null },
                 leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } })
             DashedDivider(color = MaterialTheme.hermes.line)
             com.nousresearch.hermesmobile.update.UpdateNotices()
-            SectionLabel(stringResource(R.string.a14_intelligence))
-            FlatRow(stringResource(R.string.a14_intelligence_hint), leading = { Icon(Icons.Default.Psychology, null) }, onClick = onCapabilities)
-            FlatRow(stringResource(R.string.a14_models_advanced), leading = { Icon(Icons.Default.Tune, null) }, onClick = { onFeature("Models") })
-            FlatRow(stringResource(R.string.a14_plugins), leading = { Icon(Icons.Default.Extension, null) }, onClick = { onFeature("Plugins") })
-            FlatRow(stringResource(R.string.a14_voice), leading = { Icon(Icons.Default.RecordVoiceOver, null) }, onClick = { onFeature("Voice") })
-            SectionLabel(stringResource(R.string.a14_system))
-            FlatRow(stringResource(R.string.a14_system_hint), leading = { Icon(Icons.Default.MonitorHeart, null) }, onClick = onSystem)
-            FlatRow(stringResource(R.string.a14_connections), leading = { Icon(Icons.Default.Hub, null) }, onClick = onConnections)
+
+            SectionLabel(stringResource(R.string.i18n_set_agent))
+            SettingsLink(Icons.Default.Tune, stringResource(R.string.i18n_set_models), stringResource(R.string.i18n_set_models_hint)) { onOpen(MainSection.MODELS) }
+            SettingsLink(Icons.Default.RecordVoiceOver, stringResource(R.string.a14_voice), stringResource(R.string.i18n_set_voice_hint)) { onOpen(MainSection.VOICE) }
+            SettingsLink(Icons.Default.SettingsSuggest, stringResource(R.string.i18n_server_settings), stringResource(R.string.i18n_set_config_hint)) { onOpen(MainSection.SERVER_SETTINGS) }
+
+            SectionLabel(stringResource(R.string.i18n_providers))
+            SettingsLink(Icons.Default.Key, stringResource(R.string.i18n_providers), stringResource(R.string.i18n_set_providers_hint)) { onOpen(MainSection.PROVIDERS) }
+
+            SectionLabel(stringResource(R.string.i18n_set_gateways))
+            SettingsLink(Icons.Default.Dns, stringResource(R.string.ui_dc27311748), config?.displayLabel ?: stringResource(R.string.i18n_set_connections_hint)) { onOpen(MainSection.GATEWAYS) }
+            SettingsLink(Icons.Default.MonitorHeart, stringResource(R.string.a14_system), stringResource(R.string.i18n_set_system_hint)) { onOpen(MainSection.SYSTEM) }
+            SettingsLink(Icons.Default.ManageAccounts, stringResource(R.string.ui_535e52e4a2), stringResource(R.string.ui_4dd643b524)) { onOpen(MainSection.PROFILES) }
+
+            SectionLabel(stringResource(R.string.push_title))
+            SettingsLink(Icons.Default.NotificationsNone, stringResource(R.string.push_title), stringResource(R.string.i18n_set_push_hint)) { onOpen(MainSection.NOTIFICATIONS) }
+
             SectionLabel(stringResource(R.string.a14_app_settings))
             com.nousresearch.hermesmobile.ui.AppearanceSettings()
             com.nousresearch.hermesmobile.ui.LanguageSettings()
-            FlatRow(stringResource(R.string.a14_connection_details), trailing = { Icon(if (details) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null) }, onClick = { details = !details })
-            if (details) {
+            com.nousresearch.hermesmobile.assist.AssistSettingsSection(profileNames)
+        }
+        item { AboutSection() }
+    }
+}
+
+@Composable
+private fun SettingsLink(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, description: String?, onClick: () -> Unit) =
+    FlatRow(title, description, leading = { Icon(icon, null) }, trailing = { Icon(Icons.Default.ChevronRight, null) }, onClick = onClick)
+
+/** The gateways this phone knows: switch, add, forget, and the active one's details and session controls. */
+@Composable
+fun GatewaysScreen(
+    onMenu: () -> Unit,
+    config: GatewayConfig?,
+    connections: List<GatewayConfig>,
+    status: GatewayStatus?,
+    profileCount: Int,
+    sessionCount: Int,
+    onRefresh: () -> Unit,
+    onDisconnect: () -> Unit,
+    onSignOut: () -> Unit,
+    onSwitchConnection: (String) -> Unit,
+    onForgetConnection: (String) -> Unit,
+    onAddConnection: () -> Unit
+) {
+    var confirmForget by remember { mutableStateOf<GatewayConfig?>(null) }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 22.dp)) {
+        item {
+            HermesTopBar(stringResource(R.string.ui_dc27311748), pluralStringResource(R.plurals.i18n_gateways_count, connections.size, connections.size),
+                leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
+                actions = { IconButton(onClick = onAddConnection) { Icon(Icons.Default.Add, stringResource(R.string.ui_685f88ae3d)) } })
+            DashedDivider(color = MaterialTheme.hermes.line)
+            SectionLabel(stringResource(R.string.i18n_set_saved_gateways))
+        }
+        items(connections, key = { it.id }) { connection ->
+            val active = connection.id == config?.id
+            FlatRow(
+                leading = { Icon(if (active) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked, null,
+                    tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) },
+                trailing = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (!active) TextButton(onClick = { onSwitchConnection(connection.id) }) { Text(stringResource(R.string.ui_39921a740b)) }
+                        IconButton(onClick = { confirmForget = connection }) { Icon(Icons.Default.DeleteOutline, stringResource(R.string.ui_a6bd489d95)) }
+                    }
+                }
+            ) {
+                Text(connection.displayLabel, style = MaterialTheme.typography.bodyLarge)
+                Text(connection.baseUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(authLabel(connection), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        item {
             SectionLabel(stringResource(R.string.ui_34f54fe10b))
-            FlatRow(leading = { Icon(Icons.Default.Dns, null) }) {
-                Text(config?.displayLabel ?: "Hermes")
-                Text(config?.baseUrl.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            FlatRow(leading = { Icon(Icons.Default.Security, null) }) {
-                Text(stringResource(R.string.ui_66880d2d82))
-                Text(authLabel(config), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
             FlatRow(leading = { Icon(Icons.Default.Fingerprint, null) }) {
                 Text(stringResource(R.string.ui_19ff1c8c79))
                 Text(status?.installId?.ifBlank { stringResource(R.string.i18n_unknown) } ?: stringResource(R.string.i18n_unknown), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            SectionLabel(stringResource(R.string.ui_307d5e40d4))
             FlatRow(leading = { Icon(Icons.Default.SmartToy, null) }) {
                 Text(stringResource(R.string.ui_0045267106))
                 Text(profileCount.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -93,73 +134,18 @@ fun MoreScreen(
                 Text(stringResource(R.string.ui_1d432f5869))
                 Text(sessionCount.toString(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            FlatRow(stringResource(R.string.ui_7ce64141b1), leading = { Icon(Icons.Default.Refresh, null) }, onClick = onRefresh)
+            FlatRow(stringResource(R.string.ui_2c47dab8a6), leading = { Icon(Icons.Default.LinkOff, null) }, onClick = onDisconnect)
+            FlatRow(leading = { Icon(Icons.AutoMirrored.Filled.Logout, null, tint = MaterialTheme.colorScheme.error) }, onClick = onSignOut) {
+                Text(stringResource(R.string.ui_5dec8319b4), color = MaterialTheme.colorScheme.error)
             }
-            com.nousresearch.hermesmobile.assist.AssistSettingsSection(profileNames)
-            SectionLabel(stringResource(R.string.ui_5a23444828))
-            FlatRow(title = androidx.compose.ui.res.stringResource(com.nousresearch.hermesmobile.R.string.push_title),
-                leading = { Icon(Icons.Default.NotificationsNone, null) }, onClick = onNotifications)
-            FlatRow(
-                title = stringResource(R.string.ui_535e52e4a2),
-                description = stringResource(R.string.ui_4dd643b524),
-                leading = { Icon(Icons.Default.ManageAccounts, null) },
-                trailing = { Icon(Icons.Default.ChevronRight, null) },
-                onClick = onProfiles
+            Text(
+                stringResource(R.string.i18n_more_disconnect_note),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 10.dp)
             )
-            SectionLabel(stringResource(R.string.ui_dc27311748))
         }
-
-        items(connections, key = { it.id }) { connection ->
-            val active = connection.id == config?.id
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Icon(if (active) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked, null)
-                Column(Modifier.weight(1f)) {
-                    Text(connection.displayLabel, style = MaterialTheme.typography.titleSmall)
-                    Text(connection.baseUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(authLabel(connection), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                if (!active) {
-                    TextButton(onClick = { onSwitchConnection(connection.id) }) { Text(stringResource(R.string.ui_39921a740b)) }
-                }
-                IconButton(onClick = { confirmForget = connection }) { Icon(Icons.Default.DeleteOutline, stringResource(R.string.ui_a6bd489d95)) }
-            }
-            DashedDivider(color = MaterialTheme.hermes.line)
-        }
-
-        item {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = onAddConnection, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Add, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.ui_685f88ae3d))
-                }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = onRefresh, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.Refresh, null)
-                        Text(stringResource(R.string.ui_7ce64141b1))
-                    }
-                    OutlinedButton(onClick = onDisconnect, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.LinkOff, null)
-                        Text(stringResource(R.string.ui_2c47dab8a6))
-                    }
-                }
-                Button(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.AutoMirrored.Filled.Logout, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.ui_5dec8319b4))
-                }
-                Text(
-                    stringResource(R.string.i18n_more_disconnect_note),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        item { AboutSection() }
     }
 
     confirmForget?.let { connection ->

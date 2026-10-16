@@ -20,8 +20,13 @@ import com.nousresearch.hermesmobile.ui.components.*
 import com.nousresearch.hermesmobile.ui.theme.hermes
 
 enum class CapabilitiesTab(val title: Int) {
-    MODELS(R.string.i18n_caps_models), SKILLS(R.string.i18n_skills), TOOLS(R.string.i18n_caps_tools), MCP(R.string.i18n_caps_mcp), KEYS(R.string.i18n_caps_keys)
+    MODELS(R.string.i18n_caps_models), SKILLS(R.string.i18n_skills), TOOLS(R.string.i18n_caps_tools), MCP(R.string.i18n_caps_mcp),
+    PLUGINS(R.string.a14_plugins), KEYS(R.string.i18n_caps_keys)
 }
+
+/** As in Desktop: Capabilities is what the agent can do; Providers (in Settings) is where its models come from. */
+private val CAPABILITY_TABS = listOf(CapabilitiesTab.SKILLS, CapabilitiesTab.TOOLS, CapabilitiesTab.MCP, CapabilitiesTab.PLUGINS)
+private val PROVIDER_TABS = listOf(CapabilitiesTab.MODELS, CapabilitiesTab.KEYS)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,13 +69,16 @@ fun CapabilitiesScreen(
     onStartOAuth: (CapabilityOAuthProvider) -> Unit,
     onDisconnectOAuth: (CapabilityOAuthProvider) -> Unit,
     onSubmitOAuthCode: (String) -> Unit,
-    onDismissOAuth: () -> Unit
+    onDismissOAuth: () -> Unit,
+    providers: Boolean = false,
+    pluginsContent: @Composable () -> Unit = {}
 ) {
-    var tab by remember { mutableStateOf(CapabilitiesTab.MODELS) }
+    val tabs = if (providers) PROVIDER_TABS else CAPABILITY_TABS
+    var tab by remember(providers) { mutableStateOf(tabs.first()) }
 
     Column(Modifier.fillMaxSize()) {
         HermesTopBar(
-            title = stringResource(R.string.ui_9460f16ac9),
+            title = stringResource(if (providers) R.string.i18n_providers else R.string.i18n_capabilities),
             subtitleContent = { com.nousresearch.hermesmobile.ui.components.ProfileSwitcher(profile, profiles.map { it.name }, onProfile) },
             leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } },
             actions = {
@@ -78,8 +86,8 @@ fun CapabilitiesScreen(
             }
         )
         DashedDivider(color = MaterialTheme.hermes.line)
-        SecondaryScrollableTabRow(selectedTabIndex = tab.ordinal, edgePadding = 8.dp) {
-            CapabilitiesTab.entries.forEach { item ->
+        SecondaryScrollableTabRow(selectedTabIndex = tabs.indexOf(tab).coerceAtLeast(0), edgePadding = 8.dp) {
+            tabs.forEach { item ->
                 Tab(selected = tab == item, onClick = { tab = item }, text = { Text(stringResource(item.title)) })
             }
         }
@@ -92,6 +100,7 @@ fun CapabilitiesScreen(
             CapabilitiesTab.TOOLS -> ToolsPane(snapshot, actionBusy, onToolsetEnabled, onToolsetConfig)
             CapabilitiesTab.MCP -> McpPane(snapshot, actionBusy, onAddMcp, onRemoveMcp, onMcpEnabled, onTestMcp, onInstallMcpCatalog)
             CapabilitiesTab.KEYS -> KeysPane(snapshot, actionBusy, onSetEnv, onDeleteEnv)
+            CapabilitiesTab.PLUGINS -> pluginsContent()
         }
     }
 

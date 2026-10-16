@@ -84,10 +84,10 @@
         <item quantity="one">%d plataforma</item>
         <item quantity="other">%d plataformas</item>
     </plurals>
-    <string name="i18n_caps_models">Modelos</string>
+    <string name="i18n_caps_models">Modelo y cuentas</string>
     <string name="i18n_caps_tools">Herramientas</string>
     <string name="i18n_caps_mcp">MCP</string>
-    <string name="i18n_caps_keys">Claves</string>
+    <string name="i18n_caps_keys">Claves de API</string>
     <string name="i18n_caps_remote">%1$s · gateway remoto</string>
     <string name="i18n_caps_model_na">Ajustes de modelo no disponibles</string>
     <string name="i18n_caps_model_na_hint">Este gateway no ofrece la API de ajustes de modelo.</string>
@@ -343,4 +343,24 @@
     <string name="i18n_sys_server">Servidor</string>
     <string name="i18n_sys_resources">Recursos</string>
     <string name="i18n_sys_more">Más</string>
+    <string name="i18n_providers">Proveedores</string>
+    <string name="i18n_capabilities">Capacidades</string>
+    <string name="i18n_server_settings">Configuración</string>
+    <string name="i18n_set_agent">Agente</string>
+    <string name="i18n_set_models">Modelos</string>
+    <string name="i18n_set_models_hint">Modelo principal, tareas auxiliares y mezcla de agentes</string>
+    <string name="i18n_set_voice_hint">Voz y transcripción del gateway</string>
+    <string name="i18n_set_config_hint">Ajustes del agente, operaciones y consumo</string>
+    <string name="i18n_set_providers_hint">Cuentas, claves de API y endpoints propios</string>
+    <string name="i18n_set_gateways">Gateways</string>
+    <string name="i18n_set_connections_hint">Los servidores a los que se conecta este móvil</string>
+    <string name="i18n_set_system_hint">Recursos, registros y consumo</string>
+    <string name="i18n_set_push_hint">Avisos cuando Hermes termina o te necesita</string>
+    <string name="i18n_set_saved_gateways">Gateways guardados</string>
+    <plurals name="i18n_gateways_count">
+        <item quantity="one">%d gateway</item>
+        <item quantity="other">%d gateways</item>
+    </plurals>
+    <string name="i18n_messaging">Mensajería</string>
+    <string name="i18n_manage_profiles">Gestionar perfiles</string>
 </resources>

@@ -389,7 +389,7 @@ else:
     capabilities_ui = capabilities_ui_path.read_text()
     capabilities_ui = with_resource_labels(capabilities_ui)
     for required in ('MODELS(R.string.i18n_caps_models)', 'SKILLS(R.string.i18n_skills)', 'TOOLS(R.string.i18n_caps_tools)',
-                     'MCP(R.string.i18n_caps_mcp)', 'KEYS(R.string.i18n_caps_keys)',
+                     'MCP(R.string.i18n_caps_mcp)', 'KEYS(R.string.i18n_caps_keys)', 'PLUGINS(R.string.a14_plugins)',
                      'Custom endpoints', 'Provider accounts', 'Search Skills Hub', 'Add MCP server', 'Provider and tool credentials'):
         if required not in capabilities_ui:
             errors.append(f'alpha8 Capabilities UI invariant missing: {required}')

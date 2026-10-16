@@ -84,10 +84,10 @@
         <item quantity="one">%d platform</item>
         <item quantity="other">%d platforms</item>
     </plurals>
-    <string name="i18n_caps_models">Models</string>
+    <string name="i18n_caps_models">Model and accounts</string>
     <string name="i18n_caps_tools">Tools</string>
     <string name="i18n_caps_mcp">MCP</string>
-    <string name="i18n_caps_keys">Keys</string>
+    <string name="i18n_caps_keys">API keys</string>
     <string name="i18n_caps_remote">%1$s · remote gateway</string>
     <string name="i18n_caps_model_na">Model settings unavailable</string>
     <string name="i18n_caps_model_na_hint">This gateway doesn\'t offer the model settings API.</string>
@@ -343,4 +343,24 @@
     <string name="i18n_sys_server">Server</string>
     <string name="i18n_sys_resources">Resources</string>
     <string name="i18n_sys_more">More</string>
+    <string name="i18n_providers">Providers</string>
+    <string name="i18n_capabilities">Capabilities</string>
+    <string name="i18n_server_settings">Configuration</string>
+    <string name="i18n_set_agent">Agent</string>
+    <string name="i18n_set_models">Models</string>
+    <string name="i18n_set_models_hint">Main model, auxiliary tasks and mixture of agents</string>
+    <string name="i18n_set_voice_hint">The gateway\'s speech and transcription</string>
+    <string name="i18n_set_config_hint">The agent\'s settings, operations and usage</string>
+    <string name="i18n_set_providers_hint">Accounts, API keys and custom endpoints</string>
+    <string name="i18n_set_gateways">Gateways</string>
+    <string name="i18n_set_connections_hint">The servers this phone connects to</string>
+    <string name="i18n_set_system_hint">Resources, logs and usage</string>
+    <string name="i18n_set_push_hint">Alerts when Hermes finishes or needs you</string>
+    <string name="i18n_set_saved_gateways">Saved gateways</string>
+    <plurals name="i18n_gateways_count">
+        <item quantity="one">%d gateway</item>
+        <item quantity="other">%d gateways</item>
+    </plurals>
+    <string name="i18n_messaging">Messaging</string>
+    <string name="i18n_manage_profiles">Manage profiles</string>
 </resources>

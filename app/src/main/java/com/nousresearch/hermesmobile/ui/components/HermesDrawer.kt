@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AddComment
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -41,6 +42,9 @@ fun HermesDrawer(
     activeSessionId: String? = null,
     sessionDots: Map<String, com.nousresearch.hermesmobile.data.SessionDot> = emptyMap(),
     onOpenSession: (com.nousresearch.hermesmobile.data.HermesSession) -> Unit = {},
+    profile: String = "",
+    profiles: List<String> = emptyList(),
+    onProfile: (String) -> Unit = {},
     drawerState: DrawerState? = null
 ) {
     val sheet: @Composable (@Composable ColumnScope.() -> Unit) -> Unit = { content ->
@@ -84,7 +88,7 @@ fun HermesDrawer(
                 modifier = Modifier.fillMaxWidth(),
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.hermes.lineStrong)
             ) {
-                Icon(Icons.Default.Edit, null, Modifier.size(17.dp))
+                Icon(Icons.Outlined.AddComment, null, Modifier.size(17.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.a14_new_chat))
             }
@@ -103,22 +107,62 @@ fun HermesDrawer(
                 }
             }
 
+            // Desktop's sidebar navigation: where the agent's work lives. Settings holds everything else.
             DrawerSection(stringResource(R.string.a21_agent))
-            DrawerItem(Icons.Default.Psychology, stringResource(R.string.a14_intelligence), current == MainSection.CAPABILITIES) { onClose(); onSelect(MainSection.CAPABILITIES) }
-            // Files, Routines and Memory open from Work; Models, Plugins and Voice from Settings.
-            DrawerItem(Icons.Default.Schedule, stringResource(R.string.a14_work), current == MainSection.WORK || current == MainSection.CRON || current == MainSection.WORKSPACE) { onClose(); onSelect(MainSection.WORK) }
-
-            DrawerSection(stringResource(R.string.a21_gateway))
-            DrawerItem(Icons.Default.MonitorHeart, stringResource(R.string.a14_system), current == MainSection.SYSTEM) { onClose(); onSelect(MainSection.SYSTEM) }
-            DrawerItem(Icons.Default.Hub, stringResource(R.string.a14_connections), current == MainSection.MESSAGING) { onClose(); onSelect(MainSection.MESSAGING) }
-            DrawerItem(Icons.Default.ManageAccounts, stringResource(R.string.ui_535e52e4a2), current == MainSection.PROFILES) { onClose(); onSelect(MainSection.PROFILES) }
-            DrawerItem(Icons.Default.NotificationsNone, stringResource(R.string.push_title), current == MainSection.NOTIFICATIONS, onClick = { onClose(); onNotifications() })
+            DrawerItem(Icons.Default.Psychology, stringResource(R.string.i18n_capabilities), current == MainSection.CAPABILITIES) { onClose(); onSelect(MainSection.CAPABILITIES) }
+            DrawerItem(Icons.Default.Hub, stringResource(R.string.i18n_messaging), current == MainSection.MESSAGING) { onClose(); onSelect(MainSection.MESSAGING) }
+            DrawerItem(Icons.Default.FolderOpen, stringResource(R.string.a14_files), current == MainSection.FILES) { onClose(); onSelect(MainSection.FILES) }
+            DrawerItem(Icons.Default.Schedule, stringResource(R.string.ui_61b7bb44e2), current == MainSection.CRON) { onClose(); onSelect(MainSection.CRON) }
+            DrawerItem(Icons.Default.AutoAwesome, stringResource(R.string.a14_memory), current == MainSection.MEMORY) { onClose(); onSelect(MainSection.MEMORY) }
 
             Spacer(Modifier.height(14.dp))
             DashedDivider(color = MaterialTheme.hermes.line)
             Spacer(Modifier.height(8.dp))
-            DrawerItem(Icons.Default.Settings, stringResource(R.string.a21_settings), current == MainSection.MORE) { onClose(); onSelect(MainSection.MORE) }
+            if (profile.isNotBlank()) DrawerProfile(profile, profiles, onProfile) { onClose(); onSelect(MainSection.PROFILES) }
+            DrawerItem(Icons.Default.Settings, stringResource(R.string.a21_settings), current in SETTINGS_PAGES) { onClose(); onSelect(MainSection.MORE) }
             AppearanceRow()
+        }
+    }
+}
+
+/** The pages Settings opens: the menu marks Settings while one of them is on screen. */
+private val SETTINGS_PAGES = setOf(
+    MainSection.MORE, MainSection.MODELS, MainSection.VOICE, MainSection.SERVER_SETTINGS, MainSection.PROVIDERS,
+    MainSection.GATEWAYS, MainSection.SYSTEM, MainSection.PROFILES, MainSection.NOTIFICATIONS
+)
+
+/** Desktop's profile pill: the active profile; tap to switch, or to manage profiles. */
+@Composable
+private fun DrawerProfile(profile: String, profiles: List<String>, onProfile: (String) -> Unit, onManage: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { open = true }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(Icons.Default.AccountCircle, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.ui_d696a35bdd), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(profile, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+            Icon(Icons.Default.UnfoldMore, stringResource(R.string.chat_change_profile), Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            profiles.forEach { name ->
+                DropdownMenuItem(
+                    text = { Text(name, maxLines = 1) },
+                    leadingIcon = { if (name == profile) Icon(Icons.Default.Check, null) },
+                    onClick = { open = false; if (name != profile) onProfile(name) }
+                )
+            }
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.i18n_manage_profiles)) },
+                leadingIcon = { Icon(Icons.Default.ManageAccounts, null) },
+                onClick = { open = false; onManage() }
+            )
         }
     }
 }

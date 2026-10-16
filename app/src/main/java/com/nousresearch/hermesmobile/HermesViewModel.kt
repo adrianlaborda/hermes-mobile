@@ -28,7 +28,14 @@ import java.net.URI
 import java.net.ConnectException
 import java.util.UUID
 
-enum class MainSection { HOME, WORK, SYSTEM, CHAT, BOTS, CRON, MESSAGING, CAPABILITIES, PROFILES, WORKSPACE, MORE, NOTIFICATIONS }
+/**
+ * The app's pages, laid out as Hermes Desktop does: the side menu holds the places you work in (Chats, Bots,
+ * Capabilities, Messaging, Files, Cron, Memory); Settings ([MORE]) holds the rest, one page each.
+ */
+enum class MainSection {
+    HOME, CHAT, BOTS, CAPABILITIES, MESSAGING, FILES, CRON, MEMORY,
+    MORE, MODELS, VOICE, SERVER_SETTINGS, PROVIDERS, GATEWAYS, SYSTEM, PROFILES, NOTIFICATIONS
+}
 
 data class PendingBotModelSave(
     val original: BotProfileConfig,
@@ -720,7 +727,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             }
             MainSection.CRON -> refreshCron()
             MainSection.MESSAGING -> viewModelScope.launch { refreshMessagingAndPairing() }
-            MainSection.CAPABILITIES -> {
+            MainSection.CAPABILITIES, MainSection.PROVIDERS -> {
                 val profile = uiState.capabilityProfile.takeIf { p -> uiState.profiles.any { it.name == p } }
                     ?: uiState.selectedProfile
                 uiState = uiState.copy(capabilityProfile = profile)
@@ -731,7 +738,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             MainSection.HOME -> refreshCron()
             // Chats lists the scheduled jobs in its Routines section.
             MainSection.CHAT -> refreshCron()
-            MainSection.WORK, MainSection.SYSTEM, MainSection.WORKSPACE, MainSection.MORE, MainSection.NOTIFICATIONS -> Unit
+            MainSection.SYSTEM, MainSection.MORE, MainSection.NOTIFICATIONS, MainSection.FILES, MainSection.MEMORY,
+            MainSection.MODELS, MainSection.VOICE, MainSection.SERVER_SETTINGS, MainSection.GATEWAYS -> Unit
         }
     }
 

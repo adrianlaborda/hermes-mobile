@@ -9,6 +9,18 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Changed
+
+- **Menus and Settings reorganized as in Hermes Desktop.** Each thing now has one place, two taps away at most.
+  - **Side menu**: Home, Chats and Bots; then **Capabilities** (skills, tools, MCP and plugins), **Messaging** (the
+    messaging platforms, access and webhooks, formerly "Connections"), **Files**, **Cron** and **Memory**. At the
+    bottom, the active profile (tap to switch, or to manage profiles) and Settings. "Work" and "Intelligence" are
+    gone, and so are System, Profiles and Notifications as separate entries.
+  - **Settings**: Agent (Models, Voice, Configuration), Providers (accounts, API keys and custom endpoints), Gateways
+    (the saved gateways, now a page of their own, System and Profiles), Notifications, and the app (appearance,
+    language, voice assistant, about and updates).
+  - **Routines are now called Cron**, and each one a job, as in Hermes Desktop.
+
 ## [0.3.0-beta.7] - 2026-10-16
 
 ### Added
