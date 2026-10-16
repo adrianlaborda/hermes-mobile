@@ -9,6 +9,8 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.7] - 2026-10-16
+
 ### Added
 
 - **Bots show their last message.** Each bot in **Bots** shows the newest message of its conversation in one line, as
@@ -58,6 +60,8 @@ server plugin it needs for notifications.
   conversation behind them. They now show as plain text, as in Hermes Desktop.
 - **Files** and the other workspace pages showed a "Done" note with a close button every time they opened (each
   folder read counted as an action). They now only show what the server reports, and a success note clears itself.
+
+Requires `hermes-android` 0.5.1. Version code 41.
 
 ## [0.3.0-beta.6] - 2026-10-16
 
@@ -272,7 +276,8 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.6...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.7...HEAD
+[0.3.0-beta.7]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.7
 [0.3.0-beta.6]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.6
 [0.3.0-beta.5]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.5
 [0.3.0-beta.4]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.4
