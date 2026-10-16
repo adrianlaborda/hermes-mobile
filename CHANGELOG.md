@@ -9,9 +9,13 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.4] - 2026-10-16
+
 ### Fixed
 
 - Back from a chat opened from **Bots** or **Home** returns there instead of to the Chats list.
+
+Requires `hermes-android` 0.5.1; the approval-notice fixes need 0.5.3. Version code 38.
 
 ## [0.3.0-beta.3] - 2026-10-15
 
@@ -167,6 +171,7 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.3...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.4...HEAD
+[0.3.0-beta.4]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.4
 [0.3.0-beta.3]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.3
 [0.3.0-beta.1]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.1
