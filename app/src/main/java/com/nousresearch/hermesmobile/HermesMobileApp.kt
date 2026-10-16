@@ -348,6 +348,9 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         onAskHermes = { profile, prompt -> vm.askHermes(prompt, profile) },
                         runCommand = { profile, name, arg -> vm.pluginCommand(profile, name, arg) }
                     )
+                    MainSection.APPEARANCE -> AppearanceScreen(openDrawer)
+                    MainSection.ASSISTANT -> AssistantScreen(openDrawer, s.profiles.map { it.name })
+                    MainSection.ABOUT -> AboutScreen(openDrawer)
                     MainSection.MORE -> MoreScreen(
                         onMenu = openDrawer,
                         config = s.savedConfig,
@@ -596,4 +599,7 @@ internal fun sectionTitle(section: MainSection): Int = when (section) {
     MainSection.PROFILES -> R.string.ui_535e52e4a2
     MainSection.NOTIFICATIONS -> R.string.push_title
     MainSection.MORE -> R.string.a21_settings
+    MainSection.APPEARANCE -> R.string.appearance
+    MainSection.ASSISTANT -> R.string.assist_settings_title
+    MainSection.ABOUT -> R.string.about_title
 }

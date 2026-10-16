@@ -363,4 +363,6 @@
     </plurals>
     <string name="i18n_messaging">Mensajería</string>
     <string name="i18n_manage_profiles">Gestionar perfiles</string>
+    <string name="i18n_set_appearance_hint">Tema, modo claro u oscuro e idioma</string>
+    <string name="i18n_set_assist_hint">Asistente predeterminado, perfil y voz</string>
 </resources>

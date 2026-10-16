@@ -66,13 +66,42 @@ fun MoreScreen(
             SettingsLink(Icons.Default.NotificationsNone, stringResource(R.string.push_title), stringResource(R.string.i18n_set_push_hint)) { onOpen(MainSection.NOTIFICATIONS) }
 
             SectionLabel(stringResource(R.string.a14_app_settings))
-            com.nousresearch.hermesmobile.ui.AppearanceSettings()
-            com.nousresearch.hermesmobile.ui.LanguageSettings()
-            com.nousresearch.hermesmobile.assist.AssistSettingsSection(profileNames)
+            SettingsLink(Icons.Default.Palette, stringResource(R.string.appearance), stringResource(R.string.i18n_set_appearance_hint)) { onOpen(MainSection.APPEARANCE) }
+            SettingsLink(Icons.Default.KeyboardVoice, stringResource(R.string.assist_settings_title), stringResource(R.string.i18n_set_assist_hint)) { onOpen(MainSection.ASSISTANT) }
+            SettingsLink(Icons.Default.Info, stringResource(R.string.about_title),
+                stringResource(R.string.about_version, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)) { onOpen(MainSection.ABOUT) }
         }
-        item { AboutSection() }
     }
 }
+
+/** A Settings page of the app itself: same header as the rest, its rows below. */
+@Composable
+private fun AppSettingsPage(title: String, onMenu: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 22.dp)) {
+        item {
+            HermesTopBar(title, leading = { IconButton(onClick = onMenu) { Icon(Icons.Default.Menu, stringResource(R.string.a21_menu)) } })
+            DashedDivider(color = MaterialTheme.hermes.line)
+            Column(content = content)
+        }
+    }
+}
+
+/** Settings → Appearance: light or dark, the Desktop theme and the app's language. */
+@Composable
+fun AppearanceScreen(onMenu: () -> Unit) = AppSettingsPage(stringResource(R.string.appearance), onMenu) {
+    com.nousresearch.hermesmobile.ui.AppearanceSettings()
+    com.nousresearch.hermesmobile.ui.LanguageSettings()
+}
+
+/** Settings → Voice assistant: the phone's assistant gesture and how Hermes answers it. */
+@Composable
+fun AssistantScreen(onMenu: () -> Unit, profileNames: List<String>) = AppSettingsPage(stringResource(R.string.assist_settings_title), onMenu) {
+    com.nousresearch.hermesmobile.assist.AssistSettingsSection(profileNames)
+}
+
+/** Settings → About: version, updates and links. */
+@Composable
+fun AboutScreen(onMenu: () -> Unit) = AppSettingsPage(stringResource(R.string.about_title), onMenu) { AboutSection() }
 
 @Composable
 private fun SettingsLink(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, description: String?, onClick: () -> Unit) =

@@ -128,7 +128,8 @@ fun HermesDrawer(
 /** The pages Settings opens: the menu marks Settings while one of them is on screen. */
 private val SETTINGS_PAGES = setOf(
     MainSection.MORE, MainSection.MODELS, MainSection.VOICE, MainSection.SERVER_SETTINGS, MainSection.PROVIDERS,
-    MainSection.GATEWAYS, MainSection.SYSTEM, MainSection.PROFILES, MainSection.NOTIFICATIONS
+    MainSection.GATEWAYS, MainSection.SYSTEM, MainSection.PROFILES, MainSection.NOTIFICATIONS,
+    MainSection.APPEARANCE, MainSection.ASSISTANT, MainSection.ABOUT
 )
 
 /** Desktop's profile pill: the active profile; tap to switch, or to manage profiles. */

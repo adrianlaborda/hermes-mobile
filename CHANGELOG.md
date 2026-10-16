@@ -17,8 +17,9 @@ server plugin it needs for notifications.
     bottom, the active profile (tap to switch, or to manage profiles) and Settings. "Work" and "Intelligence" are
     gone, and so are System, Profiles and Notifications as separate entries.
   - **Settings**: Agent (Models, Voice, Configuration), Providers (accounts, API keys and custom endpoints), Gateways
-    (the saved gateways, now a page of their own, System and Profiles), Notifications, and the app (appearance,
-    language, voice assistant, about and updates).
+    (the saved gateways, now a page of their own, System and Profiles), Notifications, and the app: Appearance (mode,
+    theme and language), Voice assistant and About (version and updates), each a page of its own so Settings fits on
+    one screen.
   - **Routines are now called Cron**, and each one a job, as in Hermes Desktop.
 
 ## [0.3.0-beta.7] - 2026-10-16
