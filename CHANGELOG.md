@@ -9,6 +9,8 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.8] - 2026-10-16
+
 ### Changed
 
 - **Menus and Settings reorganized as in Hermes Desktop.** Each thing now has one place, two taps away at most.
@@ -289,7 +291,8 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.7...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.8...HEAD
+[0.3.0-beta.8]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.8
 [0.3.0-beta.7]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.7
 [0.3.0-beta.6]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.6
 [0.3.0-beta.5]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.5
