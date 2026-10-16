@@ -19,6 +19,7 @@ This machine has no global `ANDROID_HOME`; prefix Gradle calls with `ANDROID_HOM
 - [SemVer](https://semver.org) with dot-separated pre-release identifiers: `0.3.0-beta.1`, `0.3.0-beta.2`, `0.3.0`. Never `beta2`: it sorts wrongly.
 - `versionCode` / `versionName` in `app/build.gradle.kts`. Bump **both** for any deliverable update: `adb install -r` silently fails to replace an older install unless `versionCode` increases.
 - User-visible changes go under `## [Unreleased]` in `CHANGELOG.md` (Keep a Changelog). A release moves them under a `## [X.Y.Z] - date` heading.
+- **Every release follows [RELEASING.md](RELEASING.md): read it before each one and use `scripts/release.py prepare|publish VERSION`, never hand-made tags.**
 - Releasing is pushing a tag `vX.Y.Z` that matches `versionName`. `.github/workflows/release.yml` checks the match, signs with the keystore from the repo secrets, attests the APK and publishes the GitHub release with notes from `scripts/release_notes.py`.
 - Local signed builds: `scripts/build-release.sh` (keystore path in `~/.gradle/gradle.properties`, password in the macOS Keychain).
 - Commits carry no AI co-author trailers.

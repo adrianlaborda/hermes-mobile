@@ -104,9 +104,16 @@ jobs:
           CERT: ${{ steps.package.outputs.cert }}
         run: |
           python3 scripts/release_notes.py "$VERSION" > notes.md
+          plugin="$(sed -n 's/.*MIN_PLUGIN = AppVersion(\([0-9]*\), \([0-9]*\), \([0-9]*\).*/\1.\2.\3/p' app/src/main/java/com/nousresearch/hermesmobile/update/AppUpdates.kt)"
+          if [ -z "$plugin" ]; then
+            echo "::error::MIN_PLUGIN not found in AppUpdates.kt"
+            exit 1
+          fi
           {
             echo
             echo "---"
+            echo
+            echo "**Server plugin:** notifications need [\`hermes-android\`](https://github.com/adrianlaborda/hermes-android-plugin) $plugin or newer."
             echo
             echo "**Install:** download \`hermes-mobile-$VERSION.apk\` below and open it on your phone."
             echo
