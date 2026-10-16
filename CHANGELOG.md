@@ -18,6 +18,9 @@ server plugin it needs for notifications.
 
 ### Changed
 
+- **A clearer notification icon.** The status bar icon is redrawn from the Hermes logo as a bold silhouette (hair,
+  face and headband) and is now a vector, so it stays sharp and recognisable at its small size.
+
 - **Bots: one green dot.** The green dot at the right of each bot, which meant its gateway was running, is gone: next
   to the new status dot it looked like a second unread mark. A bot whose gateway is stopped or unreachable now shows
   a crossed-out cloud and "Offline" instead.
