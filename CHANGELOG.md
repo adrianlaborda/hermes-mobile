@@ -9,6 +9,8 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.6] - 2026-10-16
+
 ### Added
 
 - **Fold the pinned chats.** Tap the **Pinned** header in **Chats** to collapse or expand it, so a long pinned list
@@ -37,6 +39,8 @@ server plugin it needs for notifications.
 
 - The suggestions in an empty chat (**Plan my day**, **Explain a concept**…) did nothing when tapped: the empty
   message list lay over them and took the touch.
+
+Requires `hermes-android` 0.5.1. Version code 40.
 
 ## [0.3.0-beta.5] - 2026-10-16
 
@@ -218,7 +222,8 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.5...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.6...HEAD
+[0.3.0-beta.6]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.6
 [0.3.0-beta.5]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.5
 [0.3.0-beta.4]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.4
 [0.3.0-beta.3]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.3
