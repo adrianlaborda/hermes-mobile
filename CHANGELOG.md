@@ -9,6 +9,11 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Recents in the side menu shows the latest chats.** Pinned chats no longer stay at the top of it; they keep their
+  place in **Chats**.
+
 ## [0.3.0-beta.8] - 2026-10-16
 
 ### Changed

@@ -86,9 +86,10 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                     onNewChat = { vm.newChat() },
                     onNotifications = { vm.switchSection(MainSection.NOTIFICATIONS) },
                     onClose = { scope.launch { drawerState.close() } },
+                    // Recents is pure recency, as in Desktop: pinning only orders the Chats list.
                     recentSessions = remember(s.sessions) {
                         s.sessions.filter { !it.hidden && !it.archived && !it.isRoutineRun }
-                            .sortedWith(compareByDescending<com.nousresearch.hermesmobile.data.HermesSession> { it.pinned }.thenByDescending { it.lastActive })
+                            .sortedByDescending { sessionEpochMillis(it.lastActive) }
                     },
                     activeSessionId = s.activeChat?.storedSessionId,
                     sessionDots = s.sessionDots,
