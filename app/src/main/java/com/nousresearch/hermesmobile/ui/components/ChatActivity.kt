@@ -36,7 +36,7 @@ fun ChatActivityBlock(messages: List<ChatMessage>) {
             ActivityStep(it.toolName, if(it.role == "tool") it.content else it.reasoning,
                 if(it.live) "running" else "", it.role != "tool")
         })
-        remember(messages) { messages.filter { it.role == "tool" }
+        remember(messages) { messages.filter { it.role == "tool" && com.nousresearch.hermesmobile.data.ToolArtifacts.delivers(it.toolName) }
             .flatMap { com.nousresearch.hermesmobile.data.ChatAudio.fromTool(it.content) }.distinct().take(12) }
             .forEach { ChatAudioPlayer(it) }
     }

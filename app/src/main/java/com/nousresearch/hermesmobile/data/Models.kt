@@ -413,7 +413,8 @@ data class ChatMessage(
                             is JSONObject -> item.optString("name").ifBlank { item.optString("filename") }.takeIf { it.isNotBlank() }?.let(::add)
                         }
                     }
-                    Regex("@(?:file|image):([^\\s]+)").findAll(content).forEach { match ->
+                    // `@file:`/`@image:` are the composer's attachment references: only a user's message attaches.
+                    if (role == "user") Regex("@(?:file|image):([^\\s]+)").findAll(content).forEach { match ->
                         match.groupValues[1].substringAfterLast('/').takeIf { it.isNotBlank() }?.let { if (it !in this) add(it) }
                     }
                 },

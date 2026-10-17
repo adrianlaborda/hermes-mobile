@@ -9,6 +9,15 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Files row under a reply only lists files the agent produced.** Files it only read, and pages it fetched
+  (such as `llms.txt` or a guide), no longer show up there as if they had been attached. Same rule as Hermes Desktop.
+- **Audio players and attachment chips only appear for what was really produced or attached.** A tool that only reads
+  or searches no longer adds an audio player for a file it found, and a reply that mentions `@file:…` no longer shows
+  it as an attachment; only your own messages attach files that way.
+- **A file whose write failed is no longer offered** in the Files row.
+
 ## [0.3.0-beta.9] - 2026-10-17
 
 ### Fixed

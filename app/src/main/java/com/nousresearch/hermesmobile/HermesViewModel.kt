@@ -3627,11 +3627,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     private fun artifactSuggestionsFrom(payload: JSONObject, toolName: String): List<ArtifactSuggestion> {
-        val text = payload.toString()
-        val matches = linkedSetOf<String>()
-        Regex("MEDIA:([^\\s\"']+)", RegexOption.IGNORE_CASE).findAll(text).forEach { matches += it.groupValues[1] }
-        Regex("((?:/|\\./|\\.\\./)[^\\s\"']+\\.(?:png|jpe?g|webp|gif|pdf|csv|xlsx?|docx?|pptx?|txt|md|json|zip|mp3|m4a|wav|ogg|opus|aac|flac))", RegexOption.IGNORE_CASE)
-            .findAll(text).forEach { matches += it.groupValues[1].trimEnd(',', '.', ')', ']') }
+        val matches = com.nousresearch.hermesmobile.data.ToolArtifacts.from(toolName, payload.optJSONObject("args"), payload.opt("result"))
         return matches.take(8).map { path ->
             val name = path.substringAfterLast('/').ifBlank { "artifact" }
             val ext = name.substringAfterLast('.', "").lowercase()
