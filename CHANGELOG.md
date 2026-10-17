@@ -16,6 +16,9 @@ server plugin it needs for notifications.
 - **Audio players and attachment chips only appear for what was really produced or attached.** A tool that only reads
   or searches no longer adds an audio player for a file it found, and a reply that mentions `@file:…` no longer shows
   it as an attachment; only your own messages attach files that way.
+- **Files the agent sends with `MEDIA:` show as files.** An image appears in the reply, an audio file as a player and
+  any other file as a link that opens it, instead of the raw `MEDIA:/path` text. Same grammar as Hermes Desktop,
+  including paths with spaces.
 - **A file whose write failed is no longer offered** in the Files row.
 
 ## [0.3.0-beta.9] - 2026-10-17

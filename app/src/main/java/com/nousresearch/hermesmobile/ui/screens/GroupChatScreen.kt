@@ -417,7 +417,7 @@ private fun RoomEventRow(
                         )
                         Spacer(Modifier.height(3.dp))
                     }
-                    com.nousresearch.hermesmobile.ui.components.MarkdownLite(event.text)
+                    com.nousresearch.hermesmobile.ui.components.MarkdownLite(com.nousresearch.hermesmobile.data.ChatMedia.render(event.text))
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (event.threadId.isNotBlank()) {
                             TextButton(onClick = onReplyThread, contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)) { Text(stringResource(R.string.ui_a236732715), style = MaterialTheme.typography.labelSmall) }
