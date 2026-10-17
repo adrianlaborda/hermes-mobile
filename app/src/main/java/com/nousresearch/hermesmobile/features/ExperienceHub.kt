@@ -96,7 +96,7 @@ fun ExperienceHome(s: HermesUiState, onMenu: () -> Unit, onNavigate: (MainSectio
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             ) {
-                Text(session.title.ifBlank { stringResource(R.string.a21_untitled) }, style = MaterialTheme.typography.bodyLarge,
+                Text(session.displayTitle.ifBlank { stringResource(R.string.a21_untitled) }, style = MaterialTheme.typography.bodyLarge,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(com.nousresearch.hermesmobile.ui.screens.sessionMeta(session), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -20,6 +20,8 @@ server plugin it needs for notifications.
   any other file as a link that opens it, instead of the raw `MEDIA:/path` text. Same grammar as Hermes Desktop,
   including paths with spaces.
 - **A file whose write failed is no longer offered** in the Files row.
+- **A long chat that was compressed shows once** in Chats and Recents, not twice.
+- **Untitled chats go by their first message**, as in Hermes Desktop, instead of "Untitled".
 
 ## [0.3.0-beta.9] - 2026-10-17
 

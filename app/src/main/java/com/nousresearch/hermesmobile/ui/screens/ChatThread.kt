@@ -780,7 +780,7 @@ private fun SwitchSessionSheet(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         ) {
-                            Text(session.title.ifBlank { stringResource(R.string.a21_untitled) }, style = MaterialTheme.typography.bodyLarge,
+                            Text(session.displayTitle.ifBlank { stringResource(R.string.a21_untitled) }, style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             Text(sessionMeta(session), style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)

@@ -430,7 +430,7 @@ private fun SessionRow(
                         Spacer(Modifier.width(7.dp))
                     }
                     Text(
-                        session.title.ifBlank { stringResource(R.string.a21_untitled) },
+                        session.displayTitle.ifBlank { stringResource(R.string.a21_untitled) },
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = if (dot != SessionDot.NONE) FontWeight.SemiBold else FontWeight.Medium,
                         maxLines = 1,
@@ -491,7 +491,7 @@ private fun SessionActionsSheet(
             SessionSourceAvatar(session.source, size = 34)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(session.title.ifBlank { stringResource(R.string.a21_untitled) }, style = MaterialTheme.typography.titleMedium,
+                Text(session.displayTitle.ifBlank { stringResource(R.string.a21_untitled) }, style = MaterialTheme.typography.titleMedium,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(listOf(sessionSourceInfo(session.source).label, session.profile, relativeDate(session.lastActive))
                     .filter { it.isNotBlank() }.joinToString(" · "),

@@ -56,4 +56,12 @@ class SessionGroupsTest {
         assertEquals(listOf("kept"), sections.first().rows.map { it.id })
         assertEquals(listOf("run"), sections.last().rows.map { it.id })
     }
+
+    @Test
+    fun aCompressedChatShowsOnce() {
+        val old = HermesSession("a", title = "Chat", lastActive = 200, lineageRootId = "a")
+        val tip = HermesSession("b", title = "Chat", lastActive = 100, lineageRootId = "a", parentSessionId = "a")
+        val other = HermesSession("c", lastActive = 50)
+        assertEquals(listOf("b", "c"), HermesSession.collapseLineages(listOf(old, tip, other)).map { it.id })
+    }
 }

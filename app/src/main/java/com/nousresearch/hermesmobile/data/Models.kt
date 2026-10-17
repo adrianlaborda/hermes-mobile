@@ -338,10 +338,14 @@ data class HermesSession(
     val pinned: Boolean = false,
     val archived: Boolean = false,
     val hidden: Boolean = false,
-    val lineageRootId: String? = null
+    val lineageRootId: String? = null,
+    val parentSessionId: String? = null
 ) {
     /** A scheduled job's run (Desktop keeps these out of the recents, in their own Cron section). */
     val isRoutineRun: Boolean get() = source.trim().lowercase() in setOf("cron", "cron_output")
+
+    /** Desktop's `sessionTitle`: an untitled chat goes by its first message, not by "Untitled". */
+    val displayTitle: String get() = title.trim().ifBlank { preview.trim().lineSequence().firstOrNull().orEmpty() }
 
     companion object {
         fun fromJson(o: JSONObject): HermesSession = HermesSession(
@@ -358,8 +362,24 @@ data class HermesSession(
             pinned = o.optBoolean("pinned", false),
             archived = o.optBoolean("archived", false),
             hidden = o.optBoolean("hidden", false),
-            lineageRootId = o.optStringOrNull("_lineage_root_id") ?: o.optStringOrNull("lineage_root")
+            lineageRootId = o.optStringOrNull("_lineage_root_id") ?: o.optStringOrNull("lineage_root"),
+            parentSessionId = o.optStringOrNull("parent_session_id")
         )
+
+        /**
+         * One row per conversation, as Desktop's sidebar (`collapseCompressionLineages`): when a long chat is
+         * compressed it continues in a new session of the same lineage, and a stale tip left over from an older
+         * page must not show the same chat twice. The row nothing continues from wins, then the freshest.
+         */
+        fun collapseLineages(sessions: List<HermesSession>): List<HermesSession> {
+            val groups = sessions.groupBy { "${it.profile.ifBlank { "default" }}::${it.lineageRootId?.trim()?.ifBlank { null } ?: it.id}" }
+            if (groups.size == sessions.size) return sessions
+            val winners = groups.values.map { group ->
+                val continued = group.mapNotNull { it.parentSessionId?.trim() }.toSet()
+                group.maxBy { if (it.id in continued) Long.MIN_VALUE else maxOf(it.lastActive, it.startedAt) }
+            }.toSet()
+            return sessions.filter { it in winners }
+        }
     }
 }
 

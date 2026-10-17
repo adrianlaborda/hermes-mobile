@@ -190,7 +190,7 @@ private fun DrawerSessionRow(
         SessionStatusDot(dot)
         if (session.pinned) Icon(Icons.Default.PushPin, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
         Text(
-            session.title.ifBlank { stringResource(R.string.a21_untitled) },
+            session.displayTitle.ifBlank { stringResource(R.string.a21_untitled) },
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (selected) 1f else .8f),
             maxLines = 1,
