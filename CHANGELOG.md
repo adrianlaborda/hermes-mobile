@@ -9,6 +9,8 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.9] - 2026-10-17
+
 ### Fixed
 
 - **Recents in the side menu shows the latest chats.** Pinned chats no longer stay at the top of it; they keep their
@@ -296,7 +298,8 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.8...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.9...HEAD
+[0.3.0-beta.9]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.9
 [0.3.0-beta.8]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.8
 [0.3.0-beta.7]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.7
 [0.3.0-beta.6]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.6
