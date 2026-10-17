@@ -9,6 +9,8 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.10] - 2026-10-17
+
 ### Fixed
 
 - **The Files row under a reply only lists files the agent produced.** Files it only read, and pages it fetched
@@ -312,7 +314,8 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.9...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.10...HEAD
+[0.3.0-beta.10]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.10
 [0.3.0-beta.9]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.9
 [0.3.0-beta.8]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.8
 [0.3.0-beta.7]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.7
