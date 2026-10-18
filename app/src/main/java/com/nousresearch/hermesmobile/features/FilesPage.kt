@@ -77,7 +77,7 @@ object MobileFiles {
 }
 
 @Composable
-fun FilesPage(c:ParityController,initialPath:String?=null,sessionId:String?=null,initialDirectory:String?=null) {
+fun FilesPage(c:ParityController,initialPath:String?=null,sessionId:String?=null,initialDirectory:String?=null,onExit:(()->Unit)?=null) {
     val context=LocalContext.current
     val scope=rememberCoroutineScope()
     var path by remember(c){mutableStateOf("")}
@@ -142,7 +142,14 @@ fun FilesPage(c:ParityController,initialPath:String?=null,sessionId:String?=null
             json("ok" to true)
         }
     }
-    LaunchedEffect(c,initialPath,initialDirectory){withContext(Dispatchers.IO){MobileFiles.clean(context)};if(initialPath!=null)openFile(initialPath)else browse(initialDirectory.orEmpty())}
+    // An attachment ref is relative to the chat's working directory, which the gateway records on the session.
+    suspend fun located(remote:String):String {
+        if(remote.startsWith('/') || remote.startsWith("~"))return remote
+        val cwd=runCatching{sessionId?.let{c.api("/api/sessions/${encoded(it)}").optString("cwd")}}.getOrNull()
+            ?.takeIf{it.startsWith('/')} ?: runCatching{c.api("/api/fs/default-cwd").optString("cwd")}.getOrDefault("")
+        return com.nousresearch.hermesmobile.data.TurnDisplay.resolve(remote,cwd)
+    }
+    LaunchedEffect(c,initialPath,initialDirectory){withContext(Dispatchers.IO){MobileFiles.clean(context)};if(initialPath!=null)openFile(located(initialPath))else browse(initialDirectory.orEmpty())}
     val save=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")){uri->
         val file=exported?.file
         if(uri!=null && file!=null)scope.launch{runCatching{withContext(Dispatchers.IO){context.contentResolver.openOutputStream(uri)?.use{out->file.inputStream().use{it.copyTo(out)}} ?: error("Could not save document")}}.onFailure{c.message=it.message}}
@@ -161,7 +168,9 @@ fun FilesPage(c:ParityController,initialPath:String?=null,sessionId:String?=null
     // Back closes an open file, then climbs folder by folder (as far as this view started), then leaves the page.
     var startedAt by remember(c){mutableStateOf<String?>(null)}
     LaunchedEffect(listing){if(startedAt==null && listing!=null)startedAt=path}
-    androidx.activity.compose.BackHandler(enabled=preview!=null){preview=null;exported=null}
+    // A file opened from the chat is the whole page: closing it goes back to the chat, not to a folder listing.
+    fun closePreview(){if(initialPath!=null && onExit!=null)onExit() else {preview=null;exported=null}}
+    androidx.activity.compose.BackHandler(enabled=preview!=null){closePreview()}
     androidx.activity.compose.BackHandler(enabled=preview==null && initialPath==null && parent!=null && path.trimEnd('/')!=startedAt.orEmpty().trimEnd('/') && !c.busy){parent?.let{browse(it)}}
     Column(Modifier.fillMaxSize()) {
         // Where the files come from: Hermes' managed files or the profile's workspace (a chat artifact or a project
@@ -172,7 +181,7 @@ fun FilesPage(c:ParityController,initialPath:String?=null,sessionId:String?=null
         }
         val p=preview
         if(p!=null) {
-            FilePreview(c,p,managed,exported,onClose={preview=null;exported=null},
+            FilePreview(c,p,managed,exported,onClose={closePreview()},
                 onSave={captured->c.action(null){val latest=readPreview(p.optString("path"));check(latest.optString("text")==p.optString("text") && !latest.optBoolean("truncated")){"File changed on the gateway. Reopen before saving."};(if(managed)c.api("/api/files/upload","POST",json("path" to p.optString("path"),"data_url" to "data:text/plain;base64,"+java.util.Base64.getEncoder().encodeToString(captured.toByteArray(Charsets.UTF_8)),"overwrite" to true)) else c.api("/api/fs/write-text","POST",json("path" to p.optString("path"),"content" to captured))).also{preview=JSONObject(p.toString()).put("text",captured)}}},
                 onDownload={download(p.optString("path"))},
                 onSaveAs={download(p.optString("path")){save.launch(it.displayName)}},
@@ -275,6 +284,9 @@ private fun FilePreview(
             }
         }
         HorizontalDivider(color=MaterialTheme.hermes.line)
+        // Images and PDFs show themselves, as in Desktop; other binaries wait for an explicit download.
+        LaunchedEffect(p){val mime=p.optString("mimeType").ifBlank{if(p.optString("path").endsWith(".pdf",true))"application/pdf" else ""}
+            if(p.optBoolean("binary") && exported==null && (mime.startsWith("image/") || mime=="application/pdf") && p.optLong("byteSize")<16L*1024*1024)onDownload()}
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
             if(!p.optBoolean("binary")){
                 var text by remember(p){mutableStateOf(p.optString("text"))}
@@ -284,11 +296,7 @@ private fun FilePreview(
                 if(!truncated && text!=p.optString("text"))Button(onClick={onSave(text)},enabled=!c.busy){Text(stringResource(R.string.ui_793017feec))}
             }else if(exported==null)Text(stringResource(R.string.ui_c2236b2c86),style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             val bitmap by produceState<android.graphics.Bitmap?>(null,exported){
-                value=withContext(Dispatchers.IO){exported?.takeIf{it.mime.startsWith("image/") && it.file.length()<16*1024*1024}?.let{e->
-                    val bounds=BitmapFactory.Options().apply{inJustDecodeBounds=true};BitmapFactory.decodeFile(e.file.path,bounds)
-                    val options=BitmapFactory.Options().apply{inSampleSize=((maxOf(bounds.outWidth,bounds.outHeight)+1599)/1600).coerceAtLeast(1)}
-                    BitmapFactory.decodeFile(e.file.path,options)
-                }}
+                value=withContext(Dispatchers.IO){exported?.takeIf{it.mime.startsWith("image/") && it.file.length()<16*1024*1024}?.let{e->com.nousresearch.hermesmobile.data.ImageDecode.file(e.file.path,1600)}}
             }
             exported?.let{DocumentPreview(it)}
             bitmap?.let{Image(it.asImageBitmap(),null,Modifier.fillMaxWidth().heightIn(max=420.dp))}

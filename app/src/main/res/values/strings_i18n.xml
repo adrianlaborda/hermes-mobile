@@ -365,4 +365,10 @@
     <string name="i18n_manage_profiles">Manage profiles</string>
     <string name="i18n_set_appearance_hint">Theme, light or dark mode and language</string>
     <string name="i18n_set_assist_hint">Default assistant, profile and voice</string>
+    <string name="i18n_pasted_text">Pasted text</string>
+    <string name="i18n_edit_banner">Editing message</string>
+    <string name="i18n_edit_busy">Wait for the current turn to finish before editing</string>
+    <string name="i18n_edit_restore_title">Restore to this checkpoint?</string>
+    <string name="i18n_edit_restore_body">Everything after this prompt is removed from the conversation, and the prompt runs again from here.</string>
+    <string name="i18n_edit_restore_confirm">Restore &amp; rerun</string>
 </resources>

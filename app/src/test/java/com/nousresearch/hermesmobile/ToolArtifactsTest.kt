@@ -39,7 +39,7 @@ class ToolArtifactsTest {
 
     @Test
     fun onlyAUsersMessageAttachesFileReferences() {
-        fun row(role: String) = JSONObject().put("role", role).put("content", "Read @file:/srv/docs/agent-guide.md first")
+        fun row(role: String) = JSONObject().put("role", role).put("content", "@file:/srv/docs/agent-guide.md\n\nRead it first")
         assertEquals(listOf("agent-guide.md"), com.nousresearch.hermesmobile.data.ChatMessage.fromJson(row("user")).attachments)
         assertEquals(emptyList<String>(), com.nousresearch.hermesmobile.data.ChatMessage.fromJson(row("assistant")).attachments)
     }
@@ -58,5 +58,12 @@ class ToolArtifactsTest {
             """{"error":"disk full"}"""))
         assertEquals(listOf("/srv/out/a.md"), ToolArtifacts.from("write_file", JSONObject("""{"path":"/srv/out/a.md"}"""),
             JSONObject("""{"success":true,"bytes":12}""")))
+    }
+
+    @Test
+    fun filesLaneOffersOnlyPreviewablePages() {
+        assertEquals(true, ToolArtifacts.previewable("/tmp/site/index.html"))
+        assertEquals(false, ToolArtifacts.previewable("/home/h/.hermes/skills/x/SKILL.md"))
+        assertEquals(false, ToolArtifacts.previewable("/tmp/report.pdf"))
     }
 }

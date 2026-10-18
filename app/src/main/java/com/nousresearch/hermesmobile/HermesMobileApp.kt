@@ -469,7 +469,7 @@ private fun ChatContent(vm: HermesViewModel, s: HermesUiState, onMenu: () -> Uni
                     TextButton(onClick = { artifact = null }) { Text(stringResource(R.string.ui_5978844cb6)) }
                     if (features.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                     features.message?.let { message -> Text(com.nousresearch.hermesmobile.features.shown(message), Modifier.padding(16.dp)) }
-                    FilesPage(features, artifact, chat.storedSessionId)
+                    FilesPage(features, artifact, chat.storedSessionId, onExit = { artifact = null })
                     FeatureConsent(features)
                 }
             }
@@ -535,6 +535,9 @@ private fun ChatContent(vm: HermesViewModel, s: HermesUiState, onMenu: () -> Uni
         onDismissCommandOutput = vm::dismissCommandOutput,
         onLoadOlderMessages = vm::loadOlderMessages,
         onDraftChange = vm::setChatDraft,
+        onEditMessage = vm::startEdit,
+        onCancelEdit = vm::cancelEdit,
+        onConfirmEdit = vm::confirmEdit,
         onAttach = vm::addComposerAttachments,
         onRemoveAttachment = vm::removeComposerAttachment,
         onRemoveQueued = vm::removeQueuedPrompt,

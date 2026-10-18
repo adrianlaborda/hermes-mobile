@@ -213,7 +213,7 @@ data class HermesProfile(
                 canonicalSession = canonical,
                 canonicalResolvedSession = canonicalResolved,
                 lastSession = lastObject?.optStringOrNull("id") ?: o.optStringOrNull("last_session"),
-                activityPreview = activity?.optString("preview").orEmpty(),
+                activityPreview = TurnDisplay.preview(activity?.optString("preview").orEmpty()),
                 activityAt = activity?.let { sessionEpochSeconds(it.optLong("last_active", 0L)) } ?: 0L,
                 hasAvatar = o.optBoolean("has_avatar", false),
                 skillCount = o.optInt("skill_count", 0),
@@ -351,7 +351,7 @@ data class HermesSession(
         fun fromJson(o: JSONObject): HermesSession = HermesSession(
             id = o.optString("id", o.optString("session_id")),
             title = o.optString("title"),
-            preview = o.optString("preview"),
+            preview = TurnDisplay.preview(o.optString("preview")),
             profile = o.optString("profile", "default"),
             source = o.optString("source"),
             messageCount = o.optInt("message_count", 0),
@@ -392,8 +392,16 @@ data class ChatMessage(
     val attachments: List<String> = emptyList(),
     val timestamp: Long = 0L,
     val displayKind: String = "",
-    val live: Boolean = false
+    val live: Boolean = false,
+    /** The `@file:`/`@image:` lines lifted out of a stored user turn into [attachments]. */
+    val refs: List<String> = emptyList(),
+    /** The result inside a background-process or delegation notice, shown when the notice is opened. */
+    val report: String = ""
 ) {
+    /** The turn as the composer sent it, attachment lines included, for editing it again. */
+    val editText: String
+        get() = if (refs.isEmpty()) content else (refs + content).filter { it.isNotBlank() }.joinToString("\n")
+
     val stableKey: String
         get() = rowId?.let { "row:$it" } ?: if (live) "live:$role:$timestamp" else "message:$role:$timestamp:${content.hashCode()}"
 
@@ -418,6 +426,24 @@ data class ChatMessage(
             // durable row may carry that scaffolding, so keep it out of the UI
             // without touching assistant content that happens to contain the marker.
             if (role == "user") content = content.substringBefore(BOT_MENTION_NOTE_MARKER).trimEnd()
+            var displayKind = (o.opt("display_kind") as? String)?.takeUnless { it == "null" }.orEmpty()
+            var refs = emptyList<String>()
+            if (role == "user") {
+                val turn = TurnDisplay.user(content)
+                if (turn == null) displayKind = "hidden" else {
+                    content = turn.text
+                    refs = turn.refs
+                }
+            }
+            var report = ""
+            when (displayKind) {
+                // The row is the model-facing notice; the timeline says what happened.
+                "model_switch", "personality_switch", "auto_continue" -> content = ""
+                "process_complete", "async_delegation_complete" -> {
+                    report = TurnDisplay.asyncResultBody(TranscriptText.visible(o.opt("content")).trim())
+                    content = displayText(o.opt("display_metadata"))
+                }
+            }
             return ChatMessage(
                 rowId = o.optLongOrNull("row_id") ?: o.optLongOrNull("id"),
                 role = role,
@@ -433,14 +459,23 @@ data class ChatMessage(
                             is JSONObject -> item.optString("name").ifBlank { item.optString("filename") }.takeIf { it.isNotBlank() }?.let(::add)
                         }
                     }
-                    // `@file:`/`@image:` are the composer's attachment references: only a user's message attaches.
-                    if (role == "user") Regex("@(?:file|image):([^\\s]+)").findAll(content).forEach { match ->
-                        match.groupValues[1].substringAfterLast('/').takeIf { it.isNotBlank() }?.let { if (it !in this) add(it) }
-                    }
+                    refs.forEach { ref -> TurnDisplay.refName(ref).takeIf { it.isNotBlank() }?.let { if (it !in this) add(it) } }
                 },
                 timestamp = o.optLong("timestamp", 0L),
-                displayKind = (o.opt("display_kind") as? String)?.takeUnless { it == "null" }.orEmpty()
+                displayKind = displayKind,
+                refs = refs,
+                report = report
             )
+        }
+
+        /** `display_metadata.display_text`; older backends ship the metadata as JSON text. */
+        private fun displayText(metadata: Any?): String {
+            val parsed = when (metadata) {
+                is JSONObject -> metadata
+                is String -> runCatching { JSONObject(metadata) }.getOrNull()
+                else -> null
+            }
+            return parsed?.optString("display_text").orEmpty().trim()
         }
     }
 }
@@ -552,7 +587,22 @@ data class ActiveChat(
     val provider: String = "",
     val reasoningEffort: String = "",
     val hasOlderMessages: Boolean = false,
-    val olderOffset: Int = 0
+    val olderOffset: Int = 0,
+    /** A sent message being edited: sending rewinds the chat to it and runs it again, as in Desktop. */
+    val editing: EditingTurn? = null
+)
+
+/**
+ * The turn an edit rewinds to. [ordinal] counts the visible user turns before it (the gateway's
+ * `truncate_before_user_ordinal`); [laterTurns] are the user turns the rewind removes, which Desktop
+ * confirms first. [confirming] shows that confirmation.
+ */
+data class EditingTurn(
+    val key: String,
+    val rowId: Long?,
+    val ordinal: Int,
+    val laterTurns: Int,
+    val confirming: Boolean = false
 )
 
 

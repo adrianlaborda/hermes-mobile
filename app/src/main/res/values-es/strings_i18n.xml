@@ -365,4 +365,10 @@
     <string name="i18n_manage_profiles">Gestionar perfiles</string>
     <string name="i18n_set_appearance_hint">Tema, modo claro u oscuro e idioma</string>
     <string name="i18n_set_assist_hint">Asistente predeterminado, perfil y voz</string>
+    <string name="i18n_pasted_text">Texto pegado</string>
+    <string name="i18n_edit_banner">Editando mensaje</string>
+    <string name="i18n_edit_busy">Espera a que termine el turno actual para editar</string>
+    <string name="i18n_edit_restore_title">¿Restaurar a este punto de control?</string>
+    <string name="i18n_edit_restore_body">Todo lo que sigue a este mensaje se elimina de la conversación y el mensaje se ejecuta nuevamente desde aquí.</string>
+    <string name="i18n_edit_restore_confirm">Restaurar y volver a ejecutar</string>
 </resources>

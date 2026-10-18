@@ -329,8 +329,9 @@ for required in ('hermes serve --host 0.0.0.0 --port 9119', 'GatewayUrlPolicy.ca
     if required not in vm:
         errors.append(f'alpha7 LAN connection invariant missing: {required}')
 
+# PDFs ride file.attach, as in Hermes Desktop: pdf.attach only rasterizes pages and keeps no file to open.
 for required in (
-    'image.attach_bytes', 'pdf.attach', 'file.attach', 'data_url',
+    'image.attach_bytes', 'file.attach', 'data_url',
     'session.usage', 'model.options', 'slash.exec', 'switchSessionModel'
 ):
     if required not in repo:

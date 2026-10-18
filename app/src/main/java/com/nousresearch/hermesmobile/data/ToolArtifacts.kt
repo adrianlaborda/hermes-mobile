@@ -12,13 +12,22 @@ import org.json.JSONObject
 object ToolArtifacts {
     private val NON_DELIVERABLE = setOf(
         "annotate_preview", "drive_preview", "gui_tour", "list_files", "read_file", "search_files",
-        "web_search", "web_extract", "browser_navigate", "browser_snapshot", "session_search", "memory"
+        "web_search", "web_extract", "browser_navigate", "browser_snapshot", "session_search", "memory",
+        // Loading a skill reads its SKILL.md into the turn (Desktop: "neither proves the task has been completed").
+        "skill_view", "skills_list"
     )
     private val MEDIA = Regex("MEDIA:([^\\s\"']+)", RegexOption.IGNORE_CASE)
     private val FILE = Regex(
         "\\.(?:png|jpe?g|webp|gif|pdf|csv|xlsx?|docx?|pptx?|txt|md|json|zip|mp3|m4a|wav|ogg|opus|aac|flac|html?|svg)$",
         RegexOption.IGNORE_CASE
     )
+
+    /**
+     * Whether a target belongs in the Files lane above the composer. Desktop offers only what it can preview
+     * there (`isPreviewableTarget`: an HTML page); files sent with `MEDIA:` render in the reply instead, and
+     * the user's own uploads are chips on their message.
+     */
+    fun previewable(path: String): Boolean = Regex("\\.html?$", RegexOption.IGNORE_CASE).containsMatchIn(path)
 
     /** False for tools that only look at files or pages: what they return was found, not made. */
     fun delivers(toolName: String): Boolean = toolName !in NON_DELIVERABLE

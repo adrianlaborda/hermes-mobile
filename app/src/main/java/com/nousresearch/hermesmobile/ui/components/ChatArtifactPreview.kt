@@ -89,11 +89,7 @@ fun ChatArtifactPreview(destination: String, description: String) {
                 try {
                     val mime = owner.repo.rest.downloadFile(owner.profile, path, owner.session, file, maxBytes = 8L * 1024 * 1024)
                     require(mime.startsWith("image/")) { "Use Open to view this artifact" }
-                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeFile(file.path, bounds)
-                    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "Unsupported image" }
-                    val options = BitmapFactory.Options().apply { inSampleSize = ((maxOf(bounds.outWidth, bounds.outHeight) + 1199) / 1200).coerceAtLeast(1) }
-                    BitmapFactory.decodeFile(file.path, options)
+                    requireNotNull(com.nousresearch.hermesmobile.data.ImageDecode.file(file.path, 1200)) { "Unsupported image" }
                 } finally { file.delete() }
             }?.also { decoded -> cacheKey?.let { ArtifactBitmapCache.put(it, decoded) } }
         } catch (e: Exception) { if (e is CancellationException) throw e; error = e.message }

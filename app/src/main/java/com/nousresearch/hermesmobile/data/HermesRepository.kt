@@ -66,23 +66,37 @@ class HermesRepository(
         )
     }
 
-    suspend fun submitPrompt(runtimeId: String, profile: String, text: String): PromptSubmitResult {
-        val result = gateway.requestObject(
-            "prompt.submit",
-            JSONObject()
-                .put("session_id", runtimeId)
-                .put("profile", profile)
-                .put("text", text)
-                .put("surface", "mobile"),
-            timeoutMs = 30_000
-        )
+    /**
+     * Sends a prompt. With [rewind] it is an edit: the gateway drops the history from that turn on first
+     * (Desktop's `truncateSubmitParams`); removing later turns needs [confirmDeep], an empty chat its own flag.
+     */
+    suspend fun submitPrompt(
+        runtimeId: String,
+        profile: String,
+        text: String,
+        rewind: EditingTurn? = null,
+        confirmDeep: Boolean = false
+    ): PromptSubmitResult {
+        val params = JSONObject()
+            .put("session_id", runtimeId)
+            .put("profile", profile)
+            .put("text", text)
+            .put("surface", "mobile")
+        if (rewind != null) {
+            params.put("confirm_truncate", true).put("truncate_before_user_ordinal", rewind.ordinal)
+            rewind.rowId?.let { params.put("truncate_before_row_id", it) }
+            if (rewind.ordinal == 0) params.put("confirm_empty_truncate", true)
+            if (confirmDeep) params.put("confirm_deep_truncate", true)
+        }
+        val result = gateway.requestObject("prompt.submit", params, timeoutMs = 30_000)
         return PromptSubmitResult(
             status = result.optString("status"),
             userRowId = result.optLongOrNull("user_row_id")
         )
     }
 
-    suspend fun attachImageBytes(runtimeId: String, profile: String, filename: String, bytes: ByteArray) {
+    /** Queues the image for the next turn; returns its path on the gateway, blank when the gateway names none. */
+    suspend fun attachImageBytes(runtimeId: String, profile: String, filename: String, bytes: ByteArray): String =
         gateway.requestObject(
             "image.attach_bytes",
             JSONObject()
@@ -91,20 +105,7 @@ class HermesRepository(
                 .put("filename", filename)
                 .put("content_base64", Base64.getEncoder().encodeToString(bytes)),
             timeoutMs = 60_000
-        )
-    }
-
-    suspend fun attachPdfBytes(runtimeId: String, profile: String, filename: String, bytes: ByteArray) {
-        gateway.requestObject(
-            "pdf.attach",
-            JSONObject()
-                .put("session_id", runtimeId)
-                .put("profile", profile)
-                .put("filename", filename)
-                .put("content_base64", Base64.getEncoder().encodeToString(bytes)),
-            timeoutMs = 120_000
-        )
-    }
+        ).optString("path").takeUnless { it == "null" }.orEmpty()
 
     suspend fun attachFileBytes(
         runtimeId: String,

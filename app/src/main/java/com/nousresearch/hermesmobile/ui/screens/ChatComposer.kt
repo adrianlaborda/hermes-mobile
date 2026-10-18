@@ -236,7 +236,7 @@ private fun AttachmentStrip(items: List<ComposerAttachment>, onRemove: (String) 
             InputChip(
                 selected = false,
                 onClick = {},
-                label = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 180.dp)) },
+                label = { Text(if (com.nousresearch.hermesmobile.data.TurnDisplay.isPastedContent(item.name)) stringResource(R.string.i18n_pasted_text) else item.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 180.dp)) },
                 leadingIcon = {
                     Icon(when (item.kind) {
                         "image" -> Icons.Default.Image

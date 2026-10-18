@@ -85,7 +85,11 @@ internal class ChatThreadActions(
     val onOpen: (HermesSession) -> Unit,
     val onNew: (String, String) -> Unit,
     val onOpenArtifact: (String) -> Unit,
-    val onContext: () -> Unit
+    val onContext: () -> Unit,
+    /** Edits a sent message: sending it rewinds the chat to that turn, as in Desktop. */
+    val onEditMessage: (ChatMessage) -> Unit,
+    val onCancelEdit: () -> Unit,
+    val onConfirmEdit: (Boolean) -> Unit
 )
 
 @Composable
@@ -281,7 +285,7 @@ internal fun ChatThread(
                                 turnEnd = entry.row.key in turnEnds.keys,
                                 canRetry = entry.row.key == turnEnds.retryKey && !chat.running,
                                 voice = voice,
-                                onEdit = { actions.onDraftChange(it) },
+                                onEdit = actions.onEditMessage,
                                 onCopy = copy,
                                 onShare = share,
                                 onRetry = actions.onRetry,
@@ -307,6 +311,29 @@ internal fun ChatThread(
             MentionSuggestions(mentionCandidates) { handle ->
                 val at = draft.lastIndexOf('@')
                 actions.onDraftChange(if (at >= 0) draft.substring(0, at) + "@$handle " else "$draft @$handle ")
+            }
+            chat.editing?.let { editing ->
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Edit, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.i18n_edit_banner), Modifier.weight(1f), style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary)
+                    TextButton(onClick = actions.onCancelEdit) { Text(stringResource(R.string.a14_cancel)) }
+                }
+                if (editing.confirming) AlertDialog(
+                    onDismissRequest = { actions.onConfirmEdit(false) },
+                    title = { Text(stringResource(R.string.i18n_edit_restore_title)) },
+                    text = { Text(stringResource(R.string.i18n_edit_restore_body)) },
+                    confirmButton = {
+                        TextButton(onClick = { actions.onConfirmEdit(true) }) {
+                            Text(stringResource(R.string.i18n_edit_restore_confirm), color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = { TextButton(onClick = { actions.onConfirmEdit(false) }) { Text(stringResource(R.string.a14_cancel)) } }
+                )
             }
             ChatComposer(
                 chat = chat,
@@ -372,7 +399,7 @@ private fun ChatTranscriptRow(
     turnEnd: Boolean,
     canRetry: Boolean,
     voice: VoiceActions?,
-    onEdit: (String) -> Unit,
+    onEdit: (ChatMessage) -> Unit,
     onCopy: (String) -> Unit,
     onShare: (String) -> Unit,
     onRetry: () -> Unit,
@@ -386,7 +413,7 @@ private fun ChatTranscriptRow(
             Column {
                 ChatMessageBubble(
                     message,
-                    onEdit = if (editable) ({ onEdit(message.content) }) else null,
+                    onEdit = if (editable) ({ onEdit(message) }) else null,
                     onCopy = if (editable) ({ onCopy(message.content) }) else null
                 )
                 if (turnEnd) AssistantActions(message.content, canRetry, voice, onCopy, onShare, onRetry, onBranch)

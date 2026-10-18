@@ -52,6 +52,7 @@ import com.nousresearch.hermesmobile.data.ChatMessage
 import com.nousresearch.hermesmobile.data.HermesProfile
 import com.nousresearch.hermesmobile.data.ServerInteraction
 import com.nousresearch.hermesmobile.data.ToolActivity
+import com.nousresearch.hermesmobile.ui.theme.HermesMono
 import com.nousresearch.hermesmobile.ui.theme.HermesTokens
 import com.nousresearch.hermesmobile.ui.theme.hermes
 import kotlinx.coroutines.Dispatchers
@@ -533,21 +534,46 @@ fun ChatMessageBubble(
             "steer" -> stringResource(R.string.a22_tl_correction)
             else -> message.displayKind
         }
+        // Background results name themselves (`display_text`); the report opens on tap, as in Desktop.
+        val result = message.displayKind == "process_complete" || message.displayKind == "async_delegation_complete"
+        var open by remember(message.stableKey) { mutableStateOf(false) }
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 5.dp),
+            Modifier.fillMaxWidth()
+                .then(if (message.report.isNotBlank()) Modifier.clickable { open = !open } else Modifier)
+                .padding(horizontal = 14.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            DashedDivider(Modifier.weight(1f))
+            if (!result) DashedDivider(Modifier.weight(1f))
+            if (message.report.isNotBlank()) Icon(
+                if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null,
+                Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Text(
-                if (message.content.isBlank()) label else "$label · ${message.content}",
-                modifier = Modifier.padding(horizontal = 10.dp),
+                when {
+                    message.content.isBlank() -> label
+                    result -> message.content
+                    else -> "$label · ${message.content}"
+                },
+                modifier = if (result) Modifier.weight(1f).padding(start = 6.dp) else Modifier.padding(horizontal = 10.dp),
                 style = MaterialTheme.typography.labelSmall,
                 color = if (message.displayKind == "failed_turn") MaterialTheme.colorScheme.error
                 else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
+                maxLines = if (result) 1 else 2,
                 overflow = TextOverflow.Ellipsis
             )
-            DashedDivider(Modifier.weight(1f))
+            if (!result) DashedDivider(Modifier.weight(1f))
+        }
+        if (open) Surface(
+            Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 4.dp).heightIn(max = 320.dp),
+            color = MaterialTheme.hermes.codeBlock,
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, MaterialTheme.hermes.line)
+        ) {
+            Box(Modifier.verticalScroll(rememberScrollState()).padding(10.dp)) {
+                if (message.displayKind == "process_complete") Text(
+                    message.report, style = MaterialTheme.typography.bodySmall.copy(fontFamily = HermesMono)
+                ) else MarkdownLite(message.report)
+            }
         }
         return
     }
@@ -578,12 +604,28 @@ fun ChatMessageBubble(
                 ) {
                     Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (message.attachments.isNotEmpty()) {
-                            message.attachments.take(6).forEach { name ->
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                            // A stored ref knows where the file lives on the gateway: tapping opens it, as in Desktop.
+                            val owner = LocalArtifactOwner.current
+                            val paths = message.refs.map { com.nousresearch.hermesmobile.data.TurnDisplay.refPath(it) }
+                            // A live bubble knows its files by the names you picked; the gateway may rename them.
+                            val chips = if (message.refs.size == message.attachments.size) message.attachments.zip(paths)
+                                else message.attachments.map { name ->
+                                    name to paths.firstOrNull { it.trimEnd('/').substringAfterLast('/') == name }
+                                }
+                            // Images you attached show as pictures, as in Desktop; other files stay chips.
+                            val images = message.refs.filter { it.startsWith("@image:") }
+                                .map { com.nousresearch.hermesmobile.data.TurnDisplay.refPath(it) }.filter { it.startsWith('/') }
+                            if (owner != null) images.take(4).forEach { ChatArtifactPreview(it, it.substringAfterLast('/')) }
+                            chips.filterNot { (_, ref) -> owner != null && ref in images }.take(6).forEach { (name, ref) ->
+                                val path = ref?.takeIf { owner != null && !it.endsWith('/') }
+                                Row(
+                                    Modifier.then(if (path != null) Modifier.clickable { owner?.open?.invoke(path) } else Modifier),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Icon(Icons.Default.AttachFile, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Spacer(Modifier.width(5.dp))
                                     Text(
-                                        name,
+                                        if (com.nousresearch.hermesmobile.data.TurnDisplay.isPastedContent(name)) stringResource(R.string.i18n_pasted_text) else name,
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,

@@ -1200,8 +1200,46 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         persistComposerSoon(immediate = true)
     }
 
-    fun setChatDraft(value: String) {
+    fun setChatDraft(value: String) = setChatDraft(value, typed = true)
+
+    /**
+     * Desktop's edit: the message returns to the composer, and sending it rewinds the chat to that turn and
+     * runs it again instead of adding a new message at the end.
+     */
+    fun startEdit(message: ChatMessage) {
+        val chat = uiState.activeChat ?: return
+        val index = chat.messages.indexOfFirst { it.stableKey == message.stableKey }
+        if (index < 0 || message.role != "user") return
+        fun visibleUser(m: ChatMessage) = m.role == "user" && m.renderable
+        chat.messages.subList(0, index).count(::visibleUser).let { ordinal ->
+            uiState = uiState.copy(activeChat = chat.copy(editing = EditingTurn(
+                key = message.stableKey,
+                rowId = message.rowId,
+                ordinal = ordinal,
+                laterTurns = chat.messages.drop(index + 1).count(::visibleUser)
+            )))
+        }
+        // Whole, however long: an edit is not a paste.
+        setChatDraft(message.editText, typed = false)
+    }
+
+    fun cancelEdit() {
+        val chat = uiState.activeChat ?: return
+        uiState = uiState.copy(activeChat = chat.copy(editing = null), chatDraft = "")
+        persistComposerSoon(immediate = true)
+    }
+
+    /** Answers the "remove what follows?" question an edit of an older turn asks. */
+    fun confirmEdit(confirmed: Boolean) {
+        val chat = uiState.activeChat ?: return
+        val editing = chat.editing ?: return
+        uiState = uiState.copy(activeChat = chat.copy(editing = editing.copy(confirming = false)))
+        if (confirmed) sendMessage(uiState.chatDraft, deepConfirmed = true)
+    }
+
+    private fun setChatDraft(value: String, typed: Boolean) {
         if (uiState.activeChat == null) return
+        if (typed && pasteToAttachment(uiState.chatDraft, value)) return
         uiState = uiState.copy(chatDraft = value)
         persistComposerSoon()
         requestSlashCompletions(value)
@@ -1301,6 +1339,36 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         if (uiState.activeChat?.runtimeSessionId != chat.runtimeSessionId) return
         uiState = uiState.copy(composerAttachments = (existing + added).take(MAX_COMPOSER_ATTACHMENTS))
         persistComposerSoon(immediate = true)
+    }
+
+    /**
+     * Desktop's large-paste policy: one insertion over [LARGE_PASTE_CHARS] becomes a `.txt` attachment instead of
+     * flooding the composer. Returns true when it took the paste.
+     */
+    private fun pasteToAttachment(before: String, after: String): Boolean {
+        val prefix = before.commonPrefixWith(after).length
+        val suffix = before.substring(prefix).commonSuffixWith(after.substring(prefix)).length
+        val inserted = after.substring(prefix, after.length - suffix)
+        if (inserted.length <= LARGE_PASTE_CHARS || before.length - prefix - suffix > 0) return false
+        if (uiState.composerAttachments.size >= MAX_COMPOSER_ATTACHMENTS) return false
+        val dir = java.io.File(getApplication<Application>().filesDir, "composer-pastes").apply { mkdirs() }
+        // Pastes live until sent; drop the ones left behind by drafts abandoned a week ago.
+        dir.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 7L * 24 * 3600 * 1000 }?.forEach { it.delete() }
+        val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.ROOT).format(java.util.Date())
+        val file = java.io.File(dir, "pasted_content_${stamp}_${UUID.randomUUID().toString().take(6)}.txt")
+        runCatching { file.writeText(inserted) }.onFailure { return false }
+        uiState = uiState.copy(
+            chatDraft = after.substring(0, prefix) + after.substring(after.length - suffix),
+            composerAttachments = uiState.composerAttachments + ComposerAttachment(
+                id = UUID.randomUUID().toString(),
+                uri = Uri.fromFile(file).toString(),
+                name = file.name,
+                mimeType = "text/plain",
+                size = file.length()
+            )
+        )
+        persistComposerSoon(immediate = true)
+        return true
     }
 
     fun removeComposerAttachment(id: String) {
@@ -2590,11 +2658,28 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         newChat(profile.name)
     }
 
-    fun sendMessage(text: String) {
+    fun sendMessage(text: String) = sendMessage(text, deepConfirmed = false)
+
+    private fun sendMessage(text: String, deepConfirmed: Boolean) {
         val chat = uiState.activeChat ?: return
         val prompt = text.trim()
         val attachments = uiState.composerAttachments
         if (prompt.isBlank() && attachments.isEmpty()) return
+        chat.editing?.let { editing ->
+            if (chat.running) {
+                uiState = uiState.copy(snackbar = string(R.string.i18n_edit_busy))
+                return
+            }
+            // Removing later turns is asked first, as Desktop's restore confirm does.
+            if (editing.laterTurns > 0 && !deepConfirmed) {
+                uiState = uiState.copy(activeChat = chat.copy(editing = editing.copy(confirming = true)))
+                return
+            }
+            uiState = uiState.copy(chatDraft = "", composerAttachments = emptyList(), activeChat = chat.copy(editing = null))
+            persistComposerSoon(immediate = true)
+            submitPromptNow(chat.copy(editing = null), prompt, attachments, rewind = editing, confirmDeep = deepConfirmed)
+            return
+        }
         if (attachments.isEmpty() && prompt.startsWith("/") && prompt.length > 1) {
             runSlashCommand(chat, prompt)
             return
@@ -2617,10 +2702,17 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         submitPromptNow(chat, prompt, attachments)
     }
 
-    private fun submitPromptNow(chat: ActiveChat, prompt: String, attachments: List<ComposerAttachment>) {
+    private fun submitPromptNow(
+        chat: ActiveChat,
+        prompt: String,
+        attachments: List<ComposerAttachment>,
+        rewind: EditingTurn? = null,
+        confirmDeep: Boolean = false
+    ) {
         val repo = repository ?: return
         val optimisticTimestamp = System.currentTimeMillis() / 1000
-        val visibleText = prompt.ifBlank { if (attachments.size == 1) "Attached ${attachments.first().name}" else "Attached ${attachments.size} files" }
+        // Only your words: a bubble with nothing typed shows its attachments alone, as in Desktop.
+        val visibleText = prompt
         val optimistic = ChatMessage(
             role = "user",
             content = visibleText,
@@ -2628,8 +2720,11 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             live = true,
             timestamp = optimisticTimestamp
         )
+        // An edit drops the edited turn and everything after it before running again.
+        val kept = rewind?.let { edit -> chat.messages.indexOfFirst { it.stableKey == edit.key }.takeIf { it >= 0 } }
+            ?.let { chat.messages.take(it) } ?: chat.messages
         uiState = uiState.copy(
-            activeChat = chat.copy(messages = chat.messages + optimistic, running = true),
+            activeChat = chat.copy(messages = kept + optimistic, running = true),
             error = null,
             liveStatuses = if (attachments.isEmpty()) uiState.liveStatuses else listOf(
                 LiveTaskStatus("attachments", "Preparing attachments", "0/${attachments.size}")
@@ -2649,13 +2744,16 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     sessionModelPins[chat.runtimeSessionId] = pin.copy(ensureOnNextPrompt = false)
                 }
                 val refs = mutableListOf<String>()
+                // Where each attachment landed, so the live bubble's chips open it before the history reloads.
+                val shown = mutableListOf<String>()
                 attachments.forEachIndexed { index, item ->
                     val bytes = withContext(Dispatchers.IO) { readAttachmentBytes(item) }
                     when (item.kind) {
                         "image" -> repo.attachImageBytes(chat.runtimeSessionId, chat.profile, item.name, bytes)
-                        "pdf" -> repo.attachPdfBytes(chat.runtimeSessionId, chat.profile, item.name, bytes)
+                            .takeIf { it.isNotBlank() }?.let { shown += "@image:$it" }
+                        // A PDF stays a file in the session, as in Desktop: tools can read it and its chip opens it.
                         else -> repo.attachFileBytes(chat.runtimeSessionId, chat.profile, item.name, item.mimeType, bytes)
-                            .takeIf { it.isNotBlank() }?.let(refs::add)
+                            .takeIf { it.isNotBlank() }?.let { refs += it; shown += it }
                     }
                     val current = uiState.activeChat
                     if (current?.runtimeSessionId == chat.runtimeSessionId) {
@@ -2666,13 +2764,21 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         )
                     }
                 }
-                val basePrompt = prompt.ifBlank { "Please inspect the attached files and respond to them." }
-                val refPrefix = refs.joinToString("\n")
-                val wireText = if (refPrefix.isBlank()) basePrompt else "$refPrefix\n\n$basePrompt"
-                repo.submitPrompt(chat.runtimeSessionId, chat.profile, withBotMentionContext(wireText, chat.profile))
+                if (shown.isNotEmpty()) uiState.activeChat?.takeIf { it.runtimeSessionId == chat.runtimeSessionId }?.let { current ->
+                    uiState = uiState.copy(activeChat = current.copy(messages = current.messages.map {
+                        if (it.live && it.rowId == null && it.role == "user" && it.content == visibleText &&
+                            it.timestamp == optimisticTimestamp) it.copy(refs = shown) else it
+                    }))
+                }
+                // Desktop's buildContextText: the refs, then your words; an image alone gets its standard question.
+                val wireText = listOf(refs.joinToString("\n"), prompt).filter { it.isNotBlank() }.joinToString("\n\n")
+                    .ifBlank { if (attachments.any { it.kind == "image" }) "What do you see in this image?" else "Please inspect the attached files and respond to them." }
+                repo.submitPrompt(chat.runtimeSessionId, chat.profile, withBotMentionContext(wireText, chat.profile), rewind, confirmDeep)
             }.onSuccess { result ->
                 val current = uiState.activeChat
                 if (current?.runtimeSessionId != chat.runtimeSessionId) return@onSuccess
+                // The rewind re-inserted the kept turns under new row ids: take the history whole, not grafted.
+                if (rewind != null) refreshActiveTailSoon(chat.storedSessionId, chat.profile, replace = true)
                 val rebound = if (result.userRowId != null) {
                     current.messages.toMutableList().also { rows ->
                         val index = rows.indexOfLast {
@@ -2699,7 +2805,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     val canRestore = uiState.chatDraft.isBlank() && uiState.composerAttachments.isEmpty()
                     uiState = uiState.copy(
                         activeChat = current.copy(
-                            messages = current.messages.filterNot {
+                            // A failed edit puts the chat back as it was.
+                            messages = if (rewind != null) chat.messages else current.messages.filterNot {
                                 it.live && it.rowId == null && it.role == "user" &&
                                     it.content == visibleText && it.timestamp == optimisticTimestamp
                             },
@@ -3628,7 +3735,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     private fun artifactSuggestionsFrom(payload: JSONObject, toolName: String): List<ArtifactSuggestion> {
         val matches = com.nousresearch.hermesmobile.data.ToolArtifacts.from(toolName, payload.optJSONObject("args"), payload.opt("result"))
-        return matches.take(8).map { path ->
+        return matches.filter(com.nousresearch.hermesmobile.data.ToolArtifacts::previewable).take(8).map { path ->
             val name = path.substringAfterLast('/').ifBlank { "artifact" }
             val ext = name.substringAfterLast('.', "").lowercase()
             ArtifactSuggestion(
@@ -3665,7 +3772,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         return sid.isBlank() || sid == chat.runtimeSessionId || sid == chat.storedSessionId
     }
 
-    private fun refreshActiveTailSoon(storedId: String, profile: String) {
+    private fun refreshActiveTailSoon(storedId: String, profile: String, replace: Boolean = false) {
         val repo = repository ?: return
         viewModelScope.launch {
             delay(250)
@@ -3674,12 +3781,15 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             }.onSuccess { page ->
                 val current = uiState.activeChat
                 if (current?.storedSessionId != storedId || current.profile != profile) return@onSuccess
-                val merged = graftDurableTail(current.messages, page.messages)
+                val merged = if (replace) graftDurableTail(emptyList(), page.messages).ifEmpty { current.messages }
+                    .let { durable -> durable + current.messages.filter { live -> live.live && live.rowId == null &&
+                        durable.none { it.role == live.role && it.content == live.content } } }
+                    else graftDurableTail(current.messages, page.messages)
                 uiState = uiState.copy(
                     activeChat = current.copy(
                         messages = merged,
-                        hasOlderMessages = current.hasOlderMessages || page.hasOlder,
-                        olderOffset = maxOf(current.olderOffset, page.returned)
+                        hasOlderMessages = if (replace) page.hasOlder else current.hasOlderMessages || page.hasOlder,
+                        olderOffset = if (replace) page.returned else maxOf(current.olderOffset, page.returned)
                     )
                 )
             }
@@ -3740,6 +3850,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         private const val SESSION_PAGE_SIZE = 80
         private const val STREAM_FLUSH_MS = 32L
         private const val MAX_AVATAR_CACHE_ITEMS = 32
+        /** Desktop's LARGE_PASTE_ATTACHMENT_THRESHOLD. */
+        private const val LARGE_PASTE_CHARS = 3_000
         private const val MAX_COMPOSER_ATTACHMENTS = 6
         private const val MAX_ATTACHMENT_BYTES = 25L * 1024L * 1024L
     }

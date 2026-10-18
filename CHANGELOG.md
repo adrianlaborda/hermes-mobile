@@ -9,6 +9,42 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Changed
+
+- **Editing a message you sent reruns the chat from there, as in Hermes Desktop.** Tap the pencil on your message,
+  change it and send: the conversation goes back to that message and the agent answers the new version, instead of
+  adding it as a new message at the end. Editing an older message asks first, because what follows it is removed.
+  "Editing message" above the box shows you are editing, with Cancel to leave it.
+
+### Fixed
+
+- **Your messages show what you wrote, not what the agent received.** A file you attached no longer pours its whole
+  content into your bubble after reopening the chat; it stays as a chip above your text. A `/skill` you ran shows as
+  `/skill …` instead of the full skill, and background heartbeats and Discord routing notes no longer appear as your
+  messages. Same as Hermes Desktop.
+- **Tap a file you attached to open it.** The chip on your message opens the file, also right after sending it, and
+  images and PDFs show straight away instead of asking to be downloaded first. Photos whose camera saved them rotated
+  now appear upright. Files the server keeps beside the chat's working folder, like attached PDFs, now open instead
+  of saying "File not found".
+- **A file you open from the chat closes back to the chat.** The X and the back gesture used to leave an empty file
+  browser behind.
+- **Turning PDF pages is easier**: swipe left or right, or use the arrows on either side of the page number.
+- **The chat list no longer shows attachment paths** such as `@image:/home/…` in a chat's preview; a chat that only
+  had attachments shows their names.
+- **The Files row above the message box lists only pages you can preview, as in Hermes Desktop.** A skill the agent
+  loaded or a file it only read no longer shows up there (for example `SKILL.md`); files it sends you appear in its
+  reply.
+- **Sending only attachments no longer adds words you did not write.** Files go alone and a lone image asks "What do
+  you see in this image?", as in Hermes Desktop, instead of "Please inspect the attached files…" and "Attached …".
+- **Images you attach show as pictures in your message**, not as a file name.
+- **Pasting a very long text attaches it as a file**, as in Hermes Desktop: over 3,000 characters it becomes a
+  "Pasted text" attachment instead of filling the message box. Editing a long message you sent still puts it back
+  whole.
+- **PDFs are attached as files, as in Hermes Desktop.** The agent reads the whole document with its file tools instead
+  of receiving pictures of its pages, and you can open it again from your message.
+- **Chat notices read like Desktop's.** A model change says only that, and a finished background process or subagent
+  batch shows its name (for example "2 Background Processes Finished"); tap it to read the result.
+
 ## [0.3.0-beta.10] - 2026-10-17
 
 ### Fixed
