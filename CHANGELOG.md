@@ -9,6 +9,8 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.12] - 2026-10-22
+
 **Update the server's `hermes-android` plugin to 0.5.4 first** (`hermes plugins update hermes-android`): answers to
 what you send from the app, reminders on the phone and the new main-channel switch need it.
 
@@ -380,7 +382,8 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.11...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.12...HEAD
+[0.3.0-beta.12]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.12
 [0.3.0-beta.11]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.11
 [0.3.0-beta.10]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.10
 [0.3.0-beta.9]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.9
