@@ -29,6 +29,8 @@ object PushSetup {
     const val CREDENTIALS_COMMAND = "android-credentials"
     const val TEST_COMMAND = "android-test"
     const val ENABLE_COMMAND = "android-enable"
+    /** Plugin 0.5.4+: `/android-primary-channel <profile> [on|off]`, the report or the setting. */
+    const val PRIMARY_CHANNEL_COMMAND = "android-primary-channel"
     const val MAX_KEY_BYTES = 64 * 1024
 
     fun parsePairing(output: String): ServerPairing {
@@ -85,6 +87,17 @@ object PushSetup {
         val values = outcomes.keys().asSequence().map { outcomes.optString(it) }.toList()
         return TestOutcomes(values.count { it == "success" }, values.filter { it != "success" })
     }
+
+    /** A `/android-primary-channel` reply: {"primary_channel": true|false, "profile": "..."} or {"error": "..."}. */
+    fun primaryChannelReply(output: String): Boolean {
+        val o = runCatching { JSONObject(output.trim()) }.getOrNull() ?: throw IllegalStateException(output.take(200))
+        if (o.has("error")) throw IllegalStateException(o.optString("error").ifBlank { "error" })
+        check(o.has("primary_channel")) { "not_a_primary_channel_reply" }
+        return o.optBoolean("primary_channel", true)
+    }
+
+    /** The gateway rejects a command the plugin does not define: an older plugin (before 0.5.4 for the primary channel). */
+    fun isUnknownCommand(e: Throwable): Boolean = e.message.orEmpty().contains("not a quick/plugin", ignoreCase = true)
 
     /** A `/android-credentials` / `/android-test` reply: {"ok": true, ...} or {"ok": false, "error": "..."}. */
     fun commandReply(output: String): JSONObject {

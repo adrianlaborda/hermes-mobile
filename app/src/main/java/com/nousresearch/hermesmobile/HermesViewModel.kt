@@ -2310,6 +2310,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             runCatching { repo.resumeSession(session.id, session.profile, session.title, session.source) }
                 .onSuccess { chat ->
                     if (generation != navigationGeneration) return@onSuccess
+                    if (!chat.running) com.nousresearch.hermesmobile.push.PushDelivery.clearTurns(getApplication(), chat.storedSessionId)
                     resetStream(chat.streamingText)
                     uiState = uiState.copy(
                         // Switch only now: switching first showed the Chats list while the chat loaded.
@@ -2345,7 +2346,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                 error = null,
                 selectedProfile = profile.name
             )
-            runCatching { repo.openBotChat(profile) }
+            val (claimKickoff, releaseKickoff) = kickoffClaims()
+            runCatching { repo.openBotChat(profile, claimKickoff, releaseKickoff) }
                 .onSuccess { chat ->
                     if (generation == navigationGeneration) {
                         resetStream(chat.streamingText)
@@ -2454,13 +2456,25 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
+    /**
+     * The bot chat's first message is sent from this phone, so its answer may notify as a prompt typed here would.
+     * Claimed when the kickoff is about to be sent, released when nothing was sent (the repository reports which).
+     */
+    private fun kickoffClaims(): Pair<(String) -> Unit, (Boolean) -> Unit> {
+        var session = ""
+        val app = getApplication<Application>()
+        return { storedId: String -> session = storedId; com.nousresearch.hermesmobile.push.PushDelivery.claimTurn(app, storedId) } to
+            { sent: Boolean -> if (!sent) com.nousresearch.hermesmobile.push.PushDelivery.releaseTurn(app, session) }
+    }
+
     fun createBot(name: String, title: String, description: String, cloneFrom: String? = null) {
         val repo = repository ?: return
         rememberChatOrigin()
         val generation = ++navigationGeneration
         viewModelScope.launch {
             uiState = uiState.copy(loading = true, error = null)
-            runCatching { repo.createBot(name, title, description, cloneFrom) }
+            val (claimKickoff, releaseKickoff) = kickoffClaims()
+            runCatching { repo.createBot(name, title, description, cloneFrom, claimKickoff, releaseKickoff) }
                 .onSuccess { (profile, chat) ->
                     if (generation == navigationGeneration) {
                         resetStream(chat.streamingText)
@@ -2731,6 +2745,9 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             ) + uiState.liveStatuses.filterNot { it.id == "attachments" }
         )
 
+        // Claimed before sending: a short turn can end, and its notice arrive, before prompt.submit answers.
+        // Its answer may then notify even with "only my prompts" on.
+        com.nousresearch.hermesmobile.push.PushDelivery.claimTurn(getApplication(), chat.storedSessionId)
         viewModelScope.launch {
             runCatching {
                 sessionModelPins[chat.runtimeSessionId]?.takeIf { it.ensureOnNextPrompt }?.let { pin ->
@@ -2775,6 +2792,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     .ifBlank { if (attachments.any { it.kind == "image" }) "What do you see in this image?" else "Please inspect the attached files and respond to them." }
                 repo.submitPrompt(chat.runtimeSessionId, chat.profile, withBotMentionContext(wireText, chat.profile), rewind, confirmDeep)
             }.onSuccess { result ->
+                // A steer joins a turn already running instead of starting one: it waits for no answer of its own.
+                if (result.status == "steered") com.nousresearch.hermesmobile.push.PushDelivery.releaseTurn(getApplication(), chat.storedSessionId)
                 val current = uiState.activeChat
                 if (current?.runtimeSessionId != chat.runtimeSessionId) return@onSuccess
                 // The rewind re-inserted the kept turns under new row ids: take the history whole, not grafted.
@@ -2800,6 +2819,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     snackbar = notice
                 )
             }.onFailure { t ->
+                com.nousresearch.hermesmobile.push.PushDelivery.releaseTurn(getApplication(), chat.storedSessionId)
                 val current = uiState.activeChat
                 if (current?.runtimeSessionId == chat.runtimeSessionId) {
                     val canRestore = uiState.chatDraft.isBlank() && uiState.composerAttachments.isEmpty()
@@ -2973,6 +2993,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val chat = uiState.activeChat ?: return
         viewModelScope.launch {
             runCatching { repo.interrupt(chat.runtimeSessionId, chat.profile) }
+                // A stopped turn sends no notice: its claim would let the next turn started elsewhere ring.
+                .onSuccess { com.nousresearch.hermesmobile.push.PushDelivery.releaseTurn(getApplication(), chat.storedSessionId) }
                 .onFailure { uiState = uiState.copy(error = it.message) }
         }
     }
@@ -3526,7 +3548,10 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                             sessionModelPins[resumed.runtimeSessionId] = pin.copy(ensureOnNextPrompt = true)
                         }
                         refreshSessionMeta()
-                        if (!resumed.running) drainQueuedPrompt(resumed.runtimeSessionId)
+                        if (!resumed.running) {
+                            com.nousresearch.hermesmobile.push.PushDelivery.clearTurns(getApplication(), resumed.storedSessionId)
+                            drainQueuedPrompt(resumed.runtimeSessionId)
+                        }
                     }
                 }
                 .onFailure { if (transport == transportGeneration && generation == navigationGeneration && repository === repo && uiState.connectionState == GatewayConnectionState.CONNECTED) uiState = uiState.copy(error = it.message) }
@@ -3718,6 +3743,18 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         }
         if (type == "notification.clear") {
             uiState = uiState.copy(liveStatuses = uiState.liveStatuses.filterNot { it.id == id || it.id == type })
+            return
+        }
+        if (type == "status.update") {
+            // Desktop only surfaces compaction from these; the rest are status-bar echoes
+            // that, with no title, used to show up as a bare "Update" row.
+            val kind = payload.optString("kind")
+            val text = payload.optString("text").trim()
+            val rows = uiState.liveStatuses.filterNot { it.id == type }
+            uiState = uiState.copy(liveStatuses = when (kind) {
+                "compacting", "compressing" -> (rows + LiveTaskStatus(type, text.ifBlank { kind.replaceFirstChar { it.uppercase() } })).takeLast(8)
+                else -> rows
+            })
             return
         }
         val label = payload.optString("title")

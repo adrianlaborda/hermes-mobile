@@ -30,14 +30,77 @@ object PushDelivery {
     fun permitted(context: Context) = NotificationManagerCompat.from(context).areNotificationsEnabled() &&
         (Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
     private const val PREFS = "hermes_push_prefs"
-    private const val LOCKSCREEN_CONTENT = "lockscreen_content"
+    private const val ONLY_PHONE_TURNS = "only_phone_turns"
+    private const val PHONE_TURNS = "phone_turns"
+    // Long enough for a long agent turn; a claim left by a turn that never ended expires on its own.
+    private const val PHONE_TURN_TTL_MS = 24 * 60 * 60 * 1000L
 
-    /** The user's choice: show the event's content on the lock screen (default) or only a generic notice there. */
-    fun lockscreenContent(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(LOCKSCREEN_CONTENT, true)
+    /** The user's choice: notify only answers to prompts sent from this phone (default), or every finished turn. */
+    fun onlyPhoneTurns(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(ONLY_PHONE_TURNS, true)
 
-    fun setLockscreenContent(context: Context, show: Boolean) =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(LOCKSCREEN_CONTENT, show).apply()
+    fun setOnlyPhoneTurns(context: Context, only: Boolean) =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(ONLY_PHONE_TURNS, only).apply()
+
+    /** A prompt sent from this phone started a turn in [sessionId]: its answer may notify. */
+    fun claimTurn(context: Context, sessionId: String) = editTurns(context) { claims, _ ->
+        if (sessionId.isNotBlank()) claims[sessionId] = claims[sessionId].orEmpty() + System.currentTimeMillis()
+    }
+
+    /** A claimed turn of [sessionId] will send no notice (stopped, never sent, or a steer): its claim is spent. */
+    fun releaseTurn(context: Context, sessionId: String) = editTurns(context) { claims, _ ->
+        claims[sessionId]?.let { claims[sessionId] = it.drop(1) }
+    }
+
+    /**
+     * Drops every claim of [sessionId]: its chat was opened or refreshed while no turn runs there, so a claim left by a
+     * turn that ended without a notice (interrupted server-side) must not make a later Desktop turn ring. Cheap when
+     * there is nothing to remove: the stored JSON is only rewritten when it names the chat.
+     */
+    fun clearTurns(context: Context, sessionId: String) {
+        if (sessionId.isBlank()) return
+        val stored = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(PHONE_TURNS, null) ?: return
+        if (!stored.contains(sessionId)) return
+        editTurns(context) { claims, _ -> claims.remove(sessionId) }
+    }
+
+    /**
+     * Whether the turn notice [eventId] rings: always, unless the user chose phone-only and no prompt sent from
+     * here is waiting for an answer in that chat. Decided once per event, since the inbox can hand it over again.
+     */
+    private fun turnNotifies(context: Context, eventId: String, sessionId: String): Boolean {
+        var notifies = true
+        editTurns(context) { claims, decided ->
+            notifies = decided[eventId] ?: run {
+                val claim = claims[sessionId].orEmpty()
+                if (claim.isNotEmpty()) claims[sessionId] = claim.drop(1)
+                // No chat named: nothing to tell where it started, so it rings.
+                (claim.isNotEmpty() || sessionId.isBlank() || !onlyPhoneTurns(context)).also { decided[eventId] = it }
+            }
+        }
+        return notifies
+    }
+
+    private fun editTurns(context: Context, change: (MutableMap<String, List<Long>>, MutableMap<String, Boolean>) -> Unit) =
+        synchronized(this) {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val stored = runCatching { JSONObject(prefs.getString(PHONE_TURNS, null) ?: "{}") }.getOrDefault(JSONObject())
+            val fresh = System.currentTimeMillis() - PHONE_TURN_TTL_MS
+            val claims = mutableMapOf<String, List<Long>>()
+            stored.optJSONObject("claims")?.let { json ->
+                json.keys().forEach { key ->
+                    val times = json.optJSONArray(key) ?: return@forEach
+                    claims[key] = (0 until times.length()).map { times.optLong(it) }.filter { it > fresh }
+                }
+            }
+            val decided = linkedMapOf<String, Boolean>()
+            stored.optJSONObject("decided")?.let { json -> json.keys().forEach { decided[it] = json.optBoolean(it) } }
+            change(claims, decided)
+            val out = JSONObject()
+                .put("claims", JSONObject().also { json -> claims.filterValues { it.isNotEmpty() }.forEach { (k, v) -> json.put(k, org.json.JSONArray(v)) } })
+                .put("decided", JSONObject().also { json -> decided.entries.toList().takeLast(200).forEach { (k, v) -> json.put(k, v) } })
+            prefs.edit().putString(PHONE_TURNS, out.toString()).apply()
+        }
 
     /** Title and text for an event fetched from the inbox, localizing the plugin's generic notices. */
     fun presentation(context: Context, event: JSONObject): Pair<String, String> {
@@ -91,7 +154,8 @@ object PushDelivery {
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text.ifBlank { generic }))
                 .setWhen((event.optDouble("created_at", 0.0) * 1000).toLong().takeIf { it > 0 } ?: System.currentTimeMillis())
                 .setShowWhen(true)
-                .setVisibility(if (lockscreenContent(context)) NotificationCompat.VISIBILITY_PUBLIC else NotificationCompat.VISIBILITY_PRIVATE)
+                // Android's own lock-screen setting decides: full content, or this generic public version.
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setPublicVersion(publicVersion)
         }
         nm.notify(eventId, 0, builder.build())
@@ -120,6 +184,12 @@ object PushDelivery {
             return false
         }
         PushStore(context).received(account, event)
+        // A turn started elsewhere (Desktop, the CLI…) stays in the inbox without ringing: whoever started it is there.
+        if (event.optString("event_type") in setOf("turn_completed", "turn_failed") &&
+            !turnNotifies(context, id, event.optString("session_id"))) {
+            context.getSystemService(NotificationManager::class.java).cancel(id, 0)
+            return true
+        }
         // Replaces the generic notice (same tag) with the real content.
         val shown = show(context, id, event)
         return shown || event.optString("session_id").let { it.isNotBlank() && AppPresence.isShowing(it) }

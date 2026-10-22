@@ -143,23 +143,29 @@ fun PushSettings(
         } finally { checking = false }
     }
 
-    /** Runs `/android-test` for this profile, through a profile that runs the plugin when this one cannot. */
-    suspend fun testCommand(): String {
+    /**
+     * Runs a plugin command with [args] (which name [profile]), through a profile that runs the plugin when this
+     * one cannot. Returns the reply that answers for [profile]; the first failure when none does.
+     */
+    suspend fun profileCommand(command: String, args: String): String {
         val first = try {
-            val reply = runCommand(profile, PushSetup.TEST_COMMAND, profile)
+            val reply = runCommand(profile, command, args)
             val answered = runCatching { JSONObject(reply).optString("profile") }.getOrDefault("")
             if (answered.isBlank() || answered == profile) return reply
             IllegalStateException(res.getString(R.string.a24_server_wrong_profile, answered, profile))
         } catch (e: CancellationException) { throw e }
             catch (e: Exception) { e }
         for (other in PushSetup.hostCandidates(profiles, profile)) {
-            val reply = try { runCommand(other, PushSetup.TEST_COMMAND, profile) }
+            val reply = try { runCommand(other, command, args) }
                 catch (e: CancellationException) { throw e }
                 catch (_: Exception) { continue }
             if (runCatching { JSONObject(reply).optString("profile") }.getOrNull() == profile) return reply
         }
         throw first
     }
+
+    /** Runs `/android-test` for this profile, through a profile that runs the plugin when this one cannot. */
+    suspend fun testCommand(): String = profileCommand(PushSetup.TEST_COMMAND, profile)
 
     LaunchedEffect(config?.id, profile, account == null) { if (config != null && account == null) probe() }
 
@@ -273,19 +279,22 @@ fun PushSettings(
                 }
             }
             item {
-                var lockscreen by remember { mutableStateOf(PushDelivery.lockscreenContent(context)) }
+                var onlyPhone by remember { mutableStateOf(PushDelivery.onlyPhoneTurns(context)) }
                 PushCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(stringResource(R.string.a25_lockscreen), style = MaterialTheme.typography.bodyMedium)
-                            Text(stringResource(if (lockscreen) R.string.a25_lockscreen_on else R.string.a25_lockscreen_off),
+                            Text(stringResource(R.string.a25_phone_turns), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(if (onlyPhone) R.string.a25_phone_turns_on else R.string.a25_phone_turns_off),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Switch(checked = lockscreen, onCheckedChange = { lockscreen = it; PushDelivery.setLockscreenContent(context, it) })
+                        Switch(checked = onlyPhone, onCheckedChange = { onlyPhone = it; PushDelivery.setOnlyPhoneTurns(context, it) })
                     }
                     Text(stringResource(R.string.a25_privacy_note), style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+            item {
+                PrimaryChannelCard(profile) { args -> profileCommand(PushSetup.PRIMARY_CHANNEL_COMMAND, args) }
             }
         } else {
             item {
@@ -417,6 +426,56 @@ private fun PushCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.hermes.line)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp), content = content)
+    }
+}
+
+/**
+ * "Phone as the main channel" (plugin 0.5.4+): reminders and jobs created outside a messaging chat go to this phone.
+ * Loads the server's value when shown; an older plugin does not know the command and gets a note instead.
+ */
+@Composable
+private fun PrimaryChannelCard(profile: String, command: suspend (args: String) -> String) {
+    val scope = rememberCoroutineScope()
+    var on by remember(profile) { mutableStateOf(true) }
+    var loading by remember(profile) { mutableStateOf(true) }
+    var saving by remember(profile) { mutableStateOf(false) }
+    var unsupported by remember(profile) { mutableStateOf(false) }
+    var failure by remember(profile) { mutableStateOf<String?>(null) }
+    LaunchedEffect(profile) {
+        loading = true; failure = null
+        try {
+            on = PushSetup.primaryChannelReply(command(profile))
+            unsupported = false
+        } catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                unsupported = PushSetup.isUnknownCommand(e)
+                if (!unsupported) failure = e.message ?: e.javaClass.simpleName
+            }
+        finally { loading = false }
+    }
+    fun set(next: Boolean) {
+        if (loading || saving) return
+        val previous = on
+        on = next; saving = true; failure = null
+        scope.launch {
+            try { on = PushSetup.primaryChannelReply(command("$profile ${if (next) "on" else "off"}")) }
+            catch (e: CancellationException) { throw e }
+                catch (e: Exception) { on = previous; failure = e.message ?: e.javaClass.simpleName }
+            finally { saving = false }
+        }
+    }
+    PushCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.a25_primary_channel), style = MaterialTheme.typography.bodyMedium)
+                if (unsupported) Text(stringResource(R.string.a25_primary_channel_old), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                else if (!loading) Text(stringResource(if (on) R.string.a25_primary_channel_on else R.string.a25_primary_channel_off),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (!unsupported) Switch(checked = on, enabled = !loading && !saving, onCheckedChange = { set(it) })
+        }
+        failure?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
     }
 }
 

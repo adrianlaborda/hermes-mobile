@@ -393,6 +393,8 @@ data class ChatMessage(
     val timestamp: Long = 0L,
     val displayKind: String = "",
     val live: Boolean = false,
+    /** A live tool row's own status ("error" keeps its failure visible while the turn runs); blank means "running" when [live]. */
+    val liveStatus: String = "",
     /** The `@file:`/`@image:` lines lifted out of a stored user turn into [attachments]. */
     val refs: List<String> = emptyList(),
     /** The result inside a background-process or delegation notice, shown when the notice is opened. */

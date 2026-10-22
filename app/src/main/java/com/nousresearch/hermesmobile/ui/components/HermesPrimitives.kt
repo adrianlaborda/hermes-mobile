@@ -51,7 +51,6 @@ import androidx.compose.ui.unit.sp
 import com.nousresearch.hermesmobile.data.ChatMessage
 import com.nousresearch.hermesmobile.data.HermesProfile
 import com.nousresearch.hermesmobile.data.ServerInteraction
-import com.nousresearch.hermesmobile.data.ToolActivity
 import com.nousresearch.hermesmobile.ui.theme.HermesMono
 import com.nousresearch.hermesmobile.ui.theme.HermesTokens
 import com.nousresearch.hermesmobile.ui.theme.hermes
@@ -660,11 +659,6 @@ fun ChatMessageBubble(
             if (message.content.isNotBlank()) MarkdownLite(com.nousresearch.hermesmobile.data.ChatMedia.render(message.content))
         }
     }
-}
-
-@Composable
-fun ToolActivityLane(tools: List<ToolActivity>) {
-    CompactToolActivity(tools)
 }
 
 @Composable

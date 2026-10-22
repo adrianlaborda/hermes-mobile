@@ -9,6 +9,34 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+**Update the server's `hermes-android` plugin to 0.5.4 first** (`hermes plugins update hermes-android`): answers to
+what you send from the app, reminders on the phone and the new main-channel switch need it.
+
+### Added
+
+- **The phone can be the main channel for reminders.** Settings → Notifications → "Phone as the main channel" (on by
+  default) delivers reminders created in Hermes Desktop, the terminal or the app to this phone instead of Telegram or
+  another messaging home channel.
+
+### Changed
+
+- **Only answers to what you sent from the phone ring.** With the setting on (the default), a finished answer
+  notifies only when its prompt was sent from this phone. Answers to chats you follow in Hermes Desktop stay silent
+  but still reach the inbox. Approvals always notify. Settings → Notifications → "Only answers to what I send from
+  here" turns it off, so every answer notifies again. Answers to prompts sent from the app used to never notify:
+  the server plugin took the app's chats for a messaging channel such as Telegram.
+- **The lock screen follows Android's own setting.** The app's "Show content on the lock screen" switch is gone:
+  Android's lock-screen notification setting decides whether the text shows. Before, the switch could show it even
+  when Android was set to hide sensitive content.
+
+### Fixed
+
+- **One "Working" pill per turn, as in Hermes Desktop.** While the agent reasoned and ran a tool, the chat could show
+  two "Working" pills and a bare "Update" line under them. Running tools now join the turn's own activity pill, and
+  gateway status echoes no longer appear as a line; only chat compaction still shows its progress there.
+- **Reminders asked for in the app reach the phone, not Telegram.** "Remind me in 2 minutes" sent from the app used to
+  be delivered to Telegram. It now reaches this phone.
+
 ## [0.3.0-beta.11] - 2026-10-18
 
 ### Changed

@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="a25_paired">Emparejado</string>
-    <string name="a25_lockscreen">Mostrar el contenido en la pantalla de bloqueo</string>
-    <string name="a25_lockscreen_on">El título y el texto se ven sin desbloquear.</string>
-    <string name="a25_lockscreen_off">La pantalla de bloqueo solo avisa de que hay algo nuevo; desbloquea para leerlo.</string>
     <string name="a25_privacy_note">Por los servidores de Google (FCM) solo viaja un identificador anónimo. El móvil descarga el contenido directamente de tu servidor Hermes.</string>
     <string name="a25_reminder_title">Recordatorio de Hermes</string>
     <string name="a25_approval_title">Aprobación pendiente</string>
@@ -11,4 +8,11 @@
     <string name="a25_test_body">Las notificaciones funcionan. Esto es una prueba de tu servidor Hermes.</string>
     <string name="a25_turn_ready">Tu respuesta está lista.</string>
     <string name="a25_turn_failed">La tarea ha fallado o necesita tu atención.</string>
+    <string name="a25_phone_turns">Solo las respuestas a lo que envío desde aquí</string>
+    <string name="a25_phone_turns_on">Los chats que sigues en Hermes Desktop u otro sitio no suenan; siguen apareciendo en la bandeja. Las aprobaciones siempre avisan.</string>
+    <string name="a25_phone_turns_off">Avisa de todas las respuestas terminadas, también las de chats que sigues en otro sitio.</string>
+    <string name="a25_primary_channel">El móvil como canal principal</string>
+    <string name="a25_primary_channel_on">Los recordatorios creados en Hermes Desktop, la terminal o la app llegan aquí en vez de a Telegram.</string>
+    <string name="a25_primary_channel_off">Esos recordatorios van al canal de mensajería principal del servidor (Telegram…) y también aquí.</string>
+    <string name="a25_primary_channel_old">Necesita hermes-android 0.5.4 o posterior</string>
 </resources>

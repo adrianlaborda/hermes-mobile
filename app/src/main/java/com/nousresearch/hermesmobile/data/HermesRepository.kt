@@ -400,15 +400,23 @@ class HermesRepository(
         return null
     }
 
-    suspend fun openBotChat(profile: HermesProfile): ActiveChat =
-        ensureCanonicalBotChat(profile, kickoff = false)
+    suspend fun openBotChat(
+        profile: HermesProfile,
+        beforeKickoff: (storedId: String) -> Unit = {},
+        afterKickoff: (sent: Boolean) -> Unit = {}
+    ): ActiveChat = ensureCanonicalBotChat(profile, kickoff = false, beforeKickoff, afterKickoff)
 
     /**
      * Single-flight, adopt-before-mint canonical creation. The lock prevents this
      * Android process from racing itself; the post-create title conflict lookup
      * adopts a winner created by Desktop/Telegram/another Android client.
      */
-    private suspend fun ensureCanonicalBotChat(profile: HermesProfile, kickoff: Boolean): ActiveChat {
+    private suspend fun ensureCanonicalBotChat(
+        profile: HermesProfile,
+        kickoff: Boolean,
+        beforeKickoff: (storedId: String) -> Unit = {},
+        afterKickoff: (sent: Boolean) -> Unit = {}
+    ): ActiveChat {
         val lock = canonicalBotLocks.getOrPut(profile.name) { Mutex() }
         return lock.withLock {
             val latestProfile = runCatching { rpcProfiles().firstOrNull { it.name == profile.name } }
@@ -457,7 +465,9 @@ class HermesRepository(
             // is also the narrow persistence fallback for an otherwise-pruned lazy row.
             if (kickoff || !titled) {
                 delay(400)
-                runCatching {
+                // The caller claims the turn before the submit can answer, and releases it if nothing was sent.
+                beforeKickoff(stored)
+                val sent = runCatching {
                     gateway.requestObject(
                         "prompt.submit",
                         JSONObject()
@@ -467,7 +477,8 @@ class HermesRepository(
                             .put("surface", "mobile"),
                         timeoutMs = 30_000
                     )
-                }
+                }.isSuccess
+                afterKickoff(sent)
             }
 
             // Re-open by the durable registry identity. If a compatibility
@@ -644,7 +655,14 @@ class HermesRepository(
         )
     }
 
-    suspend fun createBot(name: String, title: String, description: String, cloneFrom: String? = null): Pair<HermesProfile, ActiveChat> {
+    suspend fun createBot(
+        name: String,
+        title: String,
+        description: String,
+        cloneFrom: String? = null,
+        beforeKickoff: (storedId: String) -> Unit = {},
+        afterKickoff: (sent: Boolean) -> Unit = {}
+    ): Pair<HermesProfile, ActiveChat> {
         val createParams = JSONObject()
             .put("name", name)
             .put("description", description.trim())
@@ -687,7 +705,7 @@ class HermesRepository(
         val readiness = runCatching {
             gateway.requestObject("setup.runtime_check", JSONObject().put("profile", name), timeoutMs = 20_000)
         }.getOrNull()
-        val chat = ensureCanonicalBotChat(profile, kickoff = readiness?.optBoolean("ok", true) != false)
+        val chat = ensureCanonicalBotChat(profile, kickoff = readiness?.optBoolean("ok", true) != false, beforeKickoff, afterKickoff)
         val refreshedProfile = rpcProfiles().firstOrNull { it.name == name } ?: profile
         return refreshedProfile to chat
     }

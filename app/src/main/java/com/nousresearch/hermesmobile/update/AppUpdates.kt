@@ -80,7 +80,7 @@ data class UpdateState(
  */
 object AppUpdates {
     /** The plugin version this app's notifications need (CHANGELOG: "Requires `hermes-android` …"). */
-    val MIN_PLUGIN = AppVersion(0, 5, 1, emptyList())
+    val MIN_PLUGIN = AppVersion(0, 5, 4, emptyList())
     const val PLUGIN_REPO = "adrianlaborda/hermes-android-plugin"
     const val PLUGIN_UPDATE_COMMAND = "hermes plugins update hermes-android"
     const val ACTION_OPEN = "hermes.update"

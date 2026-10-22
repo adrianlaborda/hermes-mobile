@@ -126,9 +126,13 @@ internal fun ChatThread(
     // Reverse layout: index 0 is the bottom lane, so a fresh state already rests on the
     // latest message. See ChatScrollPolicy.kt for why there is no follow scroll.
     val state = key(conversationIdentity) { rememberLazyListState() }
-    val timeline = remember(chat.messages, streamingText, reasoningText) {
-        chatTimeline(chat.messages + if (streamingText.isNotBlank() || reasoningText.isNotBlank())
-            listOf(ChatMessage(role = "assistant", content = streamingText, reasoning = reasoningText, live = true)) else emptyList())
+    // Running tools (and failed ones, still shown while the turn runs) join the live turn's activity row, as in Desktop,
+    // instead of a second pill below it.
+    val liveTools = if (chat.running) tools.filter { it.status in setOf("running", "generating", "error") } else emptyList()
+    val timeline = remember(chat.messages, streamingText, reasoningText, liveTools) {
+        chatTimeline(chat.messages + (if (streamingText.isNotBlank() || reasoningText.isNotBlank())
+            listOf(ChatMessage(role = "assistant", content = streamingText, reasoning = reasoningText, live = true)) else emptyList()) +
+            liveTools.map { ChatMessage(role = "tool", content = it.detail, toolName = it.name, live = true, liveStatus = it.status) })
     }
     val displayRows = remember(timeline) { chatDisplayRows(timeline) }
     val entries = remember(displayRows, chat.hasOlderMessages) {
@@ -266,7 +270,6 @@ internal fun ChatThread(
                         when (entry) {
                             ChatListEntry.Bottom -> Column(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
                                 LiveStatusLane(liveStatuses)
-                                ToolActivityLane(tools.filter { it.status in setOf("running", "generating", "error") })
                                 ArtifactLane(artifactSuggestions, actions.onOpenArtifact)
                                 QueueLane(
                                     queuedPrompts = queuedPrompts,

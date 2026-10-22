@@ -23,7 +23,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nousresearch.hermesmobile.R
 import com.nousresearch.hermesmobile.data.ChatMessage
-import com.nousresearch.hermesmobile.data.ToolActivity
 import com.nousresearch.hermesmobile.ui.theme.HermesTokens
 import com.nousresearch.hermesmobile.ui.theme.hermes
 
@@ -34,18 +33,12 @@ fun ChatActivityBlock(messages: List<ChatMessage>) {
     Column {
         ActivityPanel(messages.map {
             ActivityStep(it.toolName, if(it.role == "tool") it.content else it.reasoning,
-                if(it.live) "running" else "", it.role != "tool")
+                it.liveStatus.ifBlank { if (it.live) "running" else "" }, it.role != "tool")
         })
         remember(messages) { messages.filter { it.role == "tool" && com.nousresearch.hermesmobile.data.ToolArtifacts.delivers(it.toolName) }
             .flatMap { com.nousresearch.hermesmobile.data.ChatAudio.fromTool(it.content) }.distinct().take(12) }
             .forEach { ChatAudioPlayer(it) }
     }
-}
-
-@Composable
-fun CompactToolActivity(tools: List<ToolActivity>) {
-    if(tools.isEmpty()) return
-    ActivityPanel(tools.map { ActivityStep(it.name, it.detail, it.status) })
 }
 
 @Composable
