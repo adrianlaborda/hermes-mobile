@@ -38,6 +38,9 @@ fun HermesDrawer(
     onNewChat: () -> Unit,
     onNotifications: () -> Unit,
     onClose: () -> Unit,
+    /** Kanban's entry shows only while the gateway has the plugin active for the profile. */
+    kanbanAvailable: Boolean = false,
+    onKanban: () -> Unit = {},
     recentSessions: List<com.nousresearch.hermesmobile.data.HermesSession> = emptyList(),
     activeSessionId: String? = null,
     sessionDots: Map<String, com.nousresearch.hermesmobile.data.SessionDot> = emptyMap(),
@@ -97,6 +100,7 @@ fun HermesDrawer(
             DrawerItem(Icons.Default.SpaceDashboard, stringResource(R.string.a14_home), current == MainSection.HOME) { onClose(); onSelect(MainSection.HOME) }
             DrawerItem(Icons.AutoMirrored.Filled.Chat, stringResource(R.string.ui_ef5b4049bb), current == MainSection.CHAT) { onClose(); onSelect(MainSection.CHAT) }
             DrawerItem(Icons.Default.SmartToy, stringResource(R.string.ui_f17c0acbd8), current == MainSection.BOTS) { onClose(); onSelect(MainSection.BOTS) }
+            if (kanbanAvailable) DrawerItem(Icons.Default.ViewKanban, stringResource(R.string.kanban_title), current == MainSection.KANBAN) { onClose(); onKanban() }
 
             // Desktop's sidebar is primarily the session list; mirror its most recent rows here.
             if (recentSessions.isNotEmpty()) {

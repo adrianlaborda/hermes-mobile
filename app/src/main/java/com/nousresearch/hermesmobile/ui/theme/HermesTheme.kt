@@ -37,6 +37,13 @@ object HermesTokens {
     val Purple = Color(0xFF9E94D5)
     val Cyan = Color(0xFF6F9BA6)
     val CyanLight = Color(0xFF4C7F8C)
+
+    // Kanban column tones (Desktop plugins/kanban/types.ts COLUMN_META) ------------
+    val KanbanScheduled = Color(0xFFA78BFA)
+    val KanbanReady = Color(0xFF60A5FA)
+    val KanbanRunning = Color(0xFF34D399)
+    val KanbanBlocked = Color(0xFFF87171)
+    val KanbanReview = Color(0xFFFBBF24)
 }
 
 /**

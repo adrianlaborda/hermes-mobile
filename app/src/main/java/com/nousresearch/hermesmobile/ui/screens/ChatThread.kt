@@ -89,7 +89,9 @@ internal class ChatThreadActions(
     /** Edits a sent message: sending it rewinds the chat to that turn, as in Desktop. */
     val onEditMessage: (ChatMessage) -> Unit,
     val onCancelEdit: () -> Unit,
-    val onConfirmEdit: (Boolean) -> Unit
+    val onConfirmEdit: (Boolean) -> Unit,
+    /** A Kanban worker's transcript is read-only; the banner opens the board only while Kanban is available. */
+    val onOpenKanban: (() -> Unit)?
 )
 
 @Composable
@@ -287,6 +289,7 @@ internal fun ChatThread(
                                 row = entry.row,
                                 turnEnd = entry.row.key in turnEnds.keys,
                                 canRetry = entry.row.key == turnEnds.retryKey && !chat.running,
+                                readOnly = chat.readOnly,
                                 voice = voice,
                                 onEdit = actions.onEditMessage,
                                 onCopy = copy,
@@ -338,7 +341,8 @@ internal fun ChatThread(
                     dismissButton = { TextButton(onClick = { actions.onConfirmEdit(false) }) { Text(stringResource(R.string.a14_cancel)) } }
                 )
             }
-            ChatComposer(
+            if (chat.readOnly) KanbanReadOnlyBanner(onOpenBoard = actions.onOpenKanban)
+            else ChatComposer(
                 chat = chat,
                 draft = draft,
                 attachments = attachments,
@@ -401,6 +405,7 @@ private fun ChatTranscriptRow(
     row: ChatDisplayRow,
     turnEnd: Boolean,
     canRetry: Boolean,
+    readOnly: Boolean,
     voice: VoiceActions?,
     onEdit: (ChatMessage) -> Unit,
     onCopy: (String) -> Unit,
@@ -412,14 +417,16 @@ private fun ChatTranscriptRow(
     when (val entry = row.entry) {
         is ChatTimelineItem.Message -> {
             val message = entry.message
-            val editable = message.role == "user" && message.content.isNotBlank()
+            val copyable = message.role == "user" && message.content.isNotBlank()
+            // A read-only transcript (a Kanban worker's) cannot be edited, retried or branched; copy and share stay.
+            val editable = copyable && !readOnly
             Column {
                 ChatMessageBubble(
                     message,
                     onEdit = if (editable) ({ onEdit(message) }) else null,
-                    onCopy = if (editable) ({ onCopy(message.content) }) else null
+                    onCopy = if (copyable) ({ onCopy(message.content) }) else null
                 )
-                if (turnEnd) AssistantActions(message.content, canRetry, voice, onCopy, onShare, onRetry, onBranch)
+                if (turnEnd) AssistantActions(message.content, canRetry, readOnly, voice, onCopy, onShare, onRetry, onBranch)
             }
         }
         is ChatTimelineItem.Activity -> ChatActivityBlock(entry.steps)
@@ -432,6 +439,7 @@ private fun ChatTranscriptRow(
 private fun AssistantActions(
     text: String,
     canRetry: Boolean,
+    readOnly: Boolean,
     voice: VoiceActions?,
     onCopy: (String) -> Unit,
     onShare: (String) -> Unit,
@@ -447,8 +455,8 @@ private fun AssistantActions(
                 voice.speakText(text)
             }
         }
-        if (canRetry) MessageAction(Icons.Default.Refresh, stringResource(R.string.a22_retry), onClick = onRetry)
-        MessageAction(Icons.AutoMirrored.Filled.CallSplit, stringResource(R.string.a22_branch), onClick = onBranch)
+        if (canRetry && !readOnly) MessageAction(Icons.Default.Refresh, stringResource(R.string.a22_retry), onClick = onRetry)
+        if (!readOnly) MessageAction(Icons.AutoMirrored.Filled.CallSplit, stringResource(R.string.a22_branch), onClick = onBranch)
     }
 }
 

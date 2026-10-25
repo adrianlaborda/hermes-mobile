@@ -43,7 +43,9 @@ internal fun groupSessions(
     today: LocalDate = LocalDate.now(),
     zone: ZoneId = ZoneId.systemDefault()
 ): List<SessionSection> {
-    val byRecency = HermesSession.collapseLineages(sessions).sortedByDescending { sessionEpochMillis(it.lastActive) }
+    // Kanban workers, tool and one-shot runs stay out of the recents (Desktop's INTERNAL_LISTING_SOURCES).
+    val byRecency = HermesSession.collapseLineages(sessions.filterNot { it.isInternalRun })
+        .sortedByDescending { sessionEpochMillis(it.lastActive) }
     val pinned = byRecency.filter { it.pinned }
     val routines = byRecency.filter { !it.pinned && it.isRoutineRun }
     val rest = byRecency.filterNot { it.pinned || it.isRoutineRun }

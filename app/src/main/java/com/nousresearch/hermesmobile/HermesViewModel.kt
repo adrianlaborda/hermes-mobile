@@ -33,7 +33,7 @@ import java.util.UUID
  * Capabilities, Messaging, Files, Cron, Memory); Settings ([MORE]) holds the rest, one page each.
  */
 enum class MainSection {
-    HOME, CHAT, BOTS, CAPABILITIES, MESSAGING, FILES, CRON, MEMORY,
+    HOME, CHAT, BOTS, CAPABILITIES, MESSAGING, FILES, CRON, KANBAN, MEMORY,
     MORE, MODELS, VOICE, SERVER_SETTINGS, PROVIDERS, GATEWAYS, SYSTEM, PROFILES, NOTIFICATIONS, APPEARANCE, ASSISTANT, ABOUT
 }
 
@@ -146,7 +146,19 @@ data class HermesUiState(
     val slashQuery: String? = null,
     val slashLoading: Boolean = false,
     val commandOutput: CommandOutput? = null,
-    val snackbar: String? = null
+    val snackbar: String? = null,
+    /** The Kanban plugin is active for the selected profile and its boards answer; false hides every Kanban entry. */
+    val kanbanAvailable: Boolean = false,
+    val kanbanBoards: KanbanBoards? = null,
+    /** The board on screen (slug); blank until the boards load. */
+    val kanbanBoard: String = "",
+    val kanbanSnapshot: KanbanBoardSnapshot? = null,
+    val kanbanLoading: Boolean = false,
+    val kanbanError: String? = null,
+    /** The card whose detail sheet is open. */
+    val kanbanTaskId: String? = null,
+    val kanbanTask: KanbanTaskDetail? = null,
+    val kanbanBusy: Boolean = false
 )
 
 /** Display-only result of a slash command, shown in a sheet over the chat. */
@@ -159,6 +171,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     private var readyWaiter: CompletableDeferred<Unit>? = null
 
     private var navigationGeneration = 0L
+    private var kanbanAvailabilityGeneration = 0L
+    private var kanbanBoardGeneration = 0L
     private var botEditorGeneration = 0L
     private var refreshGeneration = 0L
     private var searchGeneration = 0L
@@ -699,6 +713,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     fun switchSection(section: MainSection, record: Boolean = true) {
+        // Kanban is a destination only while the gateway has it for the selected profile.
+        if (section == MainSection.KANBAN && !uiState.kanbanAvailable) return switchSection(MainSection.HOME, record)
         if (record && section != uiState.section) {
             sectionHistory.remove(section)
             sectionHistory.addLast(uiState.section)
@@ -726,6 +742,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                 }
             }
             MainSection.CRON -> refreshCron()
+            MainSection.KANBAN -> refreshKanban()
             MainSection.MESSAGING -> viewModelScope.launch { refreshMessagingAndPairing() }
             MainSection.CAPABILITIES, MainSection.PROVIDERS -> {
                 val profile = uiState.capabilityProfile.takeIf { p -> uiState.profiles.any { it.name == p } }
@@ -749,13 +766,153 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         telegramOnboardingPollingJob?.cancel()
         val updatedConfig = uiState.savedConfig?.copy(selectedProfile = name)
         if (updatedConfig != null) persistActiveConfig(updatedConfig, makeActive = true)
-        uiState = uiState.copy(selectedProfile = name, telegramOnboarding = null, webhookReceipt = null)
+        // The Kanban board on screen belongs to the previous profile.
+        uiState = uiState.copy(
+            selectedProfile = name,
+            telegramOnboarding = null,
+            webhookReceipt = null,
+            kanbanBoard = "",
+            kanbanSnapshot = null,
+            kanbanTaskId = null,
+            kanbanTask = null
+        )
         viewModelScope.launch {
             refreshMessagingAndPairing()
             refreshCronSupport(name)
         }
+        refreshKanbanAvailability(name)
     }
 
+
+    /**
+     * Kanban shows only where the gateway has it active for the profile (`/api/dashboard/plugins`, which leaves out
+     * hidden and disabled plugins) and its board routes answer. Re-run on connect and on every profile switch.
+     */
+    fun refreshKanbanAvailability(profile: String = uiState.selectedProfile) {
+        val repo = repository ?: return
+        val generation = ++kanbanAvailabilityGeneration
+        viewModelScope.launch {
+            val boards = runCatching {
+                check(profile.isNotBlank() && profile != "all")
+                check("kanban" in repo.rest.activeDashboardPlugins(profile)) { "Kanban is not active for this profile" }
+                repo.rest.kanbanBoards(profile)
+            }.getOrNull()
+            if (generation != kanbanAvailabilityGeneration || repository !== repo) return@launch
+            val available = boards != null
+            val knownSlugs = boards?.boards.orEmpty().map { it.slug }
+            uiState = uiState.copy(
+                kanbanAvailable = available,
+                kanbanBoards = boards,
+                kanbanBoard = uiState.kanbanBoard.takeIf { it in knownSlugs }.orEmpty(),
+                kanbanSnapshot = null,
+                kanbanTaskId = null,
+                kanbanTask = null
+            )
+            if (!available && uiState.section == MainSection.KANBAN) switchSection(MainSection.HOME, record = false)
+            // A board on screen is loaded for the profile that is now selected.
+            if (available && uiState.section == MainSection.KANBAN) refreshKanban()
+        }
+    }
+
+    /** Loads the board on screen (the selected one, else the server's current board). */
+    fun refreshKanban(board: String = uiState.kanbanBoard) {
+        val repo = repository ?: return
+        val profile = uiState.selectedProfile
+        val generation = ++kanbanBoardGeneration
+        viewModelScope.launch {
+            uiState = uiState.copy(kanbanLoading = true, kanbanError = null)
+            runCatching {
+                val boards = repo.rest.kanbanBoards(profile)
+                val slug = board.takeIf { wanted -> boards.boards.any { it.slug == wanted } }
+                    ?: boards.current.ifBlank { boards.boards.firstOrNull()?.slug.orEmpty() }
+                val snapshot = if (slug.isBlank()) KanbanBoardSnapshot(emptyList()) else repo.rest.kanbanBoard(profile, slug)
+                Triple(boards, slug, snapshot)
+            }.onSuccess { (boards, slug, snapshot) ->
+                if (generation != kanbanBoardGeneration || repository !== repo || uiState.selectedProfile != profile) return@onSuccess
+                uiState = uiState.copy(
+                    kanbanBoards = boards,
+                    kanbanBoard = slug,
+                    kanbanSnapshot = snapshot,
+                    kanbanLoading = false
+                )
+            }.onFailure {
+                if (generation == kanbanBoardGeneration) uiState = uiState.copy(kanbanLoading = false, kanbanError = it.message)
+            }
+        }
+    }
+
+    fun selectKanbanBoard(slug: String) {
+        if (slug == uiState.kanbanBoard) return
+        uiState = uiState.copy(kanbanTaskId = null, kanbanTask = null)
+        refreshKanban(slug)
+    }
+
+    fun openKanbanTask(taskId: String) {
+        val repo = repository ?: return
+        val profile = uiState.selectedProfile
+        val board = uiState.kanbanBoard
+        uiState = uiState.copy(kanbanTaskId = taskId, kanbanTask = null)
+        viewModelScope.launch {
+            runCatching { repo.rest.kanbanTask(profile, board, taskId) }
+                .onSuccess { detail ->
+                    if (uiState.kanbanTaskId == taskId && uiState.kanbanBoard == board) uiState = uiState.copy(kanbanTask = detail)
+                }
+                .onFailure {
+                    if (uiState.kanbanTaskId == taskId) uiState = uiState.copy(kanbanTaskId = null, snackbar = it.message)
+                }
+        }
+    }
+
+    fun closeKanbanTask() {
+        uiState = uiState.copy(kanbanTaskId = null, kanbanTask = null)
+    }
+
+    /** Desktop's unblock: a blocked card goes back to Ready. */
+    fun unblockKanbanTask(taskId: String) = kanbanTaskAction(taskId, R.string.kanban_unblocked_message) { repo, profile, board ->
+        repo.rest.kanbanUnblock(profile, board, taskId)
+    }
+
+    /** Releases a running worker's claim: the card returns to the queue. */
+    fun releaseKanbanTask(taskId: String) = kanbanTaskAction(taskId, R.string.kanban_released_message) { repo, profile, board ->
+        repo.rest.kanbanReclaim(profile, board, taskId)
+    }
+
+    /** Desktop's move: the card lands in [status] at once and goes back to its old column if the server refuses. */
+    fun moveKanbanTask(taskId: String, status: String) {
+        val repo = repository ?: return
+        val profile = uiState.selectedProfile
+        val board = uiState.kanbanBoard
+        val previous = uiState.kanbanSnapshot
+        if (previous != null) uiState = uiState.copy(kanbanSnapshot = previous.moveTask(taskId, status))
+        viewModelScope.launch {
+            runCatching { repo.rest.kanbanMoveTask(profile, board, taskId, status) }
+                .onFailure {
+                    if (uiState.kanbanBoard == board) uiState = uiState.copy(kanbanSnapshot = previous, snackbar = it.message)
+                }
+            refreshKanban(board)
+            if (uiState.kanbanTaskId == taskId) openKanbanTask(taskId)
+        }
+    }
+
+    private fun kanbanTaskAction(
+        taskId: String,
+        doneMessage: Int,
+        call: suspend (HermesRepository, String, String) -> JSONObject
+    ) {
+        val repo = repository ?: return
+        val profile = uiState.selectedProfile
+        val board = uiState.kanbanBoard
+        viewModelScope.launch {
+            uiState = uiState.copy(kanbanBusy = true)
+            runCatching { call(repo, profile, board) }
+                .onSuccess {
+                    uiState = uiState.copy(kanbanBusy = false, snackbar = string(doneMessage))
+                    refreshKanban(board)
+                    if (uiState.kanbanTaskId == taskId) openKanbanTask(taskId)
+                }
+                .onFailure { uiState = uiState.copy(kanbanBusy = false, snackbar = it.message) }
+        }
+    }
 
     fun selectCapabilityProfile(name: String) {
         if (name == uiState.capabilityProfile) return
@@ -1188,7 +1345,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
     fun acceptIncomingShare() {
         val pending = incomingShare ?: return
-        if (uiState.activeChat == null) return
+        // A read-only transcript takes no drafts: the share stays pending for another chat.
+        if (uiState.activeChat == null || readOnlyActiveChat()) return
         if (uiState.composerAttachments.size + pending.files.size > MAX_COMPOSER_ATTACHMENTS) {
             uiState = uiState.copy(error = string(R.string.i18n_vm_six_files))
             return
@@ -1207,6 +1365,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
      * runs it again instead of adding a new message at the end.
      */
     fun startEdit(message: ChatMessage) {
+        if (readOnlyActiveChat()) return
         val chat = uiState.activeChat ?: return
         val index = chat.messages.indexOfFirst { it.stableKey == message.stableKey }
         if (index < 0 || message.role != "user") return
@@ -1305,6 +1464,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     fun addComposerAttachments(uris: List<Uri>) {
+        if (readOnlyActiveChat()) return
         val chat = uiState.activeChat ?: return
         val resolver = getApplication<Application>().contentResolver
         val existing = uiState.composerAttachments
@@ -1406,6 +1566,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     fun refreshSessionMeta() {
+        if (readOnlyActiveChat()) return
         val chat = uiState.activeChat ?: return
         val repo = repository ?: return
         val runtimeId = chat.runtimeSessionId
@@ -1434,6 +1595,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     fun switchSessionModel(choice: SessionModelChoice, reasoning: String = uiState.activeChat?.reasoningEffort.orEmpty()) {
+        if (readOnlyActiveChat()) return
         val chat = uiState.activeChat ?: return
         val repo = repository ?: return
         if (chat.running) {
@@ -1535,6 +1697,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     fun setSessionReasoning(level: String) {
+        if (readOnlyActiveChat()) return
         val chat = uiState.activeChat ?: return
         val repo = repository ?: return
         if (chat.running) return
@@ -1644,6 +1807,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         persistActiveConfig(it, makeActive = true)
                     }
                 }
+                refreshKanbanAvailability(snapshot.selectedProfile)
                 uiState = uiState.copy(
                     profiles = snapshot.profiles,
                     sessions = snapshot.sessions.sessions,
@@ -2287,7 +2451,9 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             // The saved connection reconnects on its own; reopen the page once it is live, unless the user moved on.
             repeat(60) {
                 if (uiState.section != section || uiState.activeChat != null) return@launch
+                // Kanban waits for its availability check: switching before it resolves would fall back to Home.
                 if (uiState.connectionState == GatewayConnectionState.CONNECTED &&
+                    (section != MainSection.KANBAN || uiState.kanbanAvailable) &&
                     (sessionId == null || uiState.profiles.any { it.name == profile })) {
                     if (sessionId != null && section == MainSection.CHAT) {
                         openSession(HermesSession(id = sessionId, profile = profile,
@@ -2307,7 +2473,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         resetStream()
         viewModelScope.launch {
             uiState = uiState.copy(loading = true, error = null)
-            runCatching { repo.resumeSession(session.id, session.profile, session.title, session.source) }
+            runCatching { openStoredChat(repo, session) }
                 .onSuccess { chat ->
                     if (generation != navigationGeneration) return@onSuccess
                     if (!chat.running) com.nousresearch.hermesmobile.push.PushDelivery.clearTurns(getApplication(), chat.storedSessionId)
@@ -2320,9 +2486,13 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         loading = false,
                         tools = emptyList(),
                         selectedProfile = session.profile,
-                        loadingOlderMessages = false
+                        loadingOlderMessages = false,
+                        // A read-only transcript has no composer: nothing typed or queued for another chat carries over.
+                        chatDraft = if (chat.readOnly) "" else uiState.chatDraft,
+                        composerAttachments = if (chat.readOnly) emptyList() else uiState.composerAttachments,
+                        queuedPrompts = if (chat.readOnly) emptyList() else uiState.queuedPrompts
                     )
-                    loadChatEnhancements(chat)
+                    if (!chat.readOnly) loadChatEnhancements(chat)
                     runCatching {
                         repo.rest.patchSession(session.id, session.profile, JSONObject().put("unread", false))
                     }
@@ -2334,6 +2504,23 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                 }
         }
     }
+
+    /**
+     * A Kanban worker's transcript opens read-only; the gateway's 4132 refusal of `session.resume` means the same
+     * (an older app list, or a worker the source column missed), so that refusal falls back to the read-only open.
+     */
+    private suspend fun openStoredChat(repo: HermesRepository, session: HermesSession): ActiveChat {
+        if (session.isKanbanWorker) return repo.readOnlySession(session.id, session.profile, session.title, session.source)
+        return try {
+            repo.resumeSession(session.id, session.profile, session.title, session.source)
+        } catch (refused: com.nousresearch.hermesmobile.data.GatewayRpcException) {
+            if (refused.code != KANBAN_RESUME_REFUSED) throw refused
+            repo.readOnlySession(session.id, session.profile, session.title, session.source)
+        }
+    }
+
+    /** True while the open chat is a Kanban worker's transcript: nothing sends to it or changes it. */
+    private fun readOnlyActiveChat(): Boolean = uiState.activeChat?.readOnly == true
 
     fun openBot(profile: HermesProfile) {
         val repo = repository ?: return
@@ -2423,6 +2610,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     fun compressActiveChat() {
+        if (readOnlyActiveChat()) return
         val repo = repository ?: return
         val chat = uiState.activeChat ?: return
         if (chat.running) {
@@ -2675,6 +2863,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     fun sendMessage(text: String) = sendMessage(text, deepConfirmed = false)
 
     private fun sendMessage(text: String, deepConfirmed: Boolean) {
+        if (readOnlyActiveChat()) return
         val chat = uiState.activeChat ?: return
         val prompt = text.trim()
         val attachments = uiState.composerAttachments
@@ -2723,6 +2912,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         rewind: EditingTurn? = null,
         confirmDeep: Boolean = false
     ) {
+        if (readOnlyActiveChat()) return
         val repo = repository ?: return
         val optimisticTimestamp = System.currentTimeMillis() / 1000
         // Only your words: a bubble with nothing typed shows its attachments alone, as in Desktop.
@@ -2864,6 +3054,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     private fun drainQueuedPrompt(expectedRuntimeId: String) {
+        if (readOnlyActiveChat()) return
         val current = uiState.activeChat ?: return
         if (current.runtimeSessionId != expectedRuntimeId || current.running) return
         val next = uiState.queuedPrompts.firstOrNull() ?: return
@@ -2967,6 +3158,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     /** Desktop's "Retry": the gateway rewinds the last turn and hands back its prompt to resend. */
     fun retryLastTurn() {
+        if (readOnlyActiveChat()) return
         val repo = repository ?: return
         val chat = uiState.activeChat ?: return
         if (chat.running) {
@@ -2982,6 +3174,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     /** Branches the open conversation into a new chat (whole history, like Desktop's /branch). */
     fun branchActiveChat() {
+        if (readOnlyActiveChat()) return
         val chat = uiState.activeChat ?: return
         val session = uiState.sessions.firstOrNull { it.id == chat.storedSessionId && it.profile == chat.profile }
             ?: HermesSession(id = chat.storedSessionId, profile = chat.profile, title = chat.title, source = chat.source)
@@ -2989,6 +3182,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     fun stopTurn() {
+        if (readOnlyActiveChat()) return
         val repo = repository ?: return
         val chat = uiState.activeChat ?: return
         viewModelScope.launch {
@@ -3000,6 +3194,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     }
 
     fun steer(text: String) {
+        if (readOnlyActiveChat()) return
         val repo = repository ?: return
         val chat = uiState.activeChat ?: return
         val value = text.trim()
@@ -3535,6 +3730,19 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val generation = navigationGeneration
         val transport = ++transportGeneration
         viewModelScope.launch {
+            if (current.readOnly) {
+                // A Kanban worker's transcript is never resumed (the gateway refuses it): reload the read-only view.
+                runCatching { repo.readOnlySession(storedId, current.profile, current.title, current.source) }
+                    .onSuccess { reloaded ->
+                        val foreground = uiState.activeChat
+                        if (transport == transportGeneration && repository === repo && generation == navigationGeneration && foreground?.storedSessionId == storedId) {
+                            uiState = uiState.copy(activeChat = reloaded)
+                        }
+                    }
+                    .onFailure { if (transport == transportGeneration && generation == navigationGeneration && repository === repo && uiState.connectionState == GatewayConnectionState.CONNECTED) uiState = uiState.copy(error = it.message) }
+                if (transport == transportGeneration) refreshSessions()
+                return@launch
+            }
             runCatching { repo.resumeSession(storedId, current.profile, current.title) }
                 .onSuccess { resumed ->
                     val foreground = uiState.activeChat
@@ -3879,6 +4087,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     companion object {
         private const val LIVE_SESSIONS_POLL_MS = 4_000L
+        /** The gateway's refusal of `session.resume` for a Kanban worker's transcript (tui_gateway `_resume_guard`). */
+        private const val KANBAN_RESUME_REFUSED = 4132
         private const val NAV_SECTION = "nav.section"
         private const val NAV_SESSION = "nav.session"
         private const val NAV_PROFILE = "nav.profile"

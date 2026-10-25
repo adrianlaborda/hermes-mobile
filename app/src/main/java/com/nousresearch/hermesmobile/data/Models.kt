@@ -344,10 +344,20 @@ data class HermesSession(
     /** A scheduled job's run (Desktop keeps these out of the recents, in their own Cron section). */
     val isRoutineRun: Boolean get() = source.trim().lowercase() in setOf("cron", "cron_output")
 
+    /** Background sessions Desktop keeps out of the recents: Kanban workers, tool and one-shot runs. */
+    val isInternalRun: Boolean get() = source.trim().lowercase() in INTERNAL_LISTING_SOURCES
+
+    /** A Kanban worker's transcript: the board owns it, so the phone opens it read-only. */
+    val isKanbanWorker: Boolean get() = source.trim().lowercase() == "kanban"
+
     /** Desktop's `sessionTitle`: an untitled chat goes by its first message, not by "Untitled". */
     val displayTitle: String get() = title.trim().ifBlank { preview.trim().lineSequence().firstOrNull().orEmpty() }
 
     companion object {
+        /** Upstream `INTERNAL_LISTING_SOURCES`: kept out of the recents (`exclude_sources`). */
+        const val INTERNAL_LISTING_SOURCES_CSV = "kanban,tool,oneshot"
+        private val INTERNAL_LISTING_SOURCES = setOf("kanban", "tool", "oneshot")
+
         fun fromJson(o: JSONObject): HermesSession = HermesSession(
             id = o.optString("id", o.optString("session_id")),
             title = o.optString("title"),
@@ -591,7 +601,9 @@ data class ActiveChat(
     val hasOlderMessages: Boolean = false,
     val olderOffset: Int = 0,
     /** A sent message being edited: sending rewinds the chat to it and runs it again, as in Desktop. */
-    val editing: EditingTurn? = null
+    val editing: EditingTurn? = null,
+    /** A transcript opened without resuming it (a Kanban worker's): no runtime session, nothing to send to. */
+    val readOnly: Boolean = false
 )
 
 /**

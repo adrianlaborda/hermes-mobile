@@ -72,6 +72,7 @@ fun ChatScreen(
     onEditMessage: (ChatMessage) -> Unit = {},
     onCancelEdit: () -> Unit = {},
     onConfirmEdit: (Boolean) -> Unit = {},
+    onOpenKanban: (() -> Unit)? = null,
     onAttach: (List<Uri>) -> Unit,
     onRemoveAttachment: (String) -> Unit,
     onRemoveQueued: (String) -> Unit,
@@ -102,7 +103,8 @@ fun ChatScreen(
     val threadActions = ChatThreadActions(
         onLoadOlderMessages, onDraftChange, onAttach, onRemoveAttachment, onRemoveQueued, onUpdateQueued, onMoveQueued,
         onClearQueue, onSwitchModel, onSetReasoning, onRefreshSessionMeta, onSend, onStop, onSteer, onRetry, onBranchActive,
-        onApplySlash, onDismissCommandOutput, onBack, onOpen, onNewChat, onOpenArtifact, onContext, onEditMessage, onCancelEdit, onConfirmEdit
+        onApplySlash, onDismissCommandOutput, onBack, onOpen, onNewChat, onOpenArtifact, onContext, onEditMessage, onCancelEdit, onConfirmEdit,
+        onOpenKanban
     )
 
     @Composable

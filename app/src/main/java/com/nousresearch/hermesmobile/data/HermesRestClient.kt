@@ -88,6 +88,10 @@ class HermesRestClient(
     suspend fun updateProfileSoul(name: String, content: String): JSONObject =
         requestObject("/api/profiles/${enc(name)}/soul", "PUT", JSONObject().put("content", content))
 
+    /**
+     * The recents: scheduled runs stay (the Routines section lists them), Kanban workers, tool and one-shot runs
+     * do not (Desktop's `INTERNAL_LISTING_SOURCES`). Older servers ignore the parameter, so the rows are filtered too.
+     */
     suspend fun sessionsPage(
         profile: String = "all",
         limit: Int = 80,
@@ -96,9 +100,11 @@ class HermesRestClient(
     ): SessionListPage {
         val archived = if (includeArchived) "include" else "exclude"
         val path = "/api/profiles/sessions?limit=$limit&offset=$offset&min_messages=1" +
-            "&archived=$archived&order=recent&profile=${enc(profile)}"
+            "&archived=$archived&order=recent&profile=${enc(profile)}" +
+            "&exclude_sources=${enc(HermesSession.INTERNAL_LISTING_SOURCES_CSV)}"
         val root = getObject(path)
         val rows = (root.optJSONArray("sessions") ?: JSONArray()).objects().map(HermesSession::fromJson)
+            .filterNot { it.isInternalRun }
         return SessionListPage(
             sessions = rows,
             offset = root.optInt("offset", offset),
@@ -165,6 +171,34 @@ class HermesRestClient(
 
     suspend fun deleteSession(sessionId: String, profile: String): JSONObject =
         requestObject("/api/sessions/${enc(sessionId)}?profile=${enc(profile)}", "DELETE")
+
+    /** Names of the dashboard plugins active for [profile]; hidden and disabled ones are left out server-side. */
+    suspend fun activeDashboardPlugins(profile: String): Set<String> =
+        (requestObject("/api/dashboard/plugins?profile=${enc(profile)}", "GET").optJSONArray("items") ?: JSONArray())
+            .objects().map { it.optString("name") }.filter { it.isNotBlank() }.toSet()
+
+    /** Kanban plugin routes take the board as `?board=`; [scopedApi] adds the profile. */
+    suspend fun kanbanBoards(profile: String): KanbanBoards =
+        KanbanBoards.fromJson(scopedApi(profile, "/api/plugins/kanban/boards"))
+
+    suspend fun kanbanBoard(profile: String, board: String): KanbanBoardSnapshot =
+        KanbanBoardSnapshot.fromJson(scopedApi(profile, "/api/plugins/kanban/board?board=${enc(board)}"))
+
+    suspend fun kanbanTask(profile: String, board: String, taskId: String): KanbanTaskDetail =
+        KanbanTaskDetail.fromJson(scopedApi(profile, "/api/plugins/kanban/tasks/${enc(taskId)}?board=${enc(board)}"))
+            ?: throw IllegalStateException("The gateway returned no task")
+
+    /** Desktop's unblock: a blocked card goes back to Ready. */
+    suspend fun kanbanUnblock(profile: String, board: String, taskId: String): JSONObject =
+        kanbanMoveTask(profile, board, taskId, "ready")
+
+    /** Desktop's move: the card's status is set to [status], the column it lands in. */
+    suspend fun kanbanMoveTask(profile: String, board: String, taskId: String, status: String): JSONObject =
+        scopedApi(profile, "/api/plugins/kanban/tasks/${enc(taskId)}?board=${enc(board)}", "PATCH", JSONObject().put("status", status))
+
+    /** Releases a running worker's claim; the card returns to the queue. */
+    suspend fun kanbanReclaim(profile: String, board: String, taskId: String): JSONObject =
+        scopedApi(profile, "/api/plugins/kanban/tasks/${enc(taskId)}/reclaim?board=${enc(board)}", "POST", JSONObject())
 
     suspend fun cronJobs(profile: String = "all"): List<CronJob> {
         val raw = request("/api/cron/jobs?profile=${enc(profile)}", "GET")

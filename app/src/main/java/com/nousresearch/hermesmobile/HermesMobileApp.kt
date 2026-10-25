@@ -85,11 +85,13 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                     onSelect = vm::switchSection,
                     onNewChat = { vm.newChat() },
                     onNotifications = { vm.switchSection(MainSection.NOTIFICATIONS) },
+                    kanbanAvailable = s.kanbanAvailable,
+                    onKanban = { vm.switchSection(MainSection.KANBAN) },
                     onClose = { scope.launch { drawerState.close() } },
                     // Recents is pure recency, as in Desktop: pinning only orders the Chats list.
                     recentSessions = remember(s.sessions) {
                         com.nousresearch.hermesmobile.data.HermesSession.collapseLineages(s.sessions)
-                            .filter { !it.hidden && !it.archived && !it.isRoutineRun }
+                            .filter { !it.hidden && !it.archived && !it.isRoutineRun && !it.isInternalRun }
                             .sortedByDescending { sessionEpochMillis(it.lastActive) }
                     },
                     activeSessionId = s.activeChat?.storedSessionId,
@@ -114,7 +116,7 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         Text(s.activeChat?.let { stringResource(R.string.share_destination, it.profile, it.title) }
                             ?: stringResource(R.string.share_choose), style = MaterialTheme.typography.bodySmall)
                         Row {
-                            TextButton(enabled = s.activeChat != null, onClick = vm::acceptIncomingShare) { Text(stringResource(R.string.ui_9901ff83c4)) }
+                            TextButton(enabled = s.activeChat != null && !s.activeChat.readOnly, onClick = vm::acceptIncomingShare) { Text(stringResource(R.string.ui_9901ff83c4)) }
                             TextButton(onClick = vm::discardIncomingShare) { Text(stringResource(R.string.ui_1a878a55c5)) }
                         }
                     }
@@ -210,6 +212,25 @@ fun HermesMobileApp(vm: HermesViewModel = viewModel()) {
                         onRetryGroup = vm::retryGroupAction,
                         onApproveGroup = vm::approveGroupAction,
                         onDisbandGroup = vm::disbandGroup
+                    )
+                    MainSection.KANBAN -> KanbanScreen(
+                        onMenu = openDrawer,
+                        available = s.kanbanAvailable,
+                        boards = s.kanbanBoards,
+                        board = s.kanbanBoard,
+                        snapshot = s.kanbanSnapshot,
+                        loading = s.kanbanLoading,
+                        error = s.kanbanError,
+                        taskId = s.kanbanTaskId,
+                        task = s.kanbanTask,
+                        busy = s.kanbanBusy,
+                        onRefresh = { vm.refreshKanban() },
+                        onBoard = vm::selectKanbanBoard,
+                        onOpenTask = vm::openKanbanTask,
+                        onCloseTask = vm::closeKanbanTask,
+                        onUnblock = vm::unblockKanbanTask,
+                        onRelease = vm::releaseKanbanTask,
+                        onMove = vm::moveKanbanTask
                     )
                     MainSection.CRON -> CronScreen(
                         onMenu = openDrawer,
@@ -539,6 +560,7 @@ private fun ChatContent(vm: HermesViewModel, s: HermesUiState, onMenu: () -> Uni
         onCancelEdit = vm::cancelEdit,
         onConfirmEdit = vm::confirmEdit,
         onAttach = vm::addComposerAttachments,
+        onOpenKanban = if (s.kanbanAvailable) ({ vm.switchSection(MainSection.KANBAN) }) else null,
         onRemoveAttachment = vm::removeComposerAttachment,
         onRemoveQueued = vm::removeQueuedPrompt,
         onUpdateQueued = vm::updateQueuedPrompt,
@@ -594,6 +616,7 @@ internal fun sectionTitle(section: MainSection): Int = when (section) {
     MainSection.MESSAGING -> R.string.i18n_messaging
     MainSection.FILES -> R.string.a14_files
     MainSection.CRON -> R.string.ui_61b7bb44e2
+    MainSection.KANBAN -> R.string.kanban_title
     MainSection.MEMORY -> R.string.a14_memory
     MainSection.MODELS -> R.string.i18n_set_models
     MainSection.VOICE -> R.string.a14_voice

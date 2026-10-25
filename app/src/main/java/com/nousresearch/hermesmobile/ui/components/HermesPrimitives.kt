@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -49,6 +51,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nousresearch.hermesmobile.data.ChatMessage
+import com.nousresearch.hermesmobile.data.ClarifyAnswer
+import com.nousresearch.hermesmobile.data.ClarifyOption
 import com.nousresearch.hermesmobile.data.HermesProfile
 import com.nousresearch.hermesmobile.data.ServerInteraction
 import com.nousresearch.hermesmobile.ui.theme.HermesMono
@@ -234,7 +238,7 @@ fun HermesTopBar(
         leading?.invoke()
         if (leading != null) Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitleContent != null) subtitleContent()
             else if (!subtitle.isNullOrBlank()) {
                 Text(
@@ -662,6 +666,43 @@ fun ChatMessageBubble(
 }
 
 @Composable
+private fun DialogIconBadge(icon: ImageVector) {
+    Box(
+        Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.hermes.accentTint),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+    }
+}
+
+/** A choice's display option; a choice that was only a recommended marker keeps its raw text as the label. */
+private fun clarifyOption(choice: String): ClarifyOption =
+    ClarifyAnswer.parseOption(choice).let { if (it.label.isBlank()) it.copy(label = choice.trim()) else it }
+
+/** One clarify choice as a full-width tappable row; the trailing pill marks the server's recommendation. */
+@Composable
+private fun ClarifyOptionRow(option: ClarifyOption, selected: Boolean, multi: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(shape)
+            .background(if (selected) MaterialTheme.hermes.accentTint else Color.Transparent)
+            .border(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.hermes.line, shape)
+            .clickable(role = if (multi) Role.Checkbox else Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        if (multi) Checkbox(checked = selected, onCheckedChange = null)
+        else RadioButton(selected = selected, onClick = null)
+        Text(option.label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+        if (option.recommended) StatusPill(stringResource(R.string.a22_recommended))
+    }
+}
+
+@Composable
 fun InteractionDialog(
     interaction: ServerInteraction,
     onApproval: (String) -> Unit,
@@ -697,14 +738,7 @@ fun InteractionDialog(
             }
             AlertDialog(
                 onDismissRequest = {},
-                icon = {
-                    Box(
-                        Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.hermes.accentTint),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Security, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-                    }
-                },
+                icon = { DialogIconBadge(Icons.Default.Security) },
                 title = { Text(stringResource(R.string.ui_b3d861973a)) },
                 text = {
                     Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -775,10 +809,11 @@ fun InteractionDialog(
                     if (locked.has(id)) return locked.optString(id, "")
                     val choices = selected[id].orEmpty()
                     val custom = answers[id].orEmpty().trim()
-                    return com.nousresearch.hermesmobile.data.ClarifyAnswer.encode(q.optBoolean("multi_select"), choices, custom)
+                    return ClarifyAnswer.encode(q.optBoolean("multi_select"), choices, custom)
                 }
                 AlertDialog(
                     onDismissRequest = onCancel,
+                    icon = { DialogIconBadge(Icons.AutoMirrored.Filled.HelpOutline) },
                     title = { Text(stringResource(R.string.ui_58aecb2489)) },
                     text = {
                         Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -788,17 +823,22 @@ fun InteractionDialog(
                                 if (locked.has(id)) Text(if (locked.isNull(id)) stringResource(R.string.a22_skipped) else locked.optString(id))
                                 else {
                                     val options = q.optJSONArray("choices")
-                                    if (options != null) for (i in 0 until options.length()) {
-                                        val choice = options.optString(i)
-                                        if (choice.isNotBlank()) FilterChip(
-                                            selected = choice in selected[id].orEmpty(),
-                                            onClick = {
-                                                val old = selected[id].orEmpty()
-                                                selected[id] = if (q.optBoolean("multi_select")) {
-                                                    if (choice in old) old - choice else old + choice
-                                                } else if (choice in old) emptyList() else listOf(choice)
-                                                if (!q.optBoolean("multi_select")) answers[id] = ""
-                                            }, label = { Text(choice) })
+                                    if (options != null) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        for (i in 0 until options.length()) {
+                                            val choice = options.optString(i)
+                                            if (choice.isNotBlank()) ClarifyOptionRow(
+                                                option = clarifyOption(choice),
+                                                selected = choice in selected[id].orEmpty(),
+                                                multi = q.optBoolean("multi_select"),
+                                                onClick = {
+                                                    val old = selected[id].orEmpty()
+                                                    selected[id] = if (q.optBoolean("multi_select")) {
+                                                        if (choice in old) old - choice else old + choice
+                                                    } else if (choice in old) emptyList() else listOf(choice)
+                                                    if (!q.optBoolean("multi_select")) answers[id] = ""
+                                                }
+                                            )
+                                        }
                                     }
                                     HermesTextField(value = answers[id].orEmpty(), onValueChange = {
                                         answers[id] = it
@@ -808,7 +848,7 @@ fun InteractionDialog(
                             }
                         }
                     },
-                    confirmButton = { TextButton(
+                    confirmButton = { Button(
                         onClick = { onBatchAnswers(rows.filterNot { locked.has(it.optString("qid")) && locked.isNull(it.optString("qid")) }.associate { it.optString("qid") to result(it) }) },
                         enabled = rows.all { locked.has(it.optString("qid")) || result(it).isNotBlank() }
                     ) { Text(stringResource(R.string.ui_e1d12d1a29)) } },
@@ -822,14 +862,16 @@ fun InteractionDialog(
                 }
                 AlertDialog(
                     onDismissRequest = onCancel,
+                    icon = { DialogIconBadge(Icons.AutoMirrored.Filled.HelpOutline) },
                     title = { Text(stringResource(R.string.ui_58aecb2489)) },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(p.optString("question").ifBlank { stringResource(R.string.a22_needs_info) })
                             if (choices.isNotEmpty()) {
-                                choices.forEach { choice ->
-                                    OutlinedButton(onClick = { onAnswer(choice) }, modifier = Modifier.fillMaxWidth()) {
-                                        Text(choice, modifier = Modifier.weight(1f))
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    choices.forEach { choice ->
+                                        val option = clarifyOption(choice)
+                                        ClarifyOptionRow(option, selected = false, multi = false, onClick = { onAnswer(option.label) })
                                     }
                                 }
                                 Text(stringResource(R.string.ui_e3b4c25e14), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -843,7 +885,7 @@ fun InteractionDialog(
                             )
                         }
                     },
-                    confirmButton = { TextButton(onClick = { onAnswer(value) }, enabled = value.isNotBlank()) { Text(stringResource(R.string.ui_e1d12d1a29)) } },
+                    confirmButton = { Button(onClick = { onAnswer(value) }, enabled = value.isNotBlank()) { Text(stringResource(R.string.ui_e1d12d1a29)) } },
                     dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.ui_bb9dbb406d)) } }
                 )
             }

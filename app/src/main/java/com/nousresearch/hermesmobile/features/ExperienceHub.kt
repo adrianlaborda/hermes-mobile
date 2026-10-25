@@ -29,7 +29,7 @@ import org.json.JSONObject
 @Composable
 fun ExperienceHome(s: HermesUiState, onMenu: () -> Unit, onNavigate: (MainSection) -> Unit, onNew: () -> Unit, onOpen: (HermesSession) -> Unit) {
     val connected = s.connectionState == GatewayConnectionState.CONNECTED
-    val visible = remember(s.sessions) { s.sessions.filterNot { it.hidden || it.archived || it.isRoutineRun } }
+    val visible = remember(s.sessions) { s.sessions.filterNot { it.hidden || it.archived || it.isRoutineRun || it.isInternalRun } }
     val recent = remember(visible) { visible.sortedByDescending { it.lastActive }.take(5) }
     val upcoming = remember(s.cronJobs) { s.cronJobs.filter { it.enabled && (it.nextRunAt ?: 0L) > 0L }.sortedBy { it.nextRunAt }.take(3) }
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {

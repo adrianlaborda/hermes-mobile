@@ -23,6 +23,7 @@
     <string name="a22_copy">Copiar</string>
     <string name="a22_current_session">Sesión actual</string>
     <string name="a22_deny">Denegar</string>
+    <string name="a22_recommended">Recomendado</string>
     <string name="a22_edit_message">Editar mensaje</string>
     <string name="a22_files_count">Archivos %1$d</string>
     <string name="a22_free_answer">Respuesta libre</string>

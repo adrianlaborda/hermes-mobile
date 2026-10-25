@@ -67,6 +67,25 @@ class HermesRepository(
     }
 
     /**
+     * A transcript opened without `session.resume`: a Kanban worker's session stays owned by the board, and resuming
+     * it would make a writer the board cannot see (the gateway refuses with 4132). Nothing here reaches the runtime.
+     */
+    suspend fun readOnlySession(storedId: String, profile: String, title: String = "", source: String = ""): ActiveChat {
+        val page = rest.sessionMessagesPage(storedId, profile, limit = 120, offset = 0, order = "latest")
+        return ActiveChat(
+            storedSessionId = storedId,
+            runtimeSessionId = "",
+            profile = profile,
+            title = title,
+            source = source,
+            messages = page.messages,
+            hasOlderMessages = page.hasOlder,
+            olderOffset = page.returned,
+            readOnly = true
+        )
+    }
+
+    /**
      * Sends a prompt. With [rewind] it is an edit: the gateway drops the history from that turn on first
      * (Desktop's `truncateSubmitParams`); removing later turns needs [confirmDeep], an empty chat its own flag.
      */

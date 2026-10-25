@@ -9,6 +9,35 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Added
+
+- **Kanban board on the phone.** When the gateway has the Kanban plugin active for the profile, Kanban appears in the
+  menu under Bots. Like Desktop's board, each status column has its color: swipe between columns from their tabs,
+  and pull down to refresh. Cards show the summary, the assignee, how long a running task has been working, why a
+  task is blocked, its priority and comments. A card's details show its comments and activity. A blocked card can be
+  unblocked, and a running card's worker can be released back to the queue after a confirmation.
+- **Move Kanban cards between columns.** Long-press a card and choose "Move to…", or tap the status in a card's
+  details. As on Desktop, Review, Running and Scheduled are left to Hermes and are not offered.
+- **Kanban worker transcripts open read-only.** A Kanban worker's conversation shows its transcript with a banner
+  instead of the composer, and the banner opens the board. The app no longer tries to resume it, which the gateway
+  refuses.
+
+### Changed
+
+- **Clarify questions look like the approval prompts.** "Hermes asks" shows its choices as full-width rows with a
+  Recommended pill, under the same help icon, with a filled Send button. Single-question choices still send on tap.
+- **Copy button on code blocks is an icon.** It shows a check mark for a moment after the code is copied.
+
+### Fixed
+
+- **Kanban worker sessions stay out of the chat list.** Like Desktop, the recents leave out Kanban, tool and one-shot
+  runs, so tapping one no longer ends in a "Kanban worker transcript" error. Scheduled runs keep their Routines group.
+- **Connection screen text is readable in dark theme.** The "Hermes" title and the setup heading were drawn in black.
+- **Saved gateways keep their names on one line.** A long name no longer pushes the "Last" label into a column of
+  letters, and the label is a small pill like the rest of the app.
+- **Recommended clarify choices show one marker.** A choice the agent already marked "(Recomendado)" no longer reads
+  "(Recomendado) (Recommended)": both become the Recommended pill, and the bare choice is what goes back to Hermes.
+
 ## [0.3.0-beta.12] - 2026-10-22
 
 **Update the server's `hermes-android` plugin to 0.5.4 first** (`hermes plugins update hermes-android`): answers to

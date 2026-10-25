@@ -59,155 +59,163 @@ fun ConnectionScreen(
         title = { Text(stringResource(R.string.appearance)) },
         text = { com.nousresearch.hermesmobile.ui.AppearanceSettings() },
         confirmButton = { TextButton(onClick = { appearanceOpen = false }) { Text(stringResource(R.string.close_panel)) } })
-    Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
-        HermesTopBar("Hermes", stringResource(R.string.connection_mobile), leading = { HermesBrandMark() },
-            actions = { IconButton(onClick = { appearanceOpen = true }) { Icon(Icons.Default.Contrast, stringResource(R.string.appearance)) } })
-        DashedDivider(color = MaterialTheme.hermes.line)
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
+            HermesTopBar("Hermes", stringResource(R.string.connection_mobile), leading = { HermesBrandMark() },
+                actions = { IconButton(onClick = { appearanceOpen = true }) { Icon(Icons.Default.Contrast, stringResource(R.string.appearance)) } })
+            DashedDivider(color = MaterialTheme.hermes.line)
 
-        if (discovery == null) {
-            LazyColumn(
-                Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 22.dp, vertical = 22.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                item {
-                    Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        HermesBrandMark(size = 76)
-                        Spacer(Modifier.height(18.dp))
-                        Text(stringResource(R.string.connection_heading), style = MaterialTheme.typography.headlineMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text(stringResource(R.string.connection_intro), style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            if (discovery == null) {
+                LazyColumn(
+                    Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 22.dp, vertical = 22.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            HermesBrandMark(size = 76)
+                            Spacer(Modifier.height(18.dp))
+                            Text(stringResource(R.string.connection_heading), style = MaterialTheme.typography.headlineMedium)
+                            Spacer(Modifier.height(8.dp))
+                            Text(stringResource(R.string.connection_intro), style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        }
                     }
-                }
-                if(error != null) item {
-                    OutlinedCard(Modifier.fillMaxWidth()) {
-                        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.Default.WifiOff, null, tint = MaterialTheme.colorScheme.error)
-                            Column {
-                                Text(stringResource(R.string.connection_unavailable), style = MaterialTheme.typography.titleSmall)
-                                Text(error, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    if(error != null) item {
+                        OutlinedCard(Modifier.fillMaxWidth()) {
+                            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Icon(Icons.Default.WifiOff, null, tint = MaterialTheme.colorScheme.error)
+                                Column {
+                                    Text(stringResource(R.string.connection_unavailable), style = MaterialTheme.typography.titleSmall)
+                                    Text(error, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                }
                             }
                         }
                     }
-                }
-                if (connections.isNotEmpty()) {
-                    item { SectionLabel(stringResource(R.string.ui_0c667864ef)) }
-                    items(connections, key = { it.id }) { connection ->
-                        Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large, tonalElevation = 0.dp) {
-                            Row(
-                                Modifier.fillMaxWidth().padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Icon(Icons.Default.Dns, null)
-                                Column(Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text(connection.displayLabel, style = MaterialTheme.typography.titleMedium)
-                                        if (connection.id == activeId) AssistChip(onClick = {}, label = { Text(stringResource(R.string.ui_eb970eb095)) })
+                    if (connections.isNotEmpty()) {
+                        item { SectionLabel(stringResource(R.string.ui_0c667864ef)) }
+                        items(connections, key = { it.id }) { connection ->
+                            Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.large, tonalElevation = 0.dp) {
+                                Row(
+                                    Modifier.fillMaxWidth().padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Icon(Icons.Default.Dns, null)
+                                    Column(Modifier.weight(1f)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Text(
+                                                connection.displayLabel,
+                                                Modifier.weight(1f, fill = false),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                            if (connection.id == activeId) StatusPill(stringResource(R.string.ui_eb970eb095))
+                                        }
+                                        Text(connection.baseUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            authLabel(connection.authMode, connection.authProvider),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
-                                    Text(connection.baseUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(
-                                        authLabel(connection.authMode, connection.authProvider),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                TextButton(onClick = { onConnectSaved(connection.id) }, enabled = !busy) { Text(stringResource(R.string.ui_1a2303ede0)) }
-                                IconButton(onClick = { onForget(connection.id) }, enabled = !busy) {
-                                    Icon(Icons.Default.DeleteOutline, stringResource(R.string.ui_c3812fc4ac))
+                                    TextButton(onClick = { onConnectSaved(connection.id) }, enabled = !busy) { Text(stringResource(R.string.ui_1a2303ede0)) }
+                                    IconButton(onClick = { onForget(connection.id) }, enabled = !busy) {
+                                        Icon(Icons.Default.DeleteOutline, stringResource(R.string.ui_c3812fc4ac))
+                                    }
                                 }
                             }
+                            HorizontalDivider(color = MaterialTheme.hermes.line)
                         }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = .25f))
+                        item { Spacer(Modifier.height(8.dp)); SectionLabel(stringResource(R.string.ui_685f88ae3d)) }
                     }
-                    item { Spacer(Modifier.height(8.dp)); SectionLabel(stringResource(R.string.ui_685f88ae3d)) }
-                }
-                item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        HermesTextField(
-                            url,
-                            { url = it },
-                            stringResource(R.string.i18n_gateway),
-                            placeholder = "https://hermes.example.com",
-                            imeAction = ImeAction.Done
-                        )
-                        Text(
-                            stringResource(R.string.connection_url_help),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        TextButton(onClick = { connectionAdvanced = !connectionAdvanced }) {
-                            Icon(if (connectionAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
-                            Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.ui_891724b6b2))
-                        }
-                        if (connectionAdvanced) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             HermesTextField(
-                                label,
-                                { label = it },
-                                stringResource(R.string.i18n_conn_name),
-                                placeholder = stringResource(R.string.i18n_conn_name_hint),
-                                imeAction = ImeAction.Next
-                            )
-                            HermesTextField(
-                                headers,
-                                { headers = it },
-                                stringResource(R.string.i18n_conn_headers),
-                                placeholder = "CF-Access-Client-Id: …\nCF-Access-Client-Secret: …",
-                                singleLine = false,
-                                imeAction = ImeAction.Default
+                                url,
+                                { url = it },
+                                stringResource(R.string.i18n_gateway),
+                                placeholder = "https://hermes.example.com",
+                                imeAction = ImeAction.Done
                             )
                             Text(
-                                stringResource(R.string.i18n_conn_headers_hint),
+                                stringResource(R.string.connection_url_help),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                        }
-                        Button(
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                            enabled = url.isNotBlank() && !busy,
-                            onClick = { onDiscover(label, url, parseHeaders(headers)) }
-                        ) {
-                            if (busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            else Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(17.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(if (busy) R.string.connection_checking else R.string.connection_continue))
+                            TextButton(onClick = { connectionAdvanced = !connectionAdvanced }) {
+                                Icon(if (connectionAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+                                Spacer(Modifier.width(6.dp))
+                                Text(stringResource(R.string.ui_891724b6b2))
+                            }
+                            if (connectionAdvanced) {
+                                HermesTextField(
+                                    label,
+                                    { label = it },
+                                    stringResource(R.string.i18n_conn_name),
+                                    placeholder = stringResource(R.string.i18n_conn_name_hint),
+                                    imeAction = ImeAction.Next
+                                )
+                                HermesTextField(
+                                    headers,
+                                    { headers = it },
+                                    stringResource(R.string.i18n_conn_headers),
+                                    placeholder = "CF-Access-Client-Id: …\nCF-Access-Client-Secret: …",
+                                    singleLine = false,
+                                    imeAction = ImeAction.Default
+                                )
+                                Text(
+                                    stringResource(R.string.i18n_conn_headers_hint),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Button(
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                                enabled = url.isNotBlank() && !busy,
+                                onClick = { onDiscover(label, url, parseHeaders(headers)) }
+                            ) {
+                                if (busy) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                                else Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(17.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text(stringResource(if (busy) R.string.connection_checking else R.string.connection_continue))
+                            }
                         }
                     }
                 }
+                return@Column
             }
-            return@Column
-        }
 
-        AuthStep(
-            discovery = discovery,
-            busy = busy,
-            error = error,
-            username = username,
-            onUsername = { username = it },
-            password = password,
-            onPasswordValue = { password = it },
-            sessionToken = sessionToken,
-            onSessionTokenValue = { sessionToken = it },
-            advanced = advanced,
-            onAdvanced = { advanced = !advanced },
-            selectedProvider = selectedProvider,
-            onProvider = { selectedProvider = it },
-            onPassword = {
-                val provider = discovery.passwordProviders.firstOrNull { it.name == selectedProvider }?.name
-                    ?: discovery.passwordProviders.firstOrNull()?.name
-                onPassword(username, password, provider)
-            },
-            onNative = {
-                val provider = discovery.nativeProviders.firstOrNull { it.name == selectedProvider }?.name
-                    ?: discovery.nativeProviders.firstOrNull()?.name
-                onNative(provider)
-            },
-            onSessionToken = { onSessionToken(sessionToken) },
-            onNoAuth = onNoAuth,
-            onBack = onCancelSetup
-        )
+            AuthStep(
+                discovery = discovery,
+                busy = busy,
+                error = error,
+                username = username,
+                onUsername = { username = it },
+                password = password,
+                onPasswordValue = { password = it },
+                sessionToken = sessionToken,
+                onSessionTokenValue = { sessionToken = it },
+                advanced = advanced,
+                onAdvanced = { advanced = !advanced },
+                selectedProvider = selectedProvider,
+                onProvider = { selectedProvider = it },
+                onPassword = {
+                    val provider = discovery.passwordProviders.firstOrNull { it.name == selectedProvider }?.name
+                        ?: discovery.passwordProviders.firstOrNull()?.name
+                    onPassword(username, password, provider)
+                },
+                onNative = {
+                    val provider = discovery.nativeProviders.firstOrNull { it.name == selectedProvider }?.name
+                        ?: discovery.nativeProviders.firstOrNull()?.name
+                    onNative(provider)
+                },
+                onSessionToken = { onSessionToken(sessionToken) },
+                onNoAuth = onNoAuth,
+                onBack = onCancelSetup
+            )
+        }
     }
 }
 

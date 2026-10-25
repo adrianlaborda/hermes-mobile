@@ -95,7 +95,7 @@ internal fun SessionListPane(
 
     val source = if (searchQuery.isBlank()) sessions else searchResults
     val visible = remember(source, includeArchived, selectedProfile) {
-        source.filter { !it.hidden && (includeArchived || !it.archived) && (selectedProfile == "all" || it.profile == selectedProfile) }
+        source.filter { !it.hidden && !it.isInternalRun && (includeArchived || !it.archived) && (selectedProfile == "all" || it.profile == selectedProfile) }
     }
 
     Column(modifier.fillMaxSize()) {

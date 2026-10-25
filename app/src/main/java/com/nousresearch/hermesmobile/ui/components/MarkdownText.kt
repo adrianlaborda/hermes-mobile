@@ -1,6 +1,9 @@
 package com.nousresearch.hermesmobile.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -14,6 +17,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.nousresearch.hermesmobile.R
 import com.nousresearch.hermesmobile.ui.theme.hermes
@@ -192,6 +196,10 @@ private fun CodeBlock(code: String, language: String) {
     if (showPreview) RichPreview(language.trim().lowercase(), code) { showPreview = false }
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
+    var copied by remember { mutableStateOf(false) }
+    // Each copy restarts the 1.5 s feedback window, so a second tap is not cut short by the first one's timer.
+    var copiedAt by remember { mutableIntStateOf(0) }
+    LaunchedEffect(copiedAt) { if (copiedAt > 0) { delay(1_500); copied = false } }
     Surface(
         color = MaterialTheme.hermes.codeBlock,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
@@ -204,8 +212,22 @@ private fun CodeBlock(code: String, language: String) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                TextButton(onClick = { scope.launch { clipboard.setClipEntry(android.content.ClipData.newPlainText("Code", code).toClipEntry()) } }) {
-                    Text(stringResource(R.string.copy_code))
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            clipboard.setClipEntry(android.content.ClipData.newPlainText("Code", code).toClipEntry())
+                            copied = true
+                            copiedAt++
+                        }
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        if (copied) Icons.Default.Check else Icons.Default.ContentCopy,
+                        contentDescription = stringResource(if (copied) R.string.a24_copied else R.string.copy_code),
+                        modifier = Modifier.size(16.dp),
+                        tint = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .72f)
+                    )
                 }
             }
             if (language.trim().lowercase() in setOf("mermaid", "math", "latex", "tex")) {
