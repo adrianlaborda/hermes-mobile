@@ -9,6 +9,8 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.13] - 2026-10-25
+
 ### Added
 
 - **Kanban board on the phone.** When the gateway has the Kanban plugin active for the profile, Kanban appears in the
@@ -411,7 +413,8 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.12...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.13...HEAD
+[0.3.0-beta.13]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.13
 [0.3.0-beta.12]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.12
 [0.3.0-beta.11]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.11
 [0.3.0-beta.10]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.10
