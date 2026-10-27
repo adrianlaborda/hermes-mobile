@@ -88,19 +88,23 @@ class HermesRepository(
     /**
      * Sends a prompt. With [rewind] it is an edit: the gateway drops the history from that turn on first
      * (Desktop's `truncateSubmitParams`); removing later turns needs [confirmDeep], an empty chat its own flag.
+     * [queued] marks a drain of the app's own queue: if the turn is still unwinding, the gateway holds it for
+     * the next turn instead of treating it as a correction (redirect/steer) of the one that is ending.
      */
     suspend fun submitPrompt(
         runtimeId: String,
         profile: String,
         text: String,
         rewind: EditingTurn? = null,
-        confirmDeep: Boolean = false
+        confirmDeep: Boolean = false,
+        queued: Boolean = false
     ): PromptSubmitResult {
         val params = JSONObject()
             .put("session_id", runtimeId)
             .put("profile", profile)
             .put("text", text)
             .put("surface", "mobile")
+        if (queued) params.put("queued", true)
         if (rewind != null) {
             params.put("confirm_truncate", true).put("truncate_before_user_ordinal", rewind.ordinal)
             rewind.rowId?.let { params.put("truncate_before_row_id", it) }

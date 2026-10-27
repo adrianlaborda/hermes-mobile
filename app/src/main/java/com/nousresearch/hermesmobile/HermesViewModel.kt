@@ -1738,6 +1738,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
             )
             if (draft.isNotBlank()) persistComposerSoon()
             refreshSessionMeta()
+            // Its turn ended while the chat was closed: what was queued for it goes out now.
+            uiState.activeChat?.takeIf { !it.readOnly && !it.running }?.let { drainQueuedPromptSoon(it.runtimeSessionId) }
         }
     }
 
@@ -2910,7 +2912,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         prompt: String,
         attachments: List<ComposerAttachment>,
         rewind: EditingTurn? = null,
-        confirmDeep: Boolean = false
+        confirmDeep: Boolean = false,
+        fromQueue: Boolean = false
     ) {
         if (readOnlyActiveChat()) return
         val repo = repository ?: return
@@ -2980,7 +2983,10 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                 // Desktop's buildContextText: the refs, then your words; an image alone gets its standard question.
                 val wireText = listOf(refs.joinToString("\n"), prompt).filter { it.isNotBlank() }.joinToString("\n\n")
                     .ifBlank { if (attachments.any { it.kind == "image" }) "What do you see in this image?" else "Please inspect the attached files and respond to them." }
-                repo.submitPrompt(chat.runtimeSessionId, chat.profile, withBotMentionContext(wireText, chat.profile), rewind, confirmDeep)
+                val wire = withBotMentionContext(wireText, chat.profile)
+                retryWhileSessionBusy(enabled = fromQueue) {
+                    repo.submitPrompt(chat.runtimeSessionId, chat.profile, wire, rewind, confirmDeep, queued = fromQueue)
+                }
             }.onSuccess { result ->
                 // A steer joins a turn already running instead of starting one: it waits for no answer of its own.
                 if (result.status == "steered") com.nousresearch.hermesmobile.push.PushDelivery.releaseTurn(getApplication(), chat.storedSessionId)
@@ -3013,6 +3019,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                 val current = uiState.activeChat
                 if (current?.runtimeSessionId == chat.runtimeSessionId) {
                     val canRestore = uiState.chatDraft.isBlank() && uiState.composerAttachments.isEmpty()
+                    // Something else is typed: the failed prompt goes back to the head of the queue, never lost.
+                    val requeue = !canRestore && rewind == null
                     uiState = uiState.copy(
                         activeChat = current.copy(
                             // A failed edit puts the chat back as it was.
@@ -3024,6 +3032,9 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                         ),
                         chatDraft = if (canRestore) prompt else uiState.chatDraft,
                         composerAttachments = if (canRestore) attachments else uiState.composerAttachments,
+                        queuedPrompts = if (requeue) {
+                            listOf(QueuedPrompt(UUID.randomUUID().toString(), prompt, attachments)) + uiState.queuedPrompts
+                        } else uiState.queuedPrompts,
                         liveStatuses = uiState.liveStatuses.filterNot { it.id == "attachments" },
                         error = t.message
                     )
@@ -3060,7 +3071,30 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val next = uiState.queuedPrompts.firstOrNull() ?: return
         uiState = uiState.copy(queuedPrompts = uiState.queuedPrompts.drop(1))
         persistComposerSoon(immediate = true)
-        submitPromptNow(current, next.text, next.attachments)
+        submitPromptNow(current, next.text, next.attachments, fromQueue = true)
+    }
+
+    /** The turn may emit its end before the gateway clears `running`: drain a moment later. */
+    private fun drainQueuedPromptSoon(expectedRuntimeId: String) {
+        if (uiState.queuedPrompts.isEmpty()) return
+        viewModelScope.launch {
+            delay(120)
+            drainQueuedPrompt(expectedRuntimeId)
+        }
+    }
+
+    /** A drain can still meet the turn unwinding: "session busy" is transient, as in Desktop's withSessionBusyRetry. */
+    private suspend fun <T> retryWhileSessionBusy(enabled: Boolean, call: suspend () -> T): T {
+        val deadline = System.currentTimeMillis() + SESSION_BUSY_RETRY_MS
+        while (true) {
+            try {
+                return call()
+            } catch (t: GatewayRpcException) {
+                val busy = t.message.orEmpty().contains("session busy", ignoreCase = true)
+                if (!enabled || !busy || System.currentTimeMillis() >= deadline) throw t
+            }
+            delay(SESSION_BUSY_RETRY_INTERVAL_MS)
+        }
     }
 
     private fun withBotMentionContext(text: String, activeProfile: String): String {
@@ -3821,6 +3855,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     val chat = uiState.activeChat ?: return@launch
                     if (payloadSessionMatches(payload, chat)) {
                         val pin = sessionModelPins[chat.runtimeSessionId]
+                        val settled = chat.running && payload.has("running") && !payload.optBoolean("running")
                         uiState = uiState.copy(
                             activeChat = chat.copy(
                                 model = pin?.model ?: payload.optString("model", chat.model),
@@ -3832,6 +3867,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                                 running = payload.optBoolean("running", chat.running)
                             )
                         )
+                        // Desktop drains on any busy→idle settle, not only on message.complete.
+                        if (settled) drainQueuedPromptSoon(chat.runtimeSessionId)
                     }
                 }
                 "session.created", "session.updated", "sessions.changed" -> refreshSessions()
@@ -3906,10 +3943,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         refreshActiveTailSoon(chat.storedSessionId, chat.profile)
         refreshSessions()
         refreshSessionMeta()
-        viewModelScope.launch {
-            delay(120)
-            drainQueuedPrompt(chat.runtimeSessionId)
-        }
+        drainQueuedPromptSoon(chat.runtimeSessionId)
     }
 
     private fun handleTool(type: String, payload: JSONObject) {
@@ -4101,5 +4135,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         private const val LARGE_PASTE_CHARS = 3_000
         private const val MAX_COMPOSER_ATTACHMENTS = 6
         private const val MAX_ATTACHMENT_BYTES = 25L * 1024L * 1024L
+        private const val SESSION_BUSY_RETRY_MS = 6_000L
+        private const val SESSION_BUSY_RETRY_INTERVAL_MS = 150L
     }
 }
