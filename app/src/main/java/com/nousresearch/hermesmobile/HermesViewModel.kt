@@ -21,6 +21,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.json.JSONArray
@@ -190,6 +192,8 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     private var telegramOnboardingPollingJob: Job? = null
     private var nativeAuthJob: Job? = null
     private var appForeground = true
+    private var environmentJob: Job? = null
+    private var queueHandoffJob: Job? = null
     private var networkOnline = true
     private var transportGeneration = 0L
     private var connectionJob: Job? = null
@@ -348,7 +352,14 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         val becameAvailable = foreground && online && (!appForeground || !networkOnline || networkChanged)
         appForeground = foreground
         networkOnline = online
-        repository?.gateway?.setEnvironment(foreground, online, networkChanged)
+        environmentJob?.cancel()
+        // Going to the background suspends the socket: the queue is handed off first, for a few seconds at most.
+        val handoff = if (!foreground) handOffQueue() ?: queueHandoffJob?.takeIf { it.isActive } else null
+        if (handoff == null) repository?.gateway?.setEnvironment(foreground, online, networkChanged)
+        else environmentJob = viewModelScope.launch {
+            withTimeoutOrNull(QUEUE_HANDOFF_MS) { handoff.join() }
+            repository?.gateway?.setEnvironment(appForeground, networkOnline, networkChanged)
+        }
         if (!foreground) {
             persistComposerSoon(immediate = true)
             liveSessionsJob?.cancel()
@@ -675,6 +686,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun closeActiveChat() {
         val back = chatReturnSection
+        handOffQueue()
         persistCurrentComposerNow()
         uiState.activeChat?.runtimeSessionId?.let(sessionModelPins::remove)
         navigationGeneration += 1
@@ -2374,6 +2386,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
     fun newWorkspaceChat(profile: String, title: String, cwd: String?, draft: String = "") {
         val repo = repository ?: return
         rememberChatOrigin()
+        handOffQueue()
         persistCurrentComposerNow()
         val generation = ++navigationGeneration
         resetStream()
@@ -2470,6 +2483,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
 
     fun openSession(session: HermesSession) {
         val repo = repository ?: return
+        if (uiState.activeChat?.storedSessionId != session.id) handOffQueue()
         rememberChatOrigin()
         val generation = ++navigationGeneration
         resetStream()
@@ -2953,23 +2967,12 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     )
                     sessionModelPins[chat.runtimeSessionId] = pin.copy(ensureOnNextPrompt = false)
                 }
-                val refs = mutableListOf<String>()
-                // Where each attachment landed, so the live bubble's chips open it before the history reloads.
-                val shown = mutableListOf<String>()
-                attachments.forEachIndexed { index, item ->
-                    val bytes = withContext(Dispatchers.IO) { readAttachmentBytes(item) }
-                    when (item.kind) {
-                        "image" -> repo.attachImageBytes(chat.runtimeSessionId, chat.profile, item.name, bytes)
-                            .takeIf { it.isNotBlank() }?.let { shown += "@image:$it" }
-                        // A PDF stays a file in the session, as in Desktop: tools can read it and its chip opens it.
-                        else -> repo.attachFileBytes(chat.runtimeSessionId, chat.profile, item.name, item.mimeType, bytes)
-                            .takeIf { it.isNotBlank() }?.let { refs += it; shown += it }
-                    }
+                val (wire, shown) = uploadPrompt(repo, chat, prompt, attachments) { done ->
                     val current = uiState.activeChat
                     if (current?.runtimeSessionId == chat.runtimeSessionId) {
                         uiState = uiState.copy(
                             liveStatuses = uiState.liveStatuses.map {
-                                if (it.id == "attachments") it.copy(detail = "${index + 1}/${attachments.size}") else it
+                                if (it.id == "attachments") it.copy(detail = "$done/${attachments.size}") else it
                             }
                         )
                     }
@@ -2980,10 +2983,6 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                             it.timestamp == optimisticTimestamp) it.copy(refs = shown) else it
                     }))
                 }
-                // Desktop's buildContextText: the refs, then your words; an image alone gets its standard question.
-                val wireText = listOf(refs.joinToString("\n"), prompt).filter { it.isNotBlank() }.joinToString("\n\n")
-                    .ifBlank { if (attachments.any { it.kind == "image" }) "What do you see in this image?" else "Please inspect the attached files and respond to them." }
-                val wire = withBotMentionContext(wireText, chat.profile)
                 retryWhileSessionBusy(enabled = fromQueue) {
                     repo.submitPrompt(chat.runtimeSessionId, chat.profile, wire, rewind, confirmDeep, queued = fromQueue)
                 }
@@ -3041,6 +3040,87 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
                     persistComposerSoon(immediate = true)
                 }
             }
+        }
+    }
+
+    /**
+     * Uploads the attachments to the chat's session and builds the text to send: Desktop's buildContextText, the refs
+     * then your words (an image alone gets its standard question). Also returns where each attachment landed, so the
+     * live bubble's chips open it before the history reloads.
+     */
+    private suspend fun uploadPrompt(
+        repo: HermesRepository,
+        chat: ActiveChat,
+        prompt: String,
+        attachments: List<ComposerAttachment>,
+        onUploaded: (Int) -> Unit = {}
+    ): Pair<String, List<String>> {
+        val refs = mutableListOf<String>()
+        val shown = mutableListOf<String>()
+        attachments.forEachIndexed { index, item ->
+            val bytes = withContext(Dispatchers.IO) { readAttachmentBytes(item) }
+            when (item.kind) {
+                "image" -> repo.attachImageBytes(chat.runtimeSessionId, chat.profile, item.name, bytes)
+                    .takeIf { it.isNotBlank() }?.let { shown += "@image:$it" }
+                // A PDF stays a file in the session, as in Desktop: tools can read it and its chip opens it.
+                else -> repo.attachFileBytes(chat.runtimeSessionId, chat.profile, item.name, item.mimeType, bytes)
+                    .takeIf { it.isNotBlank() }?.let { refs += it; shown += it }
+            }
+            onUploaded(index + 1)
+        }
+        val wireText = listOf(refs.joinToString("\n"), prompt).filter { it.isNotBlank() }.joinToString("\n\n")
+            .ifBlank { if (attachments.any { it.kind == "image" }) "What do you see in this image?" else "Please inspect the attached files and respond to them." }
+        return withBotMentionContext(wireText, chat.profile) to shown
+    }
+
+    /**
+     * Leaving a chat (closing it, opening another, the app going to the background) hands its queue to the gateway.
+     * Sent with "queued", the gateway keeps each prompt durably and runs it after the turn, whether or not this app is
+     * still connected: the app's own queue only drains while its chat is open.
+     */
+    private fun handOffQueue(): Job? {
+        val chat = uiState.activeChat?.takeUnless { it.readOnly } ?: return null
+        val prompts = uiState.queuedPrompts
+        val repo = repository
+        if (prompts.isEmpty() || repo == null) return null
+        // Out of the queue before sending: reopening the chat meanwhile must not drain them a second time.
+        uiState = uiState.copy(queuedPrompts = emptyList())
+        persistCurrentComposerNow()
+        val app = getApplication<Application>()
+        val previous = queueHandoffJob
+        return viewModelScope.launch {
+            // One chat's handoff after another's, so leaving two chats in a row keeps each queue in order.
+            previous?.join()
+            prompts.forEachIndexed { index, item ->
+                com.nousresearch.hermesmobile.push.PushDelivery.claimTurn(app, chat.storedSessionId)
+                val sent = runCatching {
+                    val (wire, _) = uploadPrompt(repo, chat, item.text, item.attachments)
+                    retryWhileSessionBusy(enabled = true) {
+                        repo.submitPrompt(chat.runtimeSessionId, chat.profile, wire, queued = true)
+                    }
+                }
+                sent.exceptionOrNull()?.let { t ->
+                    com.nousresearch.hermesmobile.push.PushDelivery.releaseTurn(app, chat.storedSessionId)
+                    if (t is CancellationException) throw t
+                    restoreQueue(chat, prompts.drop(index))
+                    uiState = uiState.copy(error = t.message)
+                    return@launch
+                }
+            }
+        }.also { queueHandoffJob = it }
+    }
+
+    /** What could not be handed off goes back to the head of its chat's queue, open or not. */
+    private suspend fun restoreQueue(chat: ActiveChat, prompts: List<QueuedPrompt>) {
+        if (uiState.activeChat?.storedSessionId == chat.storedSessionId) {
+            uiState = uiState.copy(queuedPrompts = prompts + uiState.queuedPrompts)
+            persistComposerSoon(immediate = true)
+            return
+        }
+        val key = composerKey(chat)
+        withContext(Dispatchers.IO) {
+            val saved = composerStore.load(key)
+            composerStore.save(key, saved.copy(queue = prompts + saved.queue))
         }
     }
 
@@ -4137,5 +4217,6 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         private const val MAX_ATTACHMENT_BYTES = 25L * 1024L * 1024L
         private const val SESSION_BUSY_RETRY_MS = 6_000L
         private const val SESSION_BUSY_RETRY_INTERVAL_MS = 150L
+        private const val QUEUE_HANDOFF_MS = 10_000L
     }
 }

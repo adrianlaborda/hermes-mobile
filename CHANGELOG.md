@@ -20,8 +20,12 @@ server plugin it needs for notifications.
 - **Queued messages are sent reliably.** A queued message sent just as the previous turn was ending could be taken as
   a correction of that turn and get lost, or come back to the text box with a "session busy" error. It now waits for
   its own turn, and a busy gateway is retried for a few seconds. The queue also goes out when the gateway reports the
-  turn idle, and when you reopen a chat whose turn ended while you were away. A queued message that fails while you
-  are typing something else goes back to the top of the queue instead of being dropped.
+  turn idle. A queued message that fails while you are typing something else goes back to the top of the queue
+  instead of being dropped.
+- **Queued messages are sent even if you leave the chat.** They used to wait until you opened the chat again. Now,
+  when you leave a chat, open another one or put the app in the background, its queue is handed to Hermes, which
+  sends each message when the current turn ends, even with the app closed. While you stay in the chat, you can
+  still edit, reorder and remove queued messages.
 
 ## [0.3.0-beta.13] - 2026-10-25
 
