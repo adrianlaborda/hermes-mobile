@@ -9,6 +9,8 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.14] - 2026-10-27
+
 ### Added
 
 - **Chat status on Home.** The conversations under "Continue" on Home show the same status as the Chats list: the
@@ -431,7 +433,8 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.13...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.14...HEAD
+[0.3.0-beta.14]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.14
 [0.3.0-beta.13]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.13
 [0.3.0-beta.12]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.12
 [0.3.0-beta.11]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.11
