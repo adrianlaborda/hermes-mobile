@@ -9,6 +9,12 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Added
+
+- **Chat status on Home.** The conversations under "Continue" on Home show the same status as the Chats list: the
+  moving border while Hermes works, and the dot for a chat waiting for your answer (amber), working (accent) or with a
+  reply you haven't read (green).
+
 ### Fixed
 
 - **Queued messages are sent reliably.** A queued message sent just as the previous turn was ending could be taken as

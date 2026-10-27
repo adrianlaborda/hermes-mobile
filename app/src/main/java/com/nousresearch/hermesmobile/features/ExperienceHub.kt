@@ -11,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -88,7 +89,10 @@ fun ExperienceHome(s: HermesUiState, onMenu: () -> Unit, onNavigate: (MainSectio
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         items(recent, key = { "recent:" + it.profile + it.id }) { session ->
+            // The same status as the Chats list: the dot before the title, the arc while its turn runs.
+            val dot = LiveSessions.dotFor(s.sessionDots, session.id, session.unread)
             FlatRow(
+                modifier = Modifier.runningArc(dot == SessionDot.WORKING),
                 onClick = { onOpen(session) },
                 leading = { com.nousresearch.hermesmobile.ui.screens.SessionSourceAvatar(session.source, size = 36) },
                 trailing = {
@@ -96,8 +100,15 @@ fun ExperienceHome(s: HermesUiState, onMenu: () -> Unit, onNavigate: (MainSectio
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             ) {
-                Text(session.displayTitle.ifBlank { stringResource(R.string.a21_untitled) }, style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (dot != SessionDot.NONE) {
+                        SessionStatusDot(dot)
+                        Spacer(Modifier.width(7.dp))
+                    }
+                    Text(session.displayTitle.ifBlank { stringResource(R.string.a21_untitled) }, style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (dot != SessionDot.NONE) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
                 Text(com.nousresearch.hermesmobile.ui.screens.sessionMeta(session), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
