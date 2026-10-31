@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="palette_open">Buscar</string>
+    <string name="palette_hint">Busca chats, páginas y acciones…</string>
+    <string name="palette_chats">Chats</string>
+    <string name="palette_go_to">Ir a</string>
+    <string name="palette_actions">Acciones</string>
+    <string name="palette_searching">Buscando en los mensajes…</string>
+    <string name="palette_no_results">Nada coincide con «%1$s»</string>
+    <string name="palette_switch_profile">Cambiar al perfil %1$s</string>
+    <string name="palette_appearance">Apariencia: %1$s</string>
+</resources>

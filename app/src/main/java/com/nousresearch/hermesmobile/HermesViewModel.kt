@@ -2285,6 +2285,27 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
+    /** The server's full-text session search, across every profile for "all". */
+    private suspend fun findSessions(repo: HermesRepository, query: String, profile: String, conversationOnly: Boolean = false): List<HermesSession> =
+        if (profile == "all") {
+            coroutineScope {
+                uiState.profiles.map { candidate ->
+                    async { runCatching { repo.rest.searchSessions(query, candidate.name, conversationOnly) }.getOrDefault(emptyList()) }
+                }.map { it.await() }.flatten()
+                    .distinctBy { "${it.profile}:${it.id}" }
+                    .sortedByDescending { it.lastActive }
+            }
+        } else {
+            repo.rest.searchSessions(query, profile, conversationOnly)
+        }
+
+    /** The search palette's server hits: every profile, without touching the Chats list's own search. */
+    suspend fun paletteSessionSearch(query: String): List<HermesSession> {
+        val repo = repository ?: return emptyList()
+        return runCatching { findSessions(repo, query.trim(), "all", conversationOnly = true) }.getOrDefault(emptyList())
+            .filterNot { it.hidden || it.archived || it.isInternalRun || it.isRoutineRun }
+    }
+
     fun searchSessions(query: String) {
         val trimmed = query.trim()
         uiState = uiState.copy(sessionSearchQuery = query)
@@ -2299,20 +2320,7 @@ class HermesViewModel(application: Application) : AndroidViewModel(application),
         uiState = uiState.copy(sessionSearchLoading = true)
         sessionSearchJob = viewModelScope.launch {
             delay(250)
-            val profile = uiState.sessionProfileFilter
-            runCatching {
-                if (profile == "all") {
-                    coroutineScope {
-                        uiState.profiles.map { candidate ->
-                            async { runCatching { repo.rest.searchSessions(trimmed, candidate.name) }.getOrDefault(emptyList()) }
-                        }.map { it.await() }.flatten()
-                            .distinctBy { "${it.profile}:${it.id}" }
-                            .sortedByDescending { it.lastActive }
-                    }
-                } else {
-                    repo.rest.searchSessions(trimmed, profile)
-                }
-            }.onSuccess { results ->
+            runCatching { findSessions(repo, trimmed, uiState.sessionProfileFilter) }.onSuccess { results ->
                     if (generation == searchGeneration && uiState.sessionSearchQuery.trim() == trimmed) {
                         val enriched = results.map { hit ->
                             uiState.sessions.firstOrNull { sameSession(it, hit) }?.let { loaded ->

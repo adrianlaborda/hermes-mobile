@@ -38,6 +38,8 @@ fun HermesDrawer(
     onNewChat: () -> Unit,
     onNotifications: () -> Unit,
     onClose: () -> Unit,
+    /** Opens the search palette (Desktop's sidebar search and ⌘K in one). */
+    onSearch: () -> Unit = {},
     /** Kanban's entry shows only while the gateway has the plugin active for the profile. */
     kanbanAvailable: Boolean = false,
     onKanban: () -> Unit = {},
@@ -95,7 +97,8 @@ fun HermesDrawer(
                 Spacer(Modifier.width(8.dp))
                 Text(stringResource(R.string.a14_new_chat))
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
+            DrawerItem(Icons.Default.Search, stringResource(R.string.palette_open), false) { onClose(); onSearch() }
 
             DrawerItem(Icons.Default.SpaceDashboard, stringResource(R.string.a14_home), current == MainSection.HOME) { onClose(); onSelect(MainSection.HOME) }
             DrawerItem(Icons.AutoMirrored.Filled.Chat, stringResource(R.string.ui_ef5b4049bb), current == MainSection.CHAT) { onClose(); onSelect(MainSection.CHAT) }

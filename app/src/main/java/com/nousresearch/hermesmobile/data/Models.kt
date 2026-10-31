@@ -360,8 +360,8 @@ data class HermesSession(
 
         fun fromJson(o: JSONObject): HermesSession = HermesSession(
             id = o.optString("id", o.optString("session_id")),
-            title = o.optString("title"),
-            preview = TurnDisplay.preview(o.optString("preview")),
+            title = o.optStringOrNull("title").orEmpty(),
+            preview = TurnDisplay.preview(o.optStringOrNull("preview").orEmpty()),
             profile = o.optString("profile", "default"),
             source = o.optString("source"),
             messageCount = o.optInt("message_count", 0),

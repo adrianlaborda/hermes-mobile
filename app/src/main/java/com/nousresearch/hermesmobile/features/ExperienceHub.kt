@@ -1,6 +1,7 @@
 package com.nousresearch.hermesmobile.features
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -28,7 +29,7 @@ import org.json.JSONObject
  * pick up again and what is scheduled next. Navigation lives in the drawer.
  */
 @Composable
-fun ExperienceHome(s: HermesUiState, onMenu: () -> Unit, onNavigate: (MainSection) -> Unit, onNew: () -> Unit, onOpen: (HermesSession) -> Unit) {
+fun ExperienceHome(s: HermesUiState, onMenu: () -> Unit, onNavigate: (MainSection) -> Unit, onNew: () -> Unit, onOpen: (HermesSession) -> Unit, onSearch: () -> Unit) {
     val connected = s.connectionState == GatewayConnectionState.CONNECTED
     val visible = remember(s.sessions) { s.sessions.filterNot { it.hidden || it.archived || it.isRoutineRun || it.isInternalRun } }
     val recent = remember(visible) { visible.sortedByDescending { it.lastActive }.take(5) }
@@ -42,6 +43,7 @@ fun ExperienceHome(s: HermesUiState, onMenu: () -> Unit, onNavigate: (MainSectio
             )
             DashedDivider(color = MaterialTheme.hermes.line)
         }
+        item { HomeSearchPill(onSearch) }
         item {
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -258,6 +260,24 @@ fun ServerLogs(repo: HermesRepository, profile: String, onBack: () -> Unit) {
             items(lines.filter { it.contains(query, true) }) { line ->
                 androidx.compose.foundation.text.selection.SelectionContainer { Text(line, style = MaterialTheme.typography.bodySmall, fontFamily = com.nousresearch.hermesmobile.ui.theme.HermesMono) }
             }
+        }
+    }
+}
+
+/** Desktop's ⌘K entry point on Home: looks like a search field, opens the search palette. */
+@Composable
+private fun HomeSearchPill(onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(Modifier.heightIn(min = 44.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Search, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.palette_hint), style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

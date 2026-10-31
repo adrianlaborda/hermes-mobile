@@ -119,17 +119,24 @@ class HermesRestClient(
         includeArchived: Boolean = false
     ): List<HermesSession> = sessionsPage(profile, limit, 0, includeArchived).sessions
 
-    suspend fun searchSessions(query: String, profile: String = "all"): List<HermesSession> {
+    /**
+     * The server's session search. [conversationOnly] keeps id matches and hits in what the user or the
+     * agent wrote, dropping hits that only matched tool output or system text (the row's `role`).
+     */
+    suspend fun searchSessions(query: String, profile: String = "all", conversationOnly: Boolean = false): List<HermesSession> {
         if (query.isBlank()) return emptyList()
         val profileParam = if (profile == "all") "" else "&profile=${enc(profile)}"
         val root = getObject("/api/sessions/search?q=${enc(query)}$profileParam")
         val results = root.optJSONArray("results") ?: root.optJSONArray("sessions") ?: JSONArray()
-        return results.objects().mapNotNull { row ->
+        return results.objects()
+            .filter { !conversationOnly || it.optStringOrNull("role").let { role -> role == null || role == "user" || role == "assistant" } }
+            .mapNotNull { row ->
             val session = row.optJSONObject("session") ?: row
             val normalized = JSONObject(session.toString())
             if (!normalized.has("id") && row.has("session_id")) normalized.put("id", row.optString("session_id"))
             if (!normalized.has("title") && row.has("title")) normalized.put("title", row.optString("title"))
-            row.optStringOrNull("snippet")?.let { normalized.put("preview", it) }
+            // FTS5 marks the match as >>>term<<<; the UI highlights it itself.
+            row.optStringOrNull("snippet")?.let { normalized.put("preview", it.replace(">>>", "").replace("<<<", "")) }
             if (!normalized.has("profile")) normalized.put("profile", row.optString("profile", "default"))
             HermesSession.fromJson(normalized).takeIf { it.id.isNotBlank() }
         }

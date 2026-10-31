@@ -9,6 +9,20 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+### Added
+
+- **Search from Home and the side menu.** Like Desktop's command palette (⌘K), one search field finds chats, pages
+  and quick actions. Chat titles match as you type, then the server's search adds chats whose messages match, with
+  the matching text under the title. Pages are every section of the app and of Settings. Actions are a new chat,
+  switching profile and the light, dark or system appearance. With nothing typed it lists your recent chats, and the
+  keyboard's Go key opens the first result. Only what you or Hermes wrote counts as a match: hits in tool output
+  are left out. The search field in the Chats list stays as it was.
+
+### Fixed
+
+- **Search results in Chats** no longer show the server's `>>>match<<<` markers, and a chat without a title no
+  longer appears as "null".
+
 ## [0.3.0-beta.14] - 2026-10-27
 
 ### Added
