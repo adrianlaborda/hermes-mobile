@@ -9,6 +9,8 @@ server plugin it needs for notifications.
 
 ## [Unreleased]
 
+## [0.3.0-beta.15] - 2026-10-31
+
 ### Added
 
 - **Search from Home and the side menu.** Like Desktop's command palette (⌘K), one search field finds chats, pages
@@ -447,7 +449,8 @@ Requires `hermes-android` 0.5.1.
 - sessions, bots and hosted group chats, routines, channels, capabilities and multi-gateway sign-in;
 - the Hermes Desktop design system.
 
-[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.14...HEAD
+[Unreleased]: https://github.com/adrianlaborda/hermes-mobile/compare/v0.3.0-beta.15...HEAD
+[0.3.0-beta.15]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.15
 [0.3.0-beta.14]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.14
 [0.3.0-beta.13]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.13
 [0.3.0-beta.12]: https://github.com/adrianlaborda/hermes-mobile/releases/tag/v0.3.0-beta.12
